@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: #05070a;
+  color: #e8eef5;
+  font-family: Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-image: radial-gradient(1200px 600px at 100% -10%, rgba(30, 224, 143, 0.06), transparent 60%);
+  background-attachment: fixed;
+}
+
+@layer components {
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-mute;
+  }
+  .num {
+    @apply font-mono tabular-nums;
+  }
+  .scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+  .scroll-thin::-webkit-scrollbar-thumb { background: #1e2a36; border-radius: 99px; }
+}
+
+/* Leaflet en modo oscuro */
+.leaflet-container { background: #0b1016 !important; font-family: Inter, system-ui, sans-serif; }
+.nexo-tiles-oscuros { filter: invert(1) hue-rotate(180deg) brightness(0.8) contrast(0.95) saturate(0.35); }
+.leaflet-control-attribution { background: rgba(5, 7, 10, 0.7) !important; color: #56626f !important; }
+.leaflet-control-attribution a { color: #8a97a6 !important; }
+.leaflet-bar a { background: #111821 !important; color: #e8eef5 !important; border-color: #1e2a36 !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
