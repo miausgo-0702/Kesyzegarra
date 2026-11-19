@@ -147,7 +147,16 @@ export function Segmented<T extends string>({ value, onChange, options, classNam
   );
 }
 
-export function Field({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
+/** Campo con etiqueta. Con `grupo` (botones, varias opciones) se usa un grupo en lugar de <label>. */
+export function Field({ label, children, className, grupo }: { label: string; children: ReactNode; className?: string; grupo?: boolean }) {
+  if (grupo) {
+    return (
+      <div role="group" aria-label={label} className={cx("block", className)}>
+        <span className="mb-1.5 block text-xs font-medium text-mute">{label}</span>
+        {children}
+      </div>
+    );
+  }
   return (
     <label className={cx("block", className)}>
       <span className="mb-1.5 block text-xs font-medium text-mute">{label}</span>

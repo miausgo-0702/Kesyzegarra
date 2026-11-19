@@ -254,9 +254,42 @@ export class SupabaseBackend implements Backend {
           await this.sb.from("recetas").delete().eq("producto_id", data.id);
           if (a.receta.length) await run(this.sb.from("recetas").insert(a.receta.map((r) => ({ ...r, bar_id: bar, producto_id: data.id }))));
         }
+        if (a.modificadores) {
+          await this.sb.from("modificadores").delete().eq("producto_id", data.id);
+          if (a.modificadores.length) await run(this.sb.from("modificadores").insert(a.modificadores.map((m) => ({ ...m, bar_id: bar, producto_id: data.id }))));
+        }
         this.programarRefresco();
         return;
       }
+      case "guardarCategoria": return run(this.sb.from("categorias").upsert({ ...(a.categoria.id ? { id: a.categoria.id } : { orden: (this.state?.categorias.length ?? 0) + 1 }), bar_id: bar, nombre: a.categoria.nombre, estacion: a.categoria.estacion }));
+      case "borrarCategoria": return run(this.sb.from("categorias").delete().eq("id", a.id));
+      case "moverCategoria": {
+        const orden = [...(this.state?.categorias ?? [])].sort((x, y) => x.orden - y.orden);
+        const i = orden.findIndex((c) => c.id === a.id), j = i + a.delta;
+        if (i < 0 || j < 0 || j >= orden.length) return;
+        await run(this.sb.from("categorias").update({ orden: orden[j].orden }).eq("id", orden[i].id));
+        return run(this.sb.from("categorias").update({ orden: orden[i].orden }).eq("id", orden[j].id));
+      }
+      case "archivarProducto": return run(this.sb.from("productos").update({ activo: !a.archivar }).eq("id", a.id));
+      case "duplicarProducto": {
+        const p = this.state?.productos.find((x) => x.id === a.id);
+        if (!p) return;
+        const { id: _omit, precio_anterior: _pa, variacion_porcentaje: _v, ...resto } = p; void _omit; void _pa; void _v;
+        return run(this.sb.from("productos").insert({ ...resto, bar_id: bar, nombre: `${p.nombre} (copia)`, destacado: false }));
+      }
+      case "guardarModificadores":
+        await this.sb.from("modificadores").delete().eq("producto_id", a.producto_id);
+        return a.items.length ? run(this.sb.from("modificadores").insert(a.items.map((m) => ({ ...m, bar_id: bar, producto_id: a.producto_id })))) : undefined;
+      case "guardarSector": return run(this.sb.from("sectores").upsert({ ...(a.sector.id ? { id: a.sector.id } : {}), bar_id: bar, nombre: a.sector.nombre }));
+      case "borrarSector": return run(this.sb.from("sectores").delete().eq("id", a.id));
+      case "guardarMesa": return run(this.sb.from("mesas").upsert({ ...(a.mesa.id ? { id: a.mesa.id } : {}), bar_id: bar, numero: a.mesa.numero, capacidad: a.mesa.capacidad, sector_id: a.mesa.sector_id }));
+      case "borrarMesa": return run(this.sb.from("mesas").delete().eq("id", a.id));
+      case "configurarBar": return run(this.sb.from("bares").update(a.datos).eq("id", bar));
+      case "guardarUsuario":
+        // Las cuentas de acceso se crean en Supabase Auth; acá se actualiza el perfil y el PIN (hash en el servidor).
+        if (!a.usuario.id) throw new Error("Creá la cuenta en Supabase → Authentication y después asignale rol y PIN acá");
+        await run(this.sb.from("perfiles_usuarios").update({ nombre: a.usuario.nombre, rol: a.usuario.rol, activo: a.usuario.activo }).eq("id", a.usuario.id));
+        return this.rpc("fijar_pin", { p_usuario: a.usuario.id, p_pin: a.usuario.pin });
       case "revertirPrecio": { const p = this.state?.productos.find((x) => x.id === a.producto_id); return run(this.sb.from("productos").update({ precio_actual: p?.precio_base }).eq("id", a.producto_id)); }
       default:
         // exchangeTick (lo corre pg_cron / Vercel Cron), simulación y notificaciones locales no aplican en producción

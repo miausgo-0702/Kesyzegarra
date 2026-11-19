@@ -14,7 +14,14 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-Sin variables de entorno, la app arranca en **modo demo**: una noche de servicio simulada que vive en el navegador y se **sincroniza entre pestañas** (abrí la TV, la cocina y el salón en pestañas distintas y todo cambia al instante). Un simulador agrega clientes, mueve al cadete y corre el motor Exchange cada 30 s.
+Sin variables de entorno, la app funciona **en el navegador** (datos guardados en el equipo y sincronizados entre pestañas): abre en el ingreso por PIN y cada rol entra directo a su pantalla. El bar de ejemplo trae una noche de servicio cargada; los bares nuevos arrancan con la carta vacía.
+
+- **Cada bar tiene su carta**: categorías (crear, renombrar, ordenar, borrar), productos con foto propia (subir o arrastrar), precio y rango del Exchange, receta, opciones/modificadores, agotado, destacado en TV, duplicar y archivar.
+- **Mesas y QR**: sectores, mesas y hoja de QR por mesa para imprimir.
+- **Equipo**: personas, rol y PIN único de 4 dígitos.
+- **Mi bar**: nombre, dirección, propina sugerida y reglas de precios.
+- **Varios bares**: el Super Admin crea bares y entra a cada uno; cada dispositivo elige su bar en el ingreso.
+- El motor Exchange corre con la ventana del bar (15 min). Los clientes simulados (mercado acelerado) se activan desde Super Admin → APIs y backups → Herramientas de prueba.
 
 | Rol | PIN demo | Pantalla |
 |---|---|---|
@@ -115,7 +122,7 @@ nexoresto/
 ## Calidad y verificación
 
 ```bash
-npm test                 # 18 tests: motor Exchange (reproduce la tabla de la propuesta) + reductor
+npm test                 # 20 tests: motor Exchange (reproduce la tabla de la propuesta) + reductor
 npm run typecheck
 npm run build
 tests/sql/run.sh         # aplica migraciones + seed en un Postgres local y corre asserts de negocio

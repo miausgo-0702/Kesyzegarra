@@ -157,7 +157,10 @@ function SimuladorDemo({ backend }: { backend: Backend }) {
 
     const tickExchange = setInterval(() => {
       if (!lider.current) return;
-      d({ type: "exchangeTick", ventanaMs: DEMO_VENTANA_MS });
+      const st0 = st();
+      // Con clientes simulados el mercado se acelera; en uso real respeta la ventana del bar (15 min)
+      if (st0.simulacion) d({ type: "exchangeTick", ventanaMs: DEMO_VENTANA_MS });
+      else if (Date.now() - st0.ultimo_tick >= st0.bar.reglas_precios.ventana_min * 60_000) d({ type: "exchangeTick" });
     }, DEMO_TICK_MS);
 
     const tickSim = setInterval(() => {

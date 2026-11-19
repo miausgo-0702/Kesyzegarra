@@ -30,7 +30,7 @@ function Tablero() {
       <aside className="flex min-h-0 flex-col border-r border-line bg-panel/40">
         <div className="flex items-center justify-between border-b border-line p-4">
           <h2 className="eyebrow">Pedidos delivery · {envios.filter((e) => e.estado !== "entregado").length} activos</h2>
-          <Link href="/menu/bar-central/delivery" target="_blank"><Btn size="sm" variant="outline">Carta delivery <ExternalLink size={12} /></Btn></Link>
+          <Link href={`/menu/${s.bar.slug}/delivery`} target="_blank"><Btn size="sm" variant="outline">Carta delivery <ExternalLink size={12} /></Btn></Link>
         </div>
         <ul className="flex-1 space-y-2 overflow-y-auto p-3 scroll-thin">
           {envios.length === 0 && <Empty icon={<Bike size={30} />} title="Sin envíos" hint="Los pedidos de delivery de la WebApp aparecen acá." />}

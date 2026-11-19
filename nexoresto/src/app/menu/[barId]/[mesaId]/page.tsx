@@ -90,7 +90,7 @@ function Carta({ onAbrir, enCrashIds }: { onAbrir: (p: Producto) => void; enCras
   return (
     <div>
       <div className="sticky top-[57px] z-20 flex gap-2 overflow-x-auto bg-bg/90 px-4 py-3 backdrop-blur scroll-thin">
-        {s.categorias.map((c) => (
+        {[...s.categorias].sort((a, b) => a.orden - b.orden).map((c) => (
           <button key={c.id} onClick={() => { setCat(c.id); refs.current[c.id]?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
             className={cx("whitespace-nowrap rounded-full border px-4 py-1.5 text-sm", cat === c.id ? "border-up/60 bg-up/10 text-up" : "border-line text-mute")}>{c.nombre}</button>
         ))}
@@ -106,7 +106,8 @@ function Carta({ onAbrir, enCrashIds }: { onAbrir: (p: Producto) => void; enCras
           ))}
         </div>
       )}
-      {s.categorias.map((c) => {
+      {!s.productos.some((p) => p.activo) && <p className="px-6 py-16 text-center text-mute">La carta se está preparando. Consultá a tu mozo.</p>}
+      {[...s.categorias].sort((a, b) => a.orden - b.orden).map((c) => {
         const ps = s.productos.filter((p) => p.categoria_id === c.id && p.activo);
         if (!ps.length) return null;
         return (

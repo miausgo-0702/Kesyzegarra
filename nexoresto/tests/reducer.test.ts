@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { reducir, type Accion } from "@/lib/store/actions";
-import { crearEstadoInicial } from "@/lib/store/seed";
+import { crearEstadoBar, crearEstadoInicial } from "@/lib/store/seed";
 import { esperadoTurno } from "@/lib/store/selectors";
 import { mesaId, prodId } from "@/lib/store/catalogo";
 import type { NexoState } from "@/lib/types";
@@ -108,5 +108,36 @@ describe("reductor del sistema (modo demo)", () => {
     const p = s.pedidos.find((x) => x.idempotency_key === "mos")!;
     expect(p.tipo).toBe("mostrador");
     expect(p.mesa_id).toBeNull();
+  });
+
+  it("carta editable: categorías, modificadores con el producto y carta de ejemplo en un bar nuevo", () => {
+    const base = crearEstadoInicial();
+    let s = crearEstadoBar({ ...base.bar, id: "bar-nuevo", slug: "bar-nuevo", nombre: "Bar Nuevo" });
+    expect(s.productos).toHaveLength(0);
+    s = run(s, { type: "guardarCategoria", categoria: { nombre: "Vinos", estacion: "barra" } });
+    expect(() => reducir(s, { type: "guardarCategoria", categoria: { nombre: "vinos", estacion: "barra" } }, ctx())).toThrow(/Ya existe/);
+    const vinos = s.categorias.find((c) => c.nombre === "Vinos")!;
+    s = run(s, { type: "guardarProducto", producto: { nombre: "Malbec copa", categoria_id: vinos.id, precio_base: 3000 }, modificadores: [{ grupo: "Temperatura", nombre: "Bien frío", precio_extra: 0, exclusivo: true }] });
+    const malbec = s.productos.find((p) => p.nombre === "Malbec copa")!;
+    expect(malbec.estacion).toBe("barra");
+    expect(s.modificadores.filter((m) => m.producto_id === malbec.id)).toHaveLength(1);
+    expect(() => reducir(s, { type: "borrarCategoria", id: vinos.id }, ctx())).toThrow(/archivá/);
+    s = run(s, { type: "archivarProducto", id: malbec.id, archivar: true }, { type: "borrarCategoria", id: vinos.id });
+    expect(s.categorias.some((c) => c.id === vinos.id)).toBe(false);
+    s = run(s, { type: "importarCartaEjemplo" });
+    expect(s.productos.filter((p) => p.activo).length).toBeGreaterThan(10);
+    expect(s.recetas.length).toBeGreaterThan(20);
+  });
+
+  it("mesas y equipo: números y PINs únicos", () => {
+    let s = crearEstadoInicial();
+    expect(() => reducir(s, { type: "guardarMesa", mesa: { numero: 1, capacidad: 4, sector_id: s.sectores[0].id } }, ctx())).toThrow(/Ya existe la mesa 1/);
+    s = run(s, { type: "guardarMesa", mesa: { numero: 40, capacidad: 6, sector_id: s.sectores[0].id } });
+    expect(s.mesas.some((m) => m.numero === 40 && m.capacidad === 6)).toBe(true);
+    expect(() => reducir(s, { type: "guardarUsuario", usuario: { nombre: "Ana", rol: "mozo", pin: "1111", activo: true } }, ctx())).toThrow(/PIN ya lo usa/);
+    s = run(s, { type: "guardarUsuario", usuario: { nombre: "Ana", rol: "mozo", pin: "4321", activo: true } });
+    expect(s.usuarios.some((u) => u.nombre === "Ana" && u.pin === "4321")).toBe(true);
+    s = run(s, { type: "configurarBar", datos: { nombre: "Bar Central Norte", propina_sugerida_pct: 12 } });
+    expect(s.bar.nombre).toBe("Bar Central Norte");
   });
 });

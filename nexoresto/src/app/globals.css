@@ -71,3 +71,11 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* Impresión de la hoja de QR por mesa */
+@media print {
+  body { background: #fff !important; }
+  body * { visibility: hidden; }
+  #hoja-qr, #hoja-qr * { visibility: visible; }
+  #hoja-qr { position: absolute; inset: 0 auto auto 0; width: 100%; }
+}

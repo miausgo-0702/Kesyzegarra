@@ -83,7 +83,7 @@ export function ComandaEditor({ mesa, onEnviado }: { mesa: Mesa | null; onEnviad
             onKeyDown={(e) => { if (e.key === "Enter" && productos[0]) agregar(productos[0]); }} />
         </div>
         <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scroll-thin">
-          {s.categorias.map((c) => (
+          {[...s.categorias].sort((a, b) => a.orden - b.orden).map((c) => (
             <button key={c.id} onClick={() => { setCat(c.id); setQ(""); }}
               className={cx("whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium", !q && cat === c.id ? "border-up/50 bg-up/10 text-up" : "border-line text-mute hover:text-ink")}>
               {c.nombre}

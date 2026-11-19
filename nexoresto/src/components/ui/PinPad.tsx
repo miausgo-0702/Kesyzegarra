@@ -6,13 +6,16 @@ import { guardarSesion, useBackend, useNexo } from "@/lib/store/NexoProvider";
 import type { Rol } from "@/lib/types";
 import { sonido } from "@/lib/sound";
 
-const PINES_DEMO: [Rol, string][] = [["jefe", "1111"], ["caja", "2222"], ["mozo", "3333"], ["cocina", "4444"], ["bartender", "5555"], ["cm", "6666"], ["cadete", "7777"], ["super_admin", "9999"]];
+const ROL_CORTO: Record<Rol, string> = { super_admin: "sistema", jefe: "encargado", caja: "caja", mozo: "mozo", cocina: "cocina", bartender: "barra", pantalla_tv: "TV", cm: "community", cadete: "cadete" };
 
 /** Ingreso rápido con PIN de 4 dígitos. Bloquea 30 s tras 5 intentos fallidos. */
 export function PinPad({ roles, onOk }: { roles?: Rol[]; onOk?: () => void }) {
   const backend = useBackend();
   const usuarios = useNexo((s) => s.usuarios);
   const bar = useNexo((s) => s.bar.nombre);
+  const barId = useNexo((s) => s.bar.id);
+  const bares = useNexo((s) => s.bares);
+  const [verEquipo, setVerEquipo] = useState(false);
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [intentos, setIntentos] = useState(0);
@@ -64,12 +67,17 @@ export function PinPad({ roles, onOk }: { roles?: Rol[]; onOk?: () => void }) {
     return () => window.removeEventListener("keydown", h);
   }, [tecla]);
 
-  const sugeridos = PINES_DEMO.filter(([r]) => !roles || roles.length === 0 || roles.includes(r) || r === "jefe");
+  const sugeridos = usuarios.filter((u) => u.activo && (!roles || roles.length === 0 || roles.includes(u.rol) || u.rol === "jefe" || u.rol === "super_admin"))
+    .filter((u, i, arr) => arr.findIndex((x) => x.rol === u.rol) === i);
 
   return (
     <div className="rounded-3xl border border-line bg-panel p-6 shadow-2xl">
       <h1 className="text-center text-2xl font-semibold">Ingresá tu PIN</h1>
-      <p className="mt-1 text-center text-sm text-mute">{bar} · dispositivo de servicio</p>
+      {bares.length > 1 && backend.cambiarBar ? (
+        <select value={barId} onChange={(e) => backend.cambiarBar!(e.target.value)} className="mx-auto mt-2 block h-9 rounded-lg border border-line bg-bg px-3 text-sm" aria-label="Bar">
+          {bares.filter((b) => b.estado_licencia !== "suspendida").map((b) => <option key={b.id} value={b.id}>{b.nombre}</option>)}
+        </select>
+      ) : <p className="mt-1 text-center text-sm text-mute">{bar}</p>}
       <div className={cx("my-6 flex justify-center gap-4", error && "animate-[blink_.3s_2]")} aria-live="polite">
         {[0, 1, 2, 3].map((i) => (
           <span key={i} className={cx("h-4 w-4 rounded-full border-2 transition", i < pin.length ? "border-up bg-up shadow-[0_0_12px_#1ee08f]" : "border-line bg-transparent")} />
@@ -80,22 +88,24 @@ export function PinPad({ roles, onOk }: { roles?: Rol[]; onOk?: () => void }) {
         {["1", "2", "3", "4", "5", "6", "7", "8", "9", "⌫", "0", "OK"].map((k) => (
           <button key={k} disabled={cargando}
             onClick={() => (k === "OK" ? pin.length === 4 && verificar(pin) : tecla(k))}
-            className="grid h-16 place-items-center rounded-2xl border border-line bg-card font-mono text-2xl text-ink transition active:scale-95 active:bg-raised hover:border-mute"
+            className="press grid h-16 place-items-center rounded-2xl border border-line bg-card font-mono text-2xl text-ink active:bg-raised hover:border-mute"
             aria-label={k === "⌫" ? "Borrar" : k}>
             {k === "⌫" ? <Delete size={22} /> : k}
           </button>
         ))}
       </div>
       {backend.modo === "demo" && (
-        <div className="mt-6 border-t border-line pt-4">
-          <div className="eyebrow mb-2 text-center">PINs de demostración</div>
-          <div className="flex flex-wrap justify-center gap-1.5">
-            {sugeridos.map(([r, p]) => (
-              <button key={r} onClick={() => verificar(p)} className="rounded-full border border-line px-2.5 py-1 text-[11px] text-mute hover:border-up/50 hover:text-up">
-                {r.replace("_", " ")} · <span className="font-mono">{p}</span>
-              </button>
-            ))}
-          </div>
+        <div className="mt-5 border-t border-line pt-4 text-center">
+          <button onClick={() => setVerEquipo((v) => !v)} className="text-xs text-mute underline-offset-4 hover:text-ink hover:underline">{verEquipo ? "Ocultar equipo" : "¿Olvidaste tu PIN? Ver equipo de prueba"}</button>
+          {verEquipo && (
+            <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+              {sugeridos.map((u) => (
+                <button key={u.id} onClick={() => verificar(u.pin)} className="press rounded-full border border-line px-2.5 py-1 text-[11px] text-mute hover:border-up/50 hover:text-up">
+                  {u.nombre.split(" ")[0]} · {ROL_CORTO[u.rol]} · <span className="font-mono">{u.pin}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

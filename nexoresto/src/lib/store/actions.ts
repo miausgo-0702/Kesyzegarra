@@ -2,11 +2,12 @@
 // En producción las mismas acciones se traducen a RPCs de Supabase
 // (ver supabaseBackend.ts) y la base de datos es la fuente de verdad.
 import type {
-  Bar, Producto, EstadoCocina, EstadoMesa, EstadoReserva, Estacion, Evento, IaRecomendacion, MedioPago,
+  Bar, Producto, Rol, EstadoCocina, EstadoMesa, EstadoReserva, Estacion, Evento, IaRecomendacion, MedioPago,
   ModificadorElegido, NexoState, Pedido, PedidoItem, Promocion, ReglasPrecios, TipoPedido,
 } from "../types";
 import { crashActivo, evaluarMercado, triggerMarketCrash, variacion, type VentaRegistro } from "../exchangeEngine";
 import { costoProducto, costosMap, esperadoTurno, extrasItem, importeItem } from "./selectors";
+import { CATEGORIAS as CAT_EJEMPLO, INSUMOS as INS_EJEMPLO, MODIFICADORES as MOD_EJEMPLO, PRODUCTOS as PROD_EJEMPLO, RECETAS as REC_EJEMPLO } from "./catalogo";
 
 export interface ItemNuevo {
   producto_id: string;
@@ -55,9 +56,22 @@ export type Accion =
   | { type: "guardarBar"; bar: Partial<Bar> & { id?: string; nombre: string; slug: string } }
   | { type: "licenciaBar"; bar_id: string; estado: Bar["estado_licencia"] }
   | { type: "toggleSimulacion" }
-  | { type: "guardarProducto"; producto: Partial<Producto> & { nombre: string; categoria_id: string; precio_base: number }; receta?: { insumo_id: string; cantidad: number }[]; usuario?: string }
+  | { type: "guardarProducto"; producto: Partial<Producto> & { nombre: string; categoria_id: string; precio_base: number }; receta?: { insumo_id: string; cantidad: number }[]; modificadores?: { grupo: string; nombre: string; precio_extra: number; exclusivo: boolean }[]; usuario?: string }
   | { type: "toggleAgotado"; producto_id: string; usuario?: string }
   | { type: "moverMesa"; origen_id: string; destino_id: string; usuario?: string }
+  | { type: "guardarCategoria"; categoria: { id?: string; nombre: string; estacion: Estacion } }
+  | { type: "borrarCategoria"; id: string }
+  | { type: "moverCategoria"; id: string; delta: -1 | 1 }
+  | { type: "archivarProducto"; id: string; archivar: boolean; usuario?: string }
+  | { type: "duplicarProducto"; id: string }
+  | { type: "guardarModificadores"; producto_id: string; items: { grupo: string; nombre: string; precio_extra: number; exclusivo: boolean }[] }
+  | { type: "guardarSector"; sector: { id?: string; nombre: string } }
+  | { type: "borrarSector"; id: string }
+  | { type: "guardarMesa"; mesa: { id?: string; numero: number; capacidad: number; sector_id: string } }
+  | { type: "borrarMesa"; id: string }
+  | { type: "guardarUsuario"; usuario: { id?: string; nombre: string; rol: Rol; pin: string; activo: boolean } }
+  | { type: "configurarBar"; datos: Partial<Pick<Bar, "nombre" | "direccion" | "propina_sugerida_pct" | "moneda" | "lat" | "lng">> }
+  | { type: "importarCartaEjemplo" }
   | { type: "log"; nivel: "info" | "warn" | "error"; origen: string; mensaje: string };
 
 export interface Ctx { now: number; uid: () => string }
@@ -433,10 +447,116 @@ export function reducir(prev: NexoState, a: Accion, ctx: Ctx): NexoState {
       log(s, ctx, "info", "superadmin", "Reglas del motor Exchange actualizadas (versión guardada)");
       return s;
     }
+    case "guardarCategoria": {
+      const c = a.categoria;
+      if (!c.nombre.trim()) throw new Error("La categoría necesita un nombre");
+      if (s.categorias.some((x) => x.nombre.toLowerCase() === c.nombre.trim().toLowerCase() && x.id !== c.id)) throw new Error("Ya existe una categoría con ese nombre");
+      if (c.id) {
+        s.categorias = s.categorias.map((x) => (x.id === c.id ? { ...x, nombre: c.nombre.trim(), estacion: c.estacion } : x));
+        // los productos siguen a la estación de su categoría (cocina o barra)
+        s.productos = s.productos.map((p) => (p.categoria_id === c.id ? { ...p, estacion: c.estacion } : p));
+      } else {
+        s.categorias = [...s.categorias, { id: ctx.uid(), nombre: c.nombre.trim(), estacion: c.estacion, orden: Math.max(0, ...s.categorias.map((x) => x.orden)) + 1 }];
+      }
+      return s;
+    }
+    case "borrarCategoria": {
+      if (s.productos.some((p) => p.categoria_id === a.id && p.activo)) throw new Error("Mové o archivá sus productos antes de borrar la categoría");
+      s.categorias = s.categorias.filter((c) => c.id !== a.id);
+      return s;
+    }
+    case "moverCategoria": {
+      const orden = [...s.categorias].sort((x, y) => x.orden - y.orden);
+      const i = orden.findIndex((c) => c.id === a.id), j = i + a.delta;
+      if (i < 0 || j < 0 || j >= orden.length) return prev;
+      [orden[i], orden[j]] = [orden[j], orden[i]];
+      s.categorias = orden.map((c, k) => ({ ...c, orden: k + 1 }));
+      return s;
+    }
+    case "archivarProducto": {
+      const p = s.productos.find((x) => x.id === a.id);
+      if (!p) return prev;
+      s.productos = s.productos.map((x) => (x.id === a.id ? { ...x, activo: !a.archivar } : x));
+      audit(s, ctx, { usuario: a.usuario ?? "—", accion: "carta", tipo: "operacion", detalle: `${p.nombre} ${a.archivar ? "archivado" : "restaurado"}` });
+      return s;
+    }
+    case "duplicarProducto": {
+      const p = s.productos.find((x) => x.id === a.id);
+      if (!p) return prev;
+      const id = ctx.uid();
+      s.productos = [...s.productos, { ...p, id, nombre: `${p.nombre} (copia)`, destacado: false, precio_actual: p.precio_base, precio_anterior: null, variacion_porcentaje: 0 }];
+      s.recetas = [...s.recetas, ...s.recetas.filter((r) => r.producto_id === p.id).map((r) => ({ ...r, producto_id: id }))];
+      s.modificadores = [...s.modificadores, ...s.modificadores.filter((m) => m.producto_id === p.id).map((m) => ({ ...m, id: ctx.uid(), producto_id: id }))];
+      s.historial = { ...s.historial, [id]: [{ t: now, p: p.precio_base }] };
+      return s;
+    }
+    case "guardarModificadores": {
+      const limpios = a.items.filter((m) => m.nombre.trim() && m.grupo.trim());
+      s.modificadores = [...s.modificadores.filter((m) => m.producto_id !== a.producto_id),
+        ...limpios.map((m) => ({ id: ctx.uid(), producto_id: a.producto_id, categoria_id: null, grupo: m.grupo.trim(), nombre: m.nombre.trim(), precio_extra: Math.max(0, Math.round(m.precio_extra) || 0), exclusivo: m.exclusivo }))];
+      return s;
+    }
+    case "guardarSector": {
+      if (!a.sector.nombre.trim()) throw new Error("El sector necesita un nombre");
+      s.sectores = a.sector.id ? s.sectores.map((x) => (x.id === a.sector.id ? { ...x, nombre: a.sector.nombre.trim() } : x))
+        : [...s.sectores, { id: ctx.uid(), nombre: a.sector.nombre.trim(), orden: s.sectores.length + 1 }];
+      return s;
+    }
+    case "borrarSector": {
+      if (s.mesas.some((m) => m.sector_id === a.id)) throw new Error("El sector todavía tiene mesas");
+      s.sectores = s.sectores.filter((x) => x.id !== a.id);
+      return s;
+    }
+    case "guardarMesa": {
+      const m = a.mesa;
+      if (!(m.numero > 0)) throw new Error("Número de mesa inválido");
+      if (s.mesas.some((x) => x.numero === m.numero && x.id !== m.id)) throw new Error(`Ya existe la mesa ${m.numero}`);
+      if (!(m.capacidad > 0)) throw new Error("La capacidad debe ser mayor a cero");
+      s.mesas = m.id ? s.mesas.map((x) => (x.id === m.id ? { ...x, numero: m.numero, capacidad: m.capacidad, sector_id: m.sector_id } : x))
+        : [...s.mesas, { id: ctx.uid(), numero: m.numero, capacidad: m.capacidad, sector_id: m.sector_id, estado: "libre" as const, mozo_id: null, ocupada_desde: null, qr_token: ctx.uid().replace(/-/g, "").slice(0, 12) }].sort((x, y) => x.numero - y.numero);
+      return s;
+    }
+    case "borrarMesa": {
+      if (s.pedidos.some((p) => p.mesa_id === a.id && p.estado !== "cerrado" && p.estado !== "anulado")) throw new Error("La mesa tiene pedidos abiertos");
+      s.mesas = s.mesas.filter((x) => x.id !== a.id);
+      return s;
+    }
+    case "guardarUsuario": {
+      const u = a.usuario;
+      if (!u.nombre.trim()) throw new Error("Falta el nombre");
+      if (!/^\d{4}$/.test(u.pin)) throw new Error("El PIN debe tener 4 dígitos");
+      if (s.usuarios.some((x) => x.pin === u.pin && x.id !== u.id && x.activo)) throw new Error("Ese PIN ya lo usa otra persona del equipo");
+      s.usuarios = u.id ? s.usuarios.map((x) => (x.id === u.id ? { ...x, nombre: u.nombre.trim(), rol: u.rol, pin: u.pin, activo: u.activo } : x))
+        : [...s.usuarios, { id: ctx.uid(), bar_id: s.bar.id, nombre: u.nombre.trim(), rol: u.rol, pin: u.pin, activo: u.activo }];
+      return s;
+    }
+    case "configurarBar": {
+      const d = a.datos;
+      if (d.nombre !== undefined && !d.nombre.trim()) throw new Error("El bar necesita un nombre");
+      if (d.propina_sugerida_pct !== undefined && (d.propina_sugerida_pct < 0 || d.propina_sugerida_pct > 30)) throw new Error("La propina sugerida va de 0 a 30 %");
+      s.bar = { ...s.bar, ...d };
+      s.bares = s.bares.map((b) => (b.id === s.bar.id ? { ...b, ...d } : b));
+      return s;
+    }
+    case "importarCartaEjemplo": {
+      const m = new Map<string, string>();
+      const nid = (id: string) => { if (!m.has(id)) m.set(id, ctx.uid()); return m.get(id)!; };
+      const cats = CAT_EJEMPLO.map((c) => ({ ...c, id: nid(c.id), orden: c.orden + s.categorias.length }));
+      s.categorias = [...s.categorias, ...cats.filter((c) => !s.categorias.some((x) => x.nombre === c.nombre))];
+      const catPorNombre = (id: string) => { const nombre = CAT_EJEMPLO.find((c) => c.id === id)!.nombre; return s.categorias.find((c) => c.nombre === nombre)!.id; };
+      s.productos = [...s.productos, ...PROD_EJEMPLO.map((p) => ({ ...p, id: nid(p.id), categoria_id: catPorNombre(p.categoria_id) }))];
+      s.insumos = [...s.insumos, ...INS_EJEMPLO.filter((i) => !s.insumos.some((x) => x.nombre === i.nombre)).map((i) => ({ ...i, id: nid(i.id) }))];
+      const insId = (id: string) => { const n = INS_EJEMPLO.find((i) => i.id === id)!.nombre; return s.insumos.find((x) => x.nombre === n)!.id; };
+      s.recetas = [...s.recetas, ...REC_EJEMPLO.map((r) => ({ ...r, producto_id: nid(r.producto_id), insumo_id: insId(r.insumo_id) }))];
+      s.modificadores = [...s.modificadores, ...MOD_EJEMPLO.map((x) => ({ ...x, id: ctx.uid(), producto_id: x.producto_id ? nid(x.producto_id) : null, categoria_id: x.categoria_id ? catPorNombre(x.categoria_id) : null }))];
+      for (const p of PROD_EJEMPLO) s.historial = { ...s.historial, [nid(p.id)]: [{ t: now, p: p.precio_base }] };
+      return s;
+    }
+
     case "guardarBar": {
       if (!/^[a-z0-9-]{3,40}$/.test(a.bar.slug)) throw new Error("Slug inválido (minúsculas, números y guiones)");
       if (s.bares.some((b) => b.slug === a.bar.slug && b.id !== a.bar.id)) throw new Error("Ese slug ya existe");
-      if (a.bar.id) s.bares = s.bares.map((b) => (b.id === a.bar.id ? { ...b, ...a.bar } as Bar : b));
+      if (a.bar.id) { s.bares = s.bares.map((b) => (b.id === a.bar.id ? { ...b, ...a.bar } as Bar : b)); if (a.bar.id === s.bar.id) s.bar = { ...s.bar, ...a.bar } as Bar; }
       else s.bares = [...s.bares, { ...s.bar, id: ctx.uid(), usuarios: 0, estado_licencia: "prueba", plan: "basico", created_at: iso(now), licencia_vence: iso(now + 14 * 86400_000), ...a.bar } as Bar];
       log(s, ctx, "info", "superadmin", `Bar ${a.bar.nombre} ${a.bar.id ? "actualizado" : "creado"}`);
       return s;
@@ -471,6 +591,8 @@ export function reducir(prev: NexoState, a: Accion, ctx: Ctx): NexoState {
       s.productos = existente ? s.productos.map((p) => (p.id === nuevo.id ? nuevo : p)) : [...s.productos, nuevo];
       if (!existente) s.historial = { ...s.historial, [nuevo.id]: [{ t: now, p: nuevo.precio_actual }] };
       if (a.receta) s.recetas = [...s.recetas.filter((r) => r.producto_id !== nuevo.id), ...a.receta.filter((r) => r.cantidad > 0).map((r) => ({ ...r, producto_id: nuevo.id }))];
+      if (a.modificadores) s.modificadores = [...s.modificadores.filter((m) => m.producto_id !== nuevo.id),
+        ...a.modificadores.filter((m) => m.nombre.trim() && m.grupo.trim()).map((m) => ({ id: ctx.uid(), producto_id: nuevo.id, categoria_id: null, grupo: m.grupo.trim(), nombre: m.nombre.trim(), precio_extra: Math.max(0, Math.round(m.precio_extra) || 0), exclusivo: m.exclusivo }))];
       audit(s, ctx, { usuario: a.usuario ?? "—", accion: "cambio_precio", tipo: "precio", detalle: `${existente ? "Editado" : "Nuevo"}: ${nuevo.nombre} · base ${nuevo.precio_base}, rango ${minimo}–${maximo}`, monto: nuevo.precio_base });
       return s;
     }

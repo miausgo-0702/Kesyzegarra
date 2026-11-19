@@ -87,7 +87,8 @@ export default function PantallaTV({ params }: { params: Promise<{ barId: string
       {/* ---------- Cuerpo ---------- */}
       <main className="grid min-h-0 flex-1 grid-cols-12 gap-[1vw] px-[2.2vw] py-[1.6vh]">
         <section className="col-span-12 flex min-h-0 flex-col gap-[1vw] lg:col-span-9">
-          <div className="grid min-h-0 flex-[1.15] grid-cols-2 gap-[1vw] xl:grid-cols-4">
+          {!cotizables.length && <div className="grid flex-1 place-items-center rounded-2xl border border-white/10 text-center font-sans text-[clamp(16px,1.6vw,30px)] text-white/60">La carta todavía no tiene productos en cotización.</div>}
+          <div className={cx("grid min-h-0 flex-[1.15] grid-cols-2 gap-[1vw] xl:grid-cols-4", !cotizables.length && "hidden")}>
             {estrellas.map((p) => <TarjetaEstrella key={p.id} p={p} hist={s.historial[p.id] ?? []} crash={enCrash && !!s.crash?.productos.includes(p.id)} />)}
           </div>
           <TablaCotizaciones productos={cotizables} crashIds={enCrash ? s.crash!.productos : []} />

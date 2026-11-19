@@ -10,7 +10,7 @@ import { Building2, CheckCircle2, CircleAlert, Database, KeyRound, Plus, Refresh
 import { Shell } from "@/components/ui/Shell";
 import { Badge, Btn, Field, Modal, Panel, Segmented, inputCls, toast } from "@/components/ui/kit";
 import { ExportBtns } from "@/components/ui/ExportBtns";
-import { useDispatch, useNexo, useSesion } from "@/lib/store/NexoProvider";
+import { useBackend, useDispatch, useNexo, useSesion } from "@/lib/store/NexoProvider";
 import { cx, fechaCorta, hhmmss, money } from "@/lib/format";
 import { simularSerie, pisoEfectivo } from "@/lib/exchangeEngine";
 import { costoProducto } from "@/lib/store/selectors";
@@ -99,6 +99,7 @@ function Exchange() {
 
 function Bares() {
   const s = useNexo();
+  const backend = useBackend();
   const dispatch = useDispatch();
   const [edit, setEdit] = useState<Partial<Bar> | null>(null);
   return (
@@ -116,6 +117,8 @@ function Bares() {
                 <td className="font-mono text-xs">{b.licencia_vence ? fechaCorta(b.licencia_vence) : "—"}</td>
                 <td className="text-right">
                   <span className="flex justify-end gap-1.5">
+                    {b.id !== s.bar.id && backend.cambiarBar && <Btn size="sm" variant="primary" onClick={() => { backend.cambiarBar!(b.id); toast(`Ahora estás en ${b.nombre}`); }}>Entrar</Btn>}
+                    {b.id === s.bar.id && <Badge tono="up">Actual</Badge>}
                     <Btn size="sm" onClick={() => setEdit(b)}>Editar</Btn>
                     {b.estado_licencia === "suspendida"
                       ? <Btn size="sm" variant="primary" onClick={() => dispatch({ type: "licenciaBar", bar_id: b.id, estado: "activa" })}><ShieldCheck size={13} />Activar</Btn>
@@ -166,6 +169,9 @@ function Logs() {
 }
 
 function Apis() {
+  const dispatch = useDispatch();
+  const backend = useBackend();
+  const [confirmarReset, setConfirmarReset] = useState(false);
   const [salud, setSalud] = useState<Record<string, boolean> | null>(null);
   const cargar = () => fetch("/api/health").then((r) => r.json()).then(setSalud).catch(() => setSalud({}));
   useEffect(() => { cargar(); }, []);
@@ -191,6 +197,12 @@ function Apis() {
           ))}
         </ul>
         <p className="mt-3 text-xs text-mute">Las claves viven en variables de entorno de Vercel; nunca en la base ni en el navegador. Esta pantalla solo informa si están presentes.</p>
+      </Panel>
+      <Panel title="Herramientas de prueba">
+        <div className="space-y-3 text-sm">
+          <label className="flex items-center justify-between gap-3 rounded-xl border border-line p-3"><span><b>Clientes simulados</b><span className="block text-xs text-mute">Genera pedidos y votos automáticos y acelera el mercado (cada 30 s).</span></span><input type="checkbox" checked={s.simulacion} onChange={() => dispatch({ type: "toggleSimulacion" })} /></label>
+          {backend.reset && <Btn variant="danger" onClick={() => { if (confirmarReset) { backend.reset!(); toast("Datos locales restablecidos"); setConfirmarReset(false); } else setConfirmarReset(true); }}>{confirmarReset ? "Tocá de nuevo para borrar todo" : "Restablecer datos de este equipo"}</Btn>}
+        </div>
       </Panel>
       <Panel title="Backups">
         <ul className="space-y-2 text-sm">

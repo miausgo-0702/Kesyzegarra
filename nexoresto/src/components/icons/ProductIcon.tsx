@@ -140,11 +140,22 @@ const ICONS: Record<string, () => ReactElement> = {
 };
 
 export const ICONOS_DISPONIBLES = Object.keys(ICONS);
+/** Comprime una imagen subida (cuadrado, máx. `lado` px, JPEG) para guardarla en la carta. */
+export async function comprimirFoto(file: File, lado = 480): Promise<string> {
+  const bmp = await createImageBitmap(file);
+  const m = Math.min(bmp.width, bmp.height);
+  const c = document.createElement("canvas");
+  c.width = c.height = Math.min(lado, m);
+  c.getContext("2d")!.drawImage(bmp, (bmp.width - m) / 2, (bmp.height - m) / 2, m, m, 0, 0, c.width, c.height);
+  return c.toDataURL("image/jpeg", 0.78);
+}
 
 /** Ruta base de los assets públicos (en la demo estática del visor se usa "./"). */
 export const ASSET_BASE = process.env.NEXT_PUBLIC_ASSET_BASE ?? "/";
 const CON_FOTO = new Set(["mojito", "gintonic", "negroni", "aperol", "fernet", "cuba", "beer", "beerlight", "burger", "pizza", "milanesa", "fries", "salad", "provoleta", "dessert", "lemonade", "water"]);
-export const fotoProducto = (icono: string) => (CON_FOTO.has(icono) ? `${ASSET_BASE}fotos/${icono}.jpg` : null);
+/** `icono` puede ser una foto de la biblioteca ("burger") o una foto propia subida por el bar (data URL o URL). */
+export const esFotoPropia = (icono: string) => /^(data:image\/|https?:\/\/|blob:)/.test(icono);
+export const fotoProducto = (icono: string) => (esFotoPropia(icono) ? icono : CON_FOTO.has(icono) ? `${ASSET_BASE}fotos/${icono}.jpg` : null);
 
 /**
  * Imagen del producto: fotografía real (public/fotos, licencia Unsplash) recortada en cuadrado.

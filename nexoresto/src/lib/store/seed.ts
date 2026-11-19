@@ -1,12 +1,12 @@
 // Estado inicial del MODO DEMO: un bar con una noche de servicio en curso
 // (historial de precios, ventas de la jornada, comandas en cocina, delivery,
 // fotos, reservas) para que todas las pantallas se vean vivas desde el inicio.
-import type { Bar, FotoCliente, Mesa, NexoState, Pedido, PedidoItem, PuntoPrecio } from "../types";
+import type { Bar, FotoCliente, Mesa, NexoState, Pedido, PedidoItem, PuntoPrecio, Usuario } from "../types";
 import { REGLAS_DEFAULT, variacion } from "../exchangeEngine";
 import { BAR_ID, BAR_SLUG, CATEGORIAS, INSUMOS, MESAS_RAW, MODIFICADORES, PRODUCTOS, RECETAS, SECTORES, USUARIOS, mesaId, prodId } from "./catalogo";
 import { costoProducto, importeItem } from "./selectors";
 
-export const STATE_VERSION = 4;
+export const STATE_VERSION = 5;
 
 // PRNG determinista para que la demo sea reproducible
 function rng(seed: number) {
@@ -45,7 +45,7 @@ export function crearEstadoInicial(ahora = Date.now()): NexoState {
     mesas: MESAS_RAW.map(([n, s, cap]): Mesa => ({ id: mesaId(n), sector_id: SECTORES[s - 1].id, numero: n, capacidad: cap, estado: "libre", mozo_id: null, ocupada_desde: null, qr_token: `qr${n}x${(n * 7919).toString(36)}` })),
     pedidos: [], items: [], turnos: [], movimientos: [], cupones: [], historial: {}, crash: null, crashes: [], envios: [],
     eventos: [], promociones: [], fotos: [], votos: [], reservas: [], espera: [], auditoria: [], logs: [], compras: [], mermas: [],
-    recomendaciones: [], notificaciones: [], ultimo_tick: ahora, simulacion: true,
+    recomendaciones: [], notificaciones: [], ultimo_tick: ahora, simulacion: false,
   };
 
   // ---- 1. Historial de precios (60 ticks) con tendencias distintas por producto
@@ -241,4 +241,30 @@ export function crearEstadoInicial(ahora = Date.now()): NexoState {
 
   state.pedidos.sort((a, b) => b.created_at.localeCompare(a.created_at));
   return state;
+}
+
+/** Estado de un bar recién creado: sin carta (se carga desde Carta y precios), un salón de 10 mesas y el equipo base. */
+export function crearEstadoBar(bar: Bar, ahora = Date.now()): NexoState {
+  const iso = (t: number) => new Date(t).toISOString();
+  const pre = bar.id.replace(/[^a-z0-9]/gi, "").slice(-6);
+  const sid = `${pre}-salon`;
+  const roles: [Usuario["rol"], string, string][] = [["jefe", "Encargado", "1111"], ["caja", "Caja", "2222"], ["mozo", "Mozo 1", "3333"], ["cocina", "Cocina", "4444"], ["bartender", "Barra", "5555"], ["cm", "Community", "6666"], ["cadete", "Cadete", "7777"]];
+  const base = crearEstadoInicial(ahora);
+  return {
+    ...base,
+    bar: { ...bar, reglas_precios: { ...REGLAS_DEFAULT, ...bar.reglas_precios } },
+    usuarios: [...roles.map(([rol, nombre, pin], i) => ({ id: `${pre}-u${i}`, bar_id: bar.id, nombre, rol, pin, activo: true })), USUARIOS.find((u) => u.rol === "super_admin")!],
+    categorias: [
+      { id: `${pre}-c1`, nombre: "Tragos", orden: 1, estacion: "barra" },
+      { id: `${pre}-c2`, nombre: "Cervezas", orden: 2, estacion: "barra" },
+      { id: `${pre}-c3`, nombre: "Platos", orden: 3, estacion: "cocina" },
+      { id: `${pre}-c4`, nombre: "Postres", orden: 4, estacion: "cocina" },
+    ],
+    productos: [], modificadores: [], insumos: [], recetas: [], historial: {},
+    sectores: [{ id: sid, nombre: "Salón", orden: 1 }],
+    mesas: Array.from({ length: 10 }, (_, i): Mesa => ({ id: `${pre}-m${i + 1}`, sector_id: sid, numero: i + 1, capacidad: 4, estado: "libre", mozo_id: null, ocupada_desde: null, qr_token: `${pre}q${i + 1}` })),
+    pedidos: [], items: [], turnos: [], movimientos: [], cupones: [], crash: null, crashes: [], envios: [], eventos: [], promociones: [], fotos: [], votos: [],
+    reservas: [], espera: [], auditoria: [], logs: [{ id: `${pre}-l1`, nivel: "info", origen: "alta", mensaje: `Bar ${bar.nombre} creado`, created_at: iso(ahora) }],
+    compras: [], mermas: [], recomendaciones: [], notificaciones: [], ultimo_tick: ahora, simulacion: false,
+  };
 }
