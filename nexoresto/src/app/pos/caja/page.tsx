@@ -43,7 +43,7 @@ function cuentasAbiertas(s: NexoState): Cuenta[] {
 
 export default function Caja() {
   return (
-    <Shell roles={["caja"]} titulo="Caja · adicionista">
+    <Shell roles={["caja"]} titulo="Caja">
       <PanelCaja />
     </Shell>
   );
@@ -110,7 +110,7 @@ function Cobro({ turnoId }: { turnoId: string }) {
   const backend = useBackend();
   const modalVenta = (
     <Modal open={ventaRapida} onClose={() => setVentaRapida(false)} wide title="Venta rápida de mostrador">
-      <div className="h-[70dvh]">
+      <div className="h-[calc(94dvh-5.5rem)] sm:h-[70dvh]">
         <ComandaEditor mesa={null} onEnviado={(key) => {
           const ped = backend.getState()?.pedidos.find((p) => p.idempotency_key === key);
           setVentaRapida(false);

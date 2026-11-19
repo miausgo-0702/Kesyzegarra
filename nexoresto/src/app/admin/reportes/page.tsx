@@ -15,7 +15,7 @@ const MEDIO: Record<MedioPago, string> = { efectivo: "Efectivo", debito: "Débit
 const tooltip = { contentStyle: { background: "#0c1117", border: "1px solid #1e2a36", borderRadius: 12, fontSize: 12 }, cursor: { fill: "rgba(255,255,255,.04)" } };
 
 export default function Reportes() {
-  return <Shell roles={[]} titulo="Reportes de la jornada"><Tablero /></Shell>;
+  return <Shell roles={[]} titulo="Reportes"><Tablero /></Shell>;
 }
 
 function Tablero() {
@@ -70,7 +70,7 @@ function Tablero() {
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Panel title="Cierre Z · por medio de pago" action={<ExportBtns nombre="cierre-z" filas={() => data.porMedio.map((x) => ({ Medio: x.medio, Operaciones: x.operaciones, Cobrado: Math.round(x.cobrado), Propinas: Math.round(x.propinas) }))} />}>
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[460px] text-sm">
             <thead><tr className="eyebrow text-left"><th className="py-2">Medio</th><th className="text-right">Operaciones</th><th className="text-right">Cobrado</th><th className="text-right">Propinas</th><th className="w-32 pl-4">Participación</th></tr></thead>
             <tbody>
               {data.porMedio.map((x) => (
@@ -85,7 +85,7 @@ function Tablero() {
         </Panel>
 
         <Panel title="Ventas por mozo" action={<ExportBtns nombre="ventas-por-mozo" filas={() => data.porMozo.map((x) => ({ Mozo: x.mozo, Pedidos: x.pedidos, Ventas: Math.round(x.ventas), Propinas: Math.round(x.propinas), "Ticket promedio": x.pedidos ? Math.round(x.ventas / x.pedidos) : 0 }))} />}>
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[460px] text-sm">
             <thead><tr className="eyebrow text-left"><th className="py-2">Mozo</th><th className="text-right">Pedidos</th><th className="text-right">Ventas</th><th className="text-right">Ticket prom.</th><th className="text-right">Propinas</th></tr></thead>
             <tbody>
               {data.porMozo.map((x) => (

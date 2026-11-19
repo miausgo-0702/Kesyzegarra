@@ -1,7 +1,7 @@
 "use client";
 // Comanda táctil del mozo: buscador ultra rápido, precio congelado al agregar,
 // modificadores, notas, comensal (para dividir) y envío directo a cocina/barra.
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Minus, Plus, Search, Send, Trash2, Users, Zap, Receipt, ChefHat, Martini, Sparkles } from "lucide-react";
 import { Badge, Btn, Empty, Segmented, inputCls, toast } from "@/components/ui/kit";
 import { ProductIcon } from "@/components/icons/ProductIcon";
@@ -30,6 +30,9 @@ export function ComandaEditor({ mesa, onEnviado }: { mesa: Mesa | null; onEnviad
   const [editando, setEditando] = useState<string | null>(null);
   const [personas, setPersonas] = useState(2);
   const [tab, setTab] = useState<"comanda" | "cuenta">("comanda");
+  // En el celular se alterna entre la carta y el pedido; en tablet/PC se ven lado a lado
+  const [vista, setVista] = useState<"carta" | "pedido">("carta");
+  useEffect(() => { if (window.matchMedia("(min-width: 1024px)").matches) busq.current?.focus(); }, []);
   const idem = useRef(nuevoId());
   const busq = useRef<HTMLInputElement>(null);
 
@@ -48,7 +51,9 @@ export function ComandaEditor({ mesa, onEnviado }: { mesa: Mesa | null; onEnviad
     // Congelamos la cotización vigente al momento de tomar el pedido
     const linea: LineaCarrito = { key: nuevoId(), producto: p, cantidad: 1, precio_visto: p.precio_actual, modificadores: [], notas: "", persona: null };
     setCarrito((c) => [...c, linea]);
-    if (s.modificadores.some((m) => m.producto_id === p.id || m.categoria_id === p.categoria_id)) setEditando(linea.key);
+    // Solo abrimos las opciones solas si hay que elegir algo (ej. punto de cocción); los extras quedan a un toque
+    if (s.modificadores.some((m) => (m.producto_id === p.id || m.categoria_id === p.categoria_id) && m.exclusivo)) { setEditando(linea.key); setVista("pedido"); }
+
     setQ("");
   }
   const upd = (key: string, f: (l: LineaCarrito) => LineaCarrito) => setCarrito((c) => c.map((l) => (l.key === key ? f(l) : l)));
@@ -64,6 +69,7 @@ export function ComandaEditor({ mesa, onEnviado }: { mesa: Mesa | null; onEnviad
     const barra = carrito.filter((l) => l.producto.estacion === "barra").reduce((a, l) => a + l.cantidad, 0);
     toast(`Enviado · ${cocina} a cocina · ${barra} a barra`);
     setCarrito([]);
+    setVista("carta");
     const enviada = idem.current;
     idem.current = nuevoId(); // nueva clave para el próximo envío
     onEnviado?.(enviada);
@@ -73,38 +79,42 @@ export function ComandaEditor({ mesa, onEnviado }: { mesa: Mesa | null; onEnviad
   const totalMesa = itemsMesa.reduce((a, i) => a + importeItem(i), 0);
   const editLinea = carrito.find((l) => l.key === editando);
 
+  const unidades = carrito.reduce((a, l) => a + l.cantidad, 0);
   return (
-    <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[1.35fr_1fr]">
+    <div className="flex h-full min-h-0 flex-col">
+      <Segmented value={vista} onChange={setVista} className="mb-3 self-start lg:hidden"
+        options={[{ value: "carta", label: "Carta" }, { value: "pedido", label: unidades ? `Pedido · ${unidades}` : mesa ? `Pedido · ${money(totalMesa)}` : "Pedido" }]} />
+    <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[1.35fr_1fr]">
       {/* --------- catálogo --------- */}
-      <div className="flex min-h-0 flex-col">
+      <div className={cx("min-h-0 min-w-0 flex-col", vista === "carta" ? "flex" : "hidden lg:flex")}>
         <div className="relative">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-mute" />
-          <input ref={busq} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar producto… (ej: gin, burger)" className={cx(inputCls, "h-12 pl-10 text-base")} autoFocus
+          <input ref={busq} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar producto" className={cx(inputCls, "h-12 pl-10 text-base")} enterKeyHint="search"
             onKeyDown={(e) => { if (e.key === "Enter" && productos[0]) agregar(productos[0]); }} />
         </div>
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scroll-thin">
+        <div className="-mx-1 mt-3 flex min-w-0 gap-2 overflow-x-auto px-1 pb-1 scroll-thin">
           {[...s.categorias].sort((a, b) => a.orden - b.orden).map((c) => (
             <button key={c.id} onClick={() => { setCat(c.id); setQ(""); }}
-              className={cx("whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium", !q && cat === c.id ? "border-up/50 bg-up/10 text-up" : "border-line text-mute hover:text-ink")}>
+              className={cx("press shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium", !q && cat === c.id ? "border-up/50 bg-up/10 text-up" : "border-line text-mute hover:text-ink")}>
               {c.nombre}
             </button>
           ))}
         </div>
-        <div className="mt-3 grid min-h-0 flex-1 auto-rows-max grid-cols-2 gap-2 overflow-y-auto pr-1 scroll-thin sm:grid-cols-3 xl:grid-cols-4">
+        <div className="mt-3 grid min-h-0 flex-1 auto-rows-max grid-cols-2 gap-2 overflow-y-auto pb-20 scroll-thin sm:grid-cols-3 lg:pb-1 xl:grid-cols-4">
           {productos.map((p) => {
             const crash = enCrash(s, p.id, now);
             const sube = (p.precio_anterior ?? p.precio_actual) <= p.precio_actual;
             const ok = disponible(s, p);
             return (
               <button key={p.id} onClick={() => ok ? agregar(p) : toast(`${p.nombre}: ${p.agotado ? "marcado agotado" : "sin stock de insumos"}`, "warn")} aria-disabled={!ok}
-                className={cx("press flex flex-col items-start gap-2 rounded-2xl border bg-card p-2.5 text-left hover:border-mute", crash ? "border-crash/60" : "border-line", !ok && "opacity-45")}>
+                className={cx("press flex min-w-0 flex-col items-start gap-1.5 overflow-hidden rounded-2xl border bg-card p-2 text-left hover:border-mute", crash ? "border-crash/60" : "border-line", !ok && "opacity-45")}>
                 <div className="relative w-full">
-                  <ProductIcon icono={p.icono} size="full" />
+                  <ProductIcon icono={p.icono} size="full" className="!aspect-[4/3]" />
                   {crash && <Badge tono="crash" className="absolute left-1.5 top-1.5 bg-black/70"><Zap size={10} />Crash</Badge>}
                   {!ok && <Badge tono="down" className="absolute left-1.5 top-1.5 bg-black/70">Agotado</Badge>}
                 </div>
-                <div className="text-sm font-semibold leading-tight">{p.nombre}</div>
-                <div className={cx("font-mono text-sm", sube ? "text-up" : "text-down")}>{money(p.precio_actual)} {p.es_cotizable_bolsa && (sube ? "▲" : "▼")}</div>
+                <div className="line-clamp-2 w-full px-0.5 text-sm font-semibold leading-tight">{p.nombre}</div>
+                <div className={cx("px-0.5 font-mono text-sm", sube ? "text-up" : "text-down")}>{money(p.precio_actual)} {p.es_cotizable_bolsa && (sube ? "▲" : "▼")}</div>
               </button>
             );
           })}
@@ -113,7 +123,7 @@ export function ComandaEditor({ mesa, onEnviado }: { mesa: Mesa | null; onEnviad
       </div>
 
       {/* --------- comanda / cuenta --------- */}
-      <div className="flex min-h-0 flex-col rounded-2xl border border-line bg-bg/60 p-3">
+      <div className={cx("min-h-0 min-w-0 flex-col rounded-2xl border border-line bg-bg/60 p-3", vista === "pedido" ? "flex" : "hidden lg:flex")}>
         {mesa ? <Segmented value={tab} onChange={setTab} options={[{ value: "comanda", label: "Comanda" }, { value: "cuenta", label: `Cuenta · ${money(totalMesa)}` }]} className="self-start" /> : <div className="eyebrow">Venta de mostrador</div>}
 
         {tab === "comanda" ? (
@@ -122,22 +132,27 @@ export function ComandaEditor({ mesa, onEnviado }: { mesa: Mesa | null; onEnviad
               {carrito.length === 0 && itemsMesa.length === 0 && <Empty icon={<Receipt size={30} />} title="Comanda vacía" hint="Tocá un producto para agregarlo. Enter agrega el primer resultado de la búsqueda." />}
               <ul className="flex flex-col gap-2">
                 {carrito.map((l) => (
-                  <li key={l.key} className={cx("rounded-xl border bg-card p-2.5", editando === l.key ? "border-up/50" : "border-line")}>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => setEditando(editando === l.key ? null : l.key)} className="min-w-0 flex-1 text-left">
-                        <div className="truncate text-sm font-semibold">{l.producto.nombre}</div>
-                        <div className="truncate text-xs text-warn">{[...l.modificadores.map((m) => m.nombre), l.notas, l.persona ? `Comensal ${l.persona}` : null].filter(Boolean).join(" · ") || <span className="text-mute">+ modificadores / notas</span>}</div>
-                      </button>
-                      <span className="flex items-center gap-1">
-                        <button className="grid h-8 w-8 place-items-center rounded-lg bg-raised" onClick={() => l.cantidad > 1 ? upd(l.key, (x) => ({ ...x, cantidad: x.cantidad - 1 })) : setCarrito((c) => c.filter((x) => x.key !== l.key))} aria-label="Restar">{l.cantidad > 1 ? <Minus size={14} /> : <Trash2 size={14} className="text-down" />}</button>
-                        <span className="w-6 text-center font-mono">{l.cantidad}</span>
-                        <button className="grid h-8 w-8 place-items-center rounded-lg bg-raised" onClick={() => upd(l.key, (x) => ({ ...x, cantidad: x.cantidad + 1 }))} aria-label="Sumar"><Plus size={14} /></button>
-                      </span>
-                      <span className="w-20 text-right font-mono text-sm">{money(l.cantidad * (l.precio_visto + extrasItem(l)))}</span>
+                  <li key={l.key} className={cx("rounded-xl border bg-card p-3", editando === l.key ? "border-up/50" : "border-line")}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-semibold leading-tight">{l.producto.nombre}</div>
+                        <div className="mt-0.5 flex items-center gap-1 text-[11px] text-mute">
+                          {l.producto.estacion === "cocina" ? <ChefHat size={11} /> : <Martini size={11} />}{l.producto.estacion === "cocina" ? "Cocina" : "Barra"} · {money(l.precio_visto)} c/u
+                        </div>
+                      </div>
+                      <span className="shrink-0 font-mono font-semibold">{money(l.cantidad * (l.precio_visto + extrasItem(l)))}</span>
                     </div>
-                    <div className="mt-1 flex items-center justify-between text-[10px] uppercase tracking-wide text-dim">
-                      <span>{l.producto.estacion === "cocina" ? <><ChefHat size={10} className="inline" /> cocina</> : <><Martini size={10} className="inline" /> barra</>}</span>
-                      <span>cotización congelada {money(l.precio_visto)}</span>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <button onClick={() => setEditando(editando === l.key ? null : l.key)} className="min-w-0 truncate rounded-lg py-1 text-left text-xs">
+                        {[...l.modificadores.map((m) => m.nombre), l.notas, l.persona ? `Comensal ${l.persona}` : null].filter(Boolean).length
+                          ? <span className="text-warn">{[...l.modificadores.map((m) => m.nombre), l.notas, l.persona ? `Comensal ${l.persona}` : null].filter(Boolean).join(" · ")}</span>
+                          : <span className="text-up">+ Opciones y notas</span>}
+                      </button>
+                      <span className="flex shrink-0 items-center gap-1">
+                        <button className="press grid h-9 w-9 place-items-center rounded-lg bg-raised" onClick={() => l.cantidad > 1 ? upd(l.key, (x) => ({ ...x, cantidad: x.cantidad - 1 })) : setCarrito((c) => c.filter((x) => x.key !== l.key))} aria-label={l.cantidad > 1 ? "Restar" : "Quitar"}>{l.cantidad > 1 ? <Minus size={15} /> : <Trash2 size={15} className="text-down" />}</button>
+                        <span className="w-7 text-center font-mono">{l.cantidad}</span>
+                        <button className="press grid h-9 w-9 place-items-center rounded-lg bg-raised" onClick={() => upd(l.key, (x) => ({ ...x, cantidad: x.cantidad + 1 }))} aria-label="Sumar"><Plus size={15} /></button>
+                      </span>
                     </div>
                   </li>
                 ))}
@@ -147,8 +162,8 @@ export function ComandaEditor({ mesa, onEnviado }: { mesa: Mesa | null; onEnviad
 
               {upsell.length > 0 && carrito.length > 0 && (
                 <div className="mt-3 rounded-xl border border-violet/30 bg-violet/5 p-2.5">
-                  <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet"><Sparkles size={12} />Sugerido por IA</div>
-                  <div className="flex gap-2">
+                  <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-violet"><Sparkles size={12} />Suele acompañar</div>
+                  <div className="grid grid-cols-2 gap-2">
                     {upsell.map((u) => (
                       <button key={u.producto.id} onClick={() => agregar(u.producto)} className="flex flex-1 items-center gap-2 rounded-lg border border-line bg-card p-2 text-left hover:border-violet/50">
                         <ProductIcon icono={u.producto.icono} size={34} />
@@ -182,6 +197,14 @@ export function ComandaEditor({ mesa, onEnviado }: { mesa: Mesa | null; onEnviad
           <CuentaDividida mesa={mesa} personas={personas} setPersonas={setPersonas} />
         ) : null}
       </div>
+    </div>
+      {/* Barra inferior en el celular: siempre a mano el pedido en curso */}
+      {vista === "carta" && unidades > 0 && (
+        <button onClick={() => setVista("pedido")} className="press mt-3 flex shrink-0 items-center justify-between rounded-2xl bg-up px-4 py-3.5 font-semibold text-black shadow-[0_10px_30px_-10px_rgba(30,224,143,.6)] lg:hidden">
+          <span className="flex items-center gap-2"><Receipt size={18} />Ver pedido · {unidades}</span>
+          <span className="font-mono">{money(totalCarrito)}</span>
+        </button>
+      )}
     </div>
   );
 }

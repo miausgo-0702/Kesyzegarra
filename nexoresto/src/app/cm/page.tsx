@@ -20,7 +20,7 @@ import type { Evento, Promocion } from "@/lib/types";
 type Vista = "crash" | "moderacion" | "eventos" | "promos";
 
 export default function CM() {
-  return <Shell roles={["cm"]} titulo="Community Manager · promos, crash y eventos"><PanelCM /></Shell>;
+  return <Shell roles={["cm"]} titulo="Promos, eventos y Market Crash"><PanelCM /></Shell>;
 }
 
 function PanelCM() {
@@ -109,7 +109,7 @@ function MarketCrash() {
                 return <button key={p.id} onClick={() => setIds((x) => on ? x.filter((i) => i !== p.id) : [...x, p.id])} className={cx("flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-sm", on ? "border-crash/60 bg-crash/10 text-ink" : "border-line text-mute")}><ProductIcon icono={p.icono} size={26} />{p.nombre}<span className="font-mono text-xs">{money(modo === "minimo" ? p.precio_minimo : Math.max(p.precio_minimo, Math.round(p.precio_actual * (1 - desc / 100) / 50) * 50))}</span></button>;
               })}
             </div>
-            <div className="mt-4 flex flex-wrap gap-2 text-xs">{([[Volume2, "Alerta sonora"], [Monitor, "Pantalla NYSE"], [Smartphone, "Carta QR"], [Martini, "Barra BDS"]] as const).map(([I, t]) => <Badge key={t} tono="mute"><I size={12} />{t}</Badge>)}</div>
+            <div className="mt-4 flex flex-wrap gap-2 text-xs">{([[Volume2, "Alerta sonora"], [Monitor, "Pantalla del salón"], [Smartphone, "Carta QR"], [Martini, "Barra BDS"]] as const).map(([I, t]) => <Badge key={t} tono="mute"><I size={12} />{t}</Badge>)}</div>
             <button onClick={() => setConfirmar(true)} disabled={!ids.length}
               className="mt-6 h-20 w-full rounded-2xl bg-crash text-2xl font-black tracking-tight text-black shadow-[0_20px_60px_-15px_#ff3333] transition hover:brightness-110 active:scale-[0.99] disabled:opacity-40">
               ACTIVAR MARKET CRASH
@@ -247,7 +247,7 @@ function Eventos() {
   return (
     <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
       <Panel title="Cartelera de eventos">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[420px] text-sm">
           <thead><tr className="eyebrow text-left"><th className="py-2">Evento</th><th>Fecha</th><th>Estado</th><th /></tr></thead>
           <tbody>
             {s.eventos.map((e) => (

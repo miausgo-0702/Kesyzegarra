@@ -38,9 +38,9 @@ function Registro() {
         <Kpi label="Eventos registrados" value={s.auditoria.length} />
       </div>
       <div className="grid gap-4 xl:grid-cols-[1.6fr_1fr]">
-        <Panel title="Historial" action={<span className="flex items-center gap-2"><Segmented value={tipo} onChange={setTipo} options={[{ value: "todos", label: "Todo" }, { value: "operacion", label: "Operación" }, { value: "caja", label: "Caja" }, { value: "precio", label: "Precios" }]} /><ExportBtns nombre="auditoria" filas={() => filas.map((a) => ({ Fecha: new Date(a.created_at).toLocaleString("es-AR"), Usuario: a.usuario, Acción: a.accion, Tipo: a.tipo, Detalle: a.detalle, Monto: a.monto ?? "" }))} /></span>}>
-          <div className="max-h-[64dvh] overflow-y-auto scroll-thin">
-            <table className="w-full text-sm">
+        <Panel title="Historial" action={<span className="flex flex-wrap items-center gap-2"><Segmented value={tipo} onChange={setTipo} options={[{ value: "todos", label: "Todo" }, { value: "operacion", label: "Operación" }, { value: "caja", label: "Caja" }, { value: "precio", label: "Precios" }]} /><ExportBtns nombre="auditoria" filas={() => filas.map((a) => ({ Fecha: new Date(a.created_at).toLocaleString("es-AR"), Usuario: a.usuario, Acción: a.accion, Tipo: a.tipo, Detalle: a.detalle, Monto: a.monto ?? "" }))} /></span>}>
+          <div className="max-h-[64dvh] overflow-auto scroll-thin">
+            <table className="w-full min-w-[620px] text-sm">
               <thead className="sticky top-0 bg-card"><tr className="eyebrow text-left"><th className="py-2">Cuándo</th><th>Acción</th><th>Usuario</th><th>Detalle</th><th className="text-right">Monto</th></tr></thead>
               <tbody>
                 {filas.map((a) => (

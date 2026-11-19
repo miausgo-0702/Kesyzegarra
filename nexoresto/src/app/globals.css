@@ -79,3 +79,6 @@ body {
   #hoja-qr, #hoja-qr * { visibility: visible; }
   #hoja-qr { position: absolute; inset: 0 auto auto 0; width: 100%; }
 }
+
+/* Los hijos de una grilla nunca la ensanchan: el contenido ancho se desplaza dentro de su panel */
+.grid > * { min-width: 0; }

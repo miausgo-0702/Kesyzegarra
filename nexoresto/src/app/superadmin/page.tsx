@@ -19,7 +19,7 @@ import type { Bar, ReglasPrecios } from "@/lib/types";
 type Vista = "bares" | "exchange" | "logs" | "apis";
 
 export default function SuperAdmin() {
-  return <Shell roles={["super_admin"]} titulo="Super Admin · control multi-bar"><Panelx /></Shell>;
+  return <Shell roles={["super_admin"]} titulo="Bares y licencias"><Panelx /></Shell>;
 }
 
 function Panelx() {
@@ -103,7 +103,7 @@ function Bares() {
   const dispatch = useDispatch();
   const [edit, setEdit] = useState<Partial<Bar> | null>(null);
   return (
-    <Panel title="Sucursales (tenants)" action={<span className="flex gap-2"><ExportBtns nombre="bares" filas={() => s.bares.map((b) => ({ Bar: b.nombre, Slug: b.slug, Plan: b.plan, Usuarios: b.usuarios ?? 0, Estado: b.estado_licencia, Vence: b.licencia_vence ? new Date(b.licencia_vence).toLocaleDateString("es-AR") : "" }))} /><Btn size="sm" variant="primary" onClick={() => setEdit({ nombre: "", slug: "", plan: "basico" })}><Plus size={14} />Nuevo bar</Btn></span>}>
+    <Panel title="Sucursales (tenants)" action={<span className="flex flex-wrap gap-2"><ExportBtns nombre="bares" filas={() => s.bares.map((b) => ({ Bar: b.nombre, Slug: b.slug, Plan: b.plan, Usuarios: b.usuarios ?? 0, Estado: b.estado_licencia, Vence: b.licencia_vence ? new Date(b.licencia_vence).toLocaleDateString("es-AR") : "" }))} /><Btn size="sm" variant="primary" onClick={() => setEdit({ nombre: "", slug: "", plan: "basico" })}><Plus size={14} />Nuevo bar</Btn></span>}>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] text-sm">
           <thead><tr className="eyebrow text-left"><th className="py-2">Bar</th><th>Plan</th><th className="text-right">Usuarios</th><th>Estado</th><th>Licencia vence</th><th /></tr></thead>
@@ -153,7 +153,7 @@ function Logs() {
   const logs = s.logs.filter((l) => nivel === "todos" || l.nivel === nivel);
   const color = { debug: "text-dim", info: "text-info", warn: "text-warn", error: "text-down" };
   return (
-    <Panel title="Logs y auditoría del sistema" action={<span className="flex gap-2"><Segmented value={nivel} onChange={setNivel} options={[{ value: "todos", label: "Todos" }, { value: "info", label: "Info" }, { value: "warn", label: "Warn" }, { value: "error", label: "Error" }]} /><ExportBtns nombre="logs" filas={() => logs.map((l) => ({ Fecha: l.created_at, Nivel: l.nivel, Origen: l.origen, Mensaje: l.mensaje }))} /></span>}>
+    <Panel title="Logs y auditoría del sistema" action={<span className="flex flex-wrap gap-2"><Segmented value={nivel} onChange={setNivel} options={[{ value: "todos", label: "Todos" }, { value: "info", label: "Info" }, { value: "warn", label: "Warn" }, { value: "error", label: "Error" }]} /><ExportBtns nombre="logs" filas={() => logs.map((l) => ({ Fecha: l.created_at, Nivel: l.nivel, Origen: l.origen, Mensaje: l.mensaje }))} /></span>}>
       <div className="max-h-[66dvh] overflow-y-auto rounded-xl border border-line bg-black/60 p-3 font-mono text-xs scroll-thin">
         {logs.map((l) => (
           <div key={l.id} className="flex gap-3 py-1">

@@ -100,7 +100,7 @@ function ViajeActivo({ envio }: { envio: Envio }) {
         </ul>
         {envio.estado === "en_camino" && (
           <div className="flex items-center justify-between rounded-xl border border-up/30 bg-up/5 p-3 text-sm">
-            <span className="flex items-center gap-2"><Satellite size={16} className={gps === "real" ? "animate-blink text-up" : "text-warn"} />{gps === "real" ? "GPS real transmitiendo" : gps === "simulado" ? "Recorrido simulado (sin permiso de GPS)" : "Conectando GPS…"}</span>
+            <span className="flex items-center gap-2"><Satellite size={16} className={gps === "real" ? "animate-blink text-up" : "text-warn"} />{gps === "real" ? "GPS real transmitiendo" : gps === "simulado" ? "Ubicación aproximada: activá el GPS del celular" : "Conectando GPS…"}</span>
             <span className="font-mono font-semibold text-up">ETA {etaMin(envio) ?? "—"} min</span>
           </div>
         )}

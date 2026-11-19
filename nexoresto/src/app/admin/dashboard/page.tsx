@@ -17,7 +17,7 @@ import { cantidad, cx, hhmm, money, pct } from "@/lib/format";
 import { kpisJornada, nivelStock, rentabilidadProductos, ventasPorHora } from "@/lib/store/selectors";
 
 export default function Dashboard() {
-  return <Shell roles={[]} titulo="Dashboard ejecutivo"><Tablero /></Shell>;
+  return <Shell roles={[]} titulo="Resumen del día"><Tablero /></Shell>;
 }
 
 function Tablero() {
@@ -50,7 +50,7 @@ function Tablero() {
         </div>
 
         <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr]">
-          <Panel title="Ventas por hora" action={<span className="flex items-center gap-2">{pico && <Badge tono="up">Pico {pico.hora}</Badge>}<ExportBtns nombre="ventas-por-hora" filas={() => horas.map((h) => ({ Hora: h.hora, Ventas: Math.round(h.ventas), Pedidos: h.pedidos }))} /></span>}>
+          <Panel title="Ventas por hora" action={<span className="flex flex-wrap items-center gap-2">{pico && <Badge tono="up">Pico {pico.hora}</Badge>}<ExportBtns nombre="ventas-por-hora" filas={() => horas.map((h) => ({ Hora: h.hora, Ventas: Math.round(h.ventas), Pedidos: h.pedidos }))} /></span>}>
             <div className="h-64">
               <ResponsiveContainer>
                 <AreaChart data={horas} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>

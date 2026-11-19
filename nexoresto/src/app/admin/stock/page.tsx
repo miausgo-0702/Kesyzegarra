@@ -13,7 +13,7 @@ import { calcularSugerenciasCompra } from "@/lib/ai/learningEngine";
 import { pisoEfectivo } from "@/lib/exchangeEngine";
 
 export default function Stock() {
-  return <Shell roles={[]} titulo="Stock, recetas y compras"><Gestion /></Shell>;
+  return <Shell roles={[]} titulo="Stock y compras"><Gestion /></Shell>;
 }
 
 function Gestion() {

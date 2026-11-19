@@ -33,7 +33,7 @@ export default function KDS({ params }: { params: Promise<{ estacion: string }> 
   const { estacion: raw } = use(params);
   const estacion: Estacion = raw === "barra" ? "barra" : "cocina";
   return (
-    <Shell roles={estacion === "barra" ? ["bartender"] : ["cocina"]} sinSidebar full titulo={estacion === "cocina" ? "Cocina · Kitchen Display System" : "Barra · Bar Display System"}>
+    <Shell roles={estacion === "barra" ? ["bartender"] : ["cocina"]} sinSidebar full titulo={estacion === "cocina" ? "Cocina" : "Barra"}>
       <Tablero estacion={estacion} />
     </Shell>
   );

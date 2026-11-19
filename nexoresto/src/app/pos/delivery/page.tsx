@@ -11,7 +11,7 @@ import { useDispatch, useNexo, useNow } from "@/lib/store/NexoProvider";
 import { cx, hhmm, money } from "@/lib/format";
 
 export default function Delivery() {
-  return <Shell roles={["caja"]} titulo="Delivery · seguimiento GPS" full><Tablero /></Shell>;
+  return <Shell roles={["caja"]} titulo="Delivery" full><Tablero /></Shell>;
 }
 
 function Tablero() {
@@ -26,7 +26,7 @@ function Tablero() {
   const origen = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
-    <div className="grid h-[calc(100dvh-3.5rem)] lg:grid-cols-[400px_1fr]">
+    <div className="grid grid-cols-1 lg:h-[calc(100dvh-3.5rem)] lg:grid-cols-[400px_1fr]">
       <aside className="flex min-h-0 flex-col border-r border-line bg-panel/40">
         <div className="flex items-center justify-between border-b border-line p-4">
           <h2 className="eyebrow">Pedidos delivery · {envios.filter((e) => e.estado !== "entregado").length} activos</h2>
@@ -67,11 +67,11 @@ function Tablero() {
         </ul>
       </aside>
 
-      <section className="relative min-h-[420px]">
+      <section className="relative order-first min-h-[52dvh] lg:order-none lg:min-h-[420px]">
         <LiveMap bar={{ lat: s.bar.lat, lng: s.bar.lng, nombre: s.bar.nombre }} envios={envios} foco={foco} nombresCadete={nombres} />
         {sel && (
           <>
-            <div className="absolute bottom-4 left-4 z-[500] w-72 rounded-2xl border border-line bg-panel/95 p-4 backdrop-blur">
+            <div className="absolute bottom-4 left-4 z-[500] hidden w-72 rounded-2xl border border-line bg-panel/95 p-4 backdrop-blur md:block">
               <div className="eyebrow">Vista del cliente</div>
               <p className="mt-1 text-sm">
                 {sel.estado === "en_camino" && sel.latitud_actual != null
@@ -84,7 +84,7 @@ function Tablero() {
               </div>
             </div>
             {sel.estado === "en_camino" && (
-              <div className="absolute bottom-4 right-4 z-[500] w-64 rounded-2xl border border-line bg-panel/95 p-4 backdrop-blur">
+              <div className="absolute inset-x-3 bottom-3 z-[500] rounded-2xl border border-line bg-panel/95 p-4 backdrop-blur md:inset-x-auto md:bottom-4 md:right-4 md:w-64">
                 <div className="eyebrow flex items-center gap-1"><Navigation size={12} />Seguimiento · #D-{s.pedidos.find((p) => p.id === sel.pedido_id)?.numero}</div>
                 <div className="mt-1 font-mono text-4xl font-bold text-up">{etaMin(sel) ?? "—"} min</div>
                 <Progreso salida={sel.salida_at} eta={etaMin(sel)} now={now} />

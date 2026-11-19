@@ -49,12 +49,13 @@ function Lista() {
               <button onClick={() => setEdit({ id: u.id, nombre: u.nombre, rol: u.rol, pin: u.pin, activo: u.activo })} className={cx("flex w-full items-center gap-4 px-4 py-3 text-left transition-colors hover:bg-raised/40", !u.activo && "opacity-50")}>
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-raised text-sm font-bold">{u.nombre.split(" ").map((x) => x[0]).slice(0, 2).join("")}</span>
                 <span className="min-w-0 flex-1">
-                  <span className="block font-semibold">{u.nombre}</span>
-                  <span className="block truncate text-xs text-mute">{QUE_VE[u.rol]}</span>
+                  <span className="block truncate font-semibold">{u.nombre}{!u.activo && <span className="ml-2 text-xs font-normal text-mute">inactivo</span>}</span>
+                  <span className="mt-1 flex flex-wrap items-center gap-2">
+                    <Badge tono={u.rol === "jefe" ? "info" : u.rol === "cm" ? "crash" : u.rol === "cocina" || u.rol === "bartender" ? "warn" : "up"}>{ROL_LABEL[u.rol]}</Badge>
+                    <span className="hidden truncate text-xs text-mute sm:inline">{QUE_VE[u.rol]}</span>
+                  </span>
                 </span>
-                <Badge tono={u.rol === "jefe" ? "info" : u.rol === "cm" ? "crash" : u.rol === "cocina" || u.rol === "bartender" ? "warn" : "up"}>{ROL_LABEL[u.rol]}</Badge>
-                <span className="w-16 text-right font-mono text-sm">{verPins ? u.pin : "••••"}</span>
-                {!u.activo && <Badge tono="mute">Inactivo</Badge>}
+                <span className="shrink-0 rounded-lg bg-raised px-2.5 py-1 font-mono text-sm tracking-widest">{verPins ? u.pin : "••••"}</span>
               </button>
             </li>
           ))}

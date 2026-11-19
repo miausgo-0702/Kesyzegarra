@@ -13,14 +13,14 @@ export function Logo({ className, size = "text-lg" }: { className?: string; size
 
 export function Panel({ children, className, title, action, pad = true }: { children: ReactNode; className?: string; title?: ReactNode; action?: ReactNode; pad?: boolean }) {
   return (
-    <section className={cx("rounded-2xl border border-line bg-card/80", pad && "p-4", className)}>
+    <section className={cx("min-w-0 rounded-2xl border border-line bg-card/80", pad && "p-4", className)}>
       {(title || action) && (
-        <header className={cx("mb-3 flex items-center justify-between gap-3", !pad && "px-4 pt-4")}>
+        <header className={cx("mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2", !pad && "px-4 pt-4")}>
           {title && <h3 className="eyebrow">{title}</h3>}
-          {action}
+          {action && <div className="flex min-w-0 flex-wrap items-center gap-2">{action}</div>}
         </header>
       )}
-      {children}
+      <div className="min-w-0 overflow-x-auto overflow-y-visible scroll-thin">{children}</div>
     </section>
   );
 }
@@ -89,14 +89,14 @@ export function Modal({ open, onClose, title, children, wide, footer }: { open: 
   return (
     <div className="fixed inset-0 z-50 flex animate-fadeIn items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-6" onClick={onClose} role="dialog" aria-modal>
       <div
-        className={cx("flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-3xl border border-line bg-panel shadow-[0_30px_80px_-20px_rgba(0,0,0,.8)] animate-sheetIn sm:rounded-3xl sm:animate-popIn", wide ? "sm:max-w-5xl" : "sm:max-w-lg")}
+        className={cx("flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-3xl border border-line bg-panel shadow-[0_30px_80px_-20px_rgba(0,0,0,.8)] animate-sheetIn sm:rounded-3xl sm:animate-popIn", wide ? "h-[94dvh] sm:h-auto sm:max-w-5xl" : "sm:max-w-lg")}
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex items-center justify-between border-b border-line px-5 py-4">
+        <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5 sm:py-4">
           <h2 className="text-lg font-semibold">{title}</h2>
           <button onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full text-mute hover:bg-raised hover:text-ink" aria-label="Cerrar"><X size={18} /></button>
         </header>
-        <div className="flex-1 overflow-y-auto p-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">{children}</div>
         {footer && <footer className="border-t border-line px-5 py-4">{footer}</footer>}
       </div>
     </div>
@@ -114,14 +114,14 @@ export function Toaster() {
   const [items, setItems] = useState<ToastT[]>([]);
   useEffect(() => {
     const l = (t: ToastT) => {
-      setItems((x) => [...x, t]);
-      setTimeout(() => setItems((x) => x.filter((y) => y.id !== t.id)), 3800);
+      setItems((x) => [...x.slice(-1), t]);
+      setTimeout(() => setItems((x) => x.filter((y) => y.id !== t.id)), 2600);
     };
     toastListeners.add(l);
     return () => { toastListeners.delete(l); };
   }, []);
   return (
-    <div className="pointer-events-none fixed bottom-4 left-1/2 z-[60] flex w-[min(92vw,420px)] -translate-x-1/2 flex-col gap-2">
+    <div className="pointer-events-none fixed left-1/2 top-[calc(env(safe-area-inset-top,0px)+0.75rem)] z-[60] flex w-[min(92vw,420px)] -translate-x-1/2 flex-col gap-2 sm:bottom-4 sm:top-auto">
       {items.map((t) => (
         <div key={t.id} role="status" className={cx("flex animate-toastIn items-center gap-2.5 rounded-xl border bg-panel/95 px-4 py-3 text-sm font-medium text-ink shadow-[0_16px_40px_-12px_rgba(0,0,0,.7)] backdrop-blur", {
           up: "border-up/40", down: "border-down/50", warn: "border-warn/40", info: "border-info/40",

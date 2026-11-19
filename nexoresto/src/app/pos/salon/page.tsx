@@ -23,7 +23,7 @@ const duracion = (ms: number) => {
 
 export default function Salon() {
   return (
-    <Shell roles={["mozo", "caja"]} titulo="Salón · mapa de mesas">
+    <Shell roles={["mozo", "caja"]} titulo="Salón">
       <MapaSalon />
     </Shell>
   );
@@ -133,7 +133,7 @@ function MapaSalon() {
       <Modal open={!!abierta} onClose={() => setAbierta(null)} wide
         title={abierta && <span className="flex items-center gap-3">Mesa {String(abierta.numero).padStart(2, "0")} · {abierta.capacidad} pax <Badge tono="mute">{ESTILO_MESA[estadoVisual(s, s.mesas.find((x) => x.id === abierta.id) ?? abierta, now)].label}</Badge></span>}>
         {abierta && (
-          <div className="flex h-[72dvh] flex-col gap-3">
+          <div className="flex h-[calc(94dvh-5.5rem)] flex-col gap-3 sm:h-[72dvh]">
             <MoverMesa mesaId={abierta.id} onMovida={(n) => { setAbierta(null); toast(n); }} />
             <div className="min-h-0 flex-1"><ComandaEditor mesa={s.mesas.find((x) => x.id === abierta.id) ?? abierta} /></div>
           </div>
@@ -148,26 +148,35 @@ function MoverMesa({ mesaId, onMovida }: { mesaId: string; onMovida: (msg: strin
   const s = useNexo();
   const dispatch = useDispatch();
   const sesion = useSesion();
+  const [abierto, setAbierto] = useState(false);
   const [destino, setDestino] = useState("");
   const tieneAbiertos = s.pedidos.some((p) => p.mesa_id === mesaId && p.estado !== "cerrado" && p.estado !== "anulado");
   if (!tieneAbiertos) return null;
   const origen = s.mesas.find((m) => m.id === mesaId)!;
   const d = s.mesas.find((m) => m.id === destino);
+  const unir = !!d && d.estado !== "libre" && d.estado !== "reservada";
+  if (!abierto) {
+    return (
+      <button onClick={() => setAbierto(true)} className="press flex shrink-0 items-center gap-2 self-start rounded-xl border border-line px-3 py-2 text-sm text-mute hover:text-ink">
+        <ArrowRightLeft size={15} />Mover o unir mesa
+      </button>
+    );
+  }
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-bg/60 px-3 py-2 text-sm">
-      <ArrowRightLeft size={16} className="text-mute" />
-      <span className="text-mute">Mover o unir con</span>
-      <select id="mover-mesa" value={destino} onChange={(e) => setDestino(e.target.value)} className="h-9 rounded-lg border border-line bg-bg px-2 text-sm">
-        <option value="">elegí mesa…</option>
+    <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-xl border border-line bg-bg/60 p-2 text-sm">
+      <ArrowRightLeft size={16} className="ml-1 text-mute" />
+      <select id="mover-mesa" value={destino} onChange={(e) => setDestino(e.target.value)} className="h-10 min-w-0 flex-1 rounded-lg border border-line bg-bg px-2 text-sm" aria-label="Mesa de destino">
+        <option value="">Pasar a la mesa…</option>
         {s.mesas.filter((m) => m.id !== mesaId).map((m) => (
-          <option key={m.id} value={m.id}>Mesa {m.numero} · {m.estado === "libre" ? "libre" : m.estado === "reservada" ? "reservada" : "ocupada (unir)"}</option>
+          <option key={m.id} value={m.id}>Mesa {m.numero} · {m.estado === "libre" ? "libre" : m.estado === "reservada" ? "reservada" : "ocupada (une cuentas)"}</option>
         ))}
       </select>
-      <Btn size="sm" variant={d && d.estado !== "libre" && d.estado !== "reservada" ? "warn" : "primary"} disabled={!destino} onClick={async () => {
+      <Btn size="sm" variant={unir ? "warn" : "primary"} disabled={!destino} onClick={async () => {
         const e = await dispatch({ type: "moverMesa", origen_id: mesaId, destino_id: destino, usuario: sesion?.nombre });
         if (e) return toast(e, "down");
-        onMovida(d && d.estado !== "libre" && d.estado !== "reservada" ? `Mesa ${origen.numero} unida a la mesa ${d.numero}` : `Pedidos movidos a la mesa ${d?.numero}`);
-      }}>{d && d.estado !== "libre" && d.estado !== "reservada" ? "Unir cuentas" : "Mover"}</Btn>
+        onMovida(unir ? `Mesa ${origen.numero} unida a la mesa ${d!.numero}` : `Pedidos pasados a la mesa ${d?.numero}`);
+      }}>{unir ? "Unir" : "Mover"}</Btn>
+      <Btn size="sm" variant="ghost" onClick={() => setAbierto(false)}>Cancelar</Btn>
     </div>
   );
 }

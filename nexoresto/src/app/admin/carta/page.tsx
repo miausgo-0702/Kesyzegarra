@@ -71,9 +71,9 @@ function Editor() {
   }
 
   return (
-    <div className="grid min-h-[calc(100dvh-3.5rem)] lg:grid-cols-[260px_1fr]">
+    <div className="grid min-h-[calc(100dvh-3.5rem)] grid-cols-1 lg:grid-cols-[260px_1fr]">
       {/* ---------- Categorías ---------- */}
-      <aside className="border-b border-line bg-panel/40 p-3 lg:border-b-0 lg:border-r">
+      <aside className="min-w-0 border-b border-line bg-panel/40 p-3 lg:border-b-0 lg:border-r">
         <div className="mb-2 flex items-center justify-between px-1">
           <h2 className="text-sm font-semibold">Categorías</h2>
           <button onClick={() => setCatEdit({ nombre: "", estacion: "cocina" })} className="press grid h-8 w-8 place-items-center rounded-lg text-mute hover:bg-raised hover:text-up" aria-label="Nueva categoría"><Plus size={16} /></button>
@@ -99,7 +99,7 @@ function Editor() {
       <section className="min-w-0 p-4 lg:p-6">
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <h1 className="mr-auto text-xl font-bold">{cat === "todas" ? "Toda la carta" : cat === "archivados" ? "Archivados" : categorias.find((c) => c.id === cat)?.nombre}</h1>
-          <div className="relative"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-mute" /><input id="buscar-carta" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar producto" className={cx(inputCls, "h-10 w-52 pl-9")} /></div>
+          <div className="relative order-last w-full sm:order-none sm:w-auto"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-mute" /><input id="buscar-carta" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar producto" className={cx(inputCls, "h-10 w-full pl-9 sm:w-52")} /></div>
           <ExportBtns nombre="carta" filas={() => s.productos.filter((p) => p.activo).map((p) => ({ Producto: p.nombre, Categoría: s.categorias.find((c) => c.id === p.categoria_id)?.nombre, Descripción: p.descripcion, "Precio base": p.precio_base, "Precio actual": p.precio_actual, Mínimo: p.precio_minimo, Máximo: p.precio_maximo, Costo: costoProducto(s, p.id), Agotado: p.agotado ? "sí" : "no" }))} />
           <Btn variant="primary" onClick={() => abrir()} disabled={!categorias.length}><Plus size={16} />Nuevo producto</Btn>
         </div>
@@ -125,7 +125,7 @@ function Editor() {
               return (
                 <li key={p.id} className="lift group flex flex-col overflow-hidden rounded-2xl border border-line bg-card">
                   <button onClick={() => abrir(p)} className="relative block text-left" aria-label={`Editar ${p.nombre}`}>
-                    <ProductIcon icono={p.icono} size="full" alt={p.nombre} className="!aspect-[16/10] !rounded-none" />
+                    <ProductIcon icono={p.icono} size="full" alt={p.nombre} className="!aspect-[16/9] !rounded-none" />
                     <span className="absolute left-2 top-2 flex gap-1">
                       {!p.activo ? <Badge tono="mute" className="bg-black/70">Archivado</Badge> : p.agotado ? <Badge tono="down" className="bg-black/70">Agotado</Badge> : !ok ? <Badge tono="warn" className="bg-black/70">Sin insumos</Badge> : null}
                       {p.destacado && <Badge tono="warn" className="bg-black/70"><Star size={10} />TV</Badge>}

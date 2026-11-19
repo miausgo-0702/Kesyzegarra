@@ -57,7 +57,7 @@ export default function PantallaTV({ params }: { params: Promise<{ barId: string
     <div className={cx("relative flex h-dvh min-h-[640px] flex-col overflow-hidden bg-black font-mono text-white", enCrash && "shadow-[inset_0_0_0_6px_#FF3333]")}
       onClick={() => { if (!sonidoOn) { sonido.desbloquear(); setSonidoOn(true); } }}>
       {/* ---------- Encabezado ---------- */}
-      <header className="flex items-center justify-between gap-6 border-b border-white/10 px-[2.2vw] py-[1.4vh]">
+      <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-white/10 px-[2.2vw] py-[1.4vh]">
         <div className="flex items-center gap-4">
           <span className="font-sans text-[clamp(22px,2.4vw,52px)] font-extrabold tracking-tight">NE<span className="text-neon">X</span>ORESTO</span>
           <span className="flex items-center gap-2 rounded-full border border-neon/40 bg-neon/10 px-3 py-1 text-[clamp(10px,0.8vw,15px)] font-bold text-neon"><span className="h-2 w-2 animate-blink rounded-full bg-neon" />EN VIVO</span>

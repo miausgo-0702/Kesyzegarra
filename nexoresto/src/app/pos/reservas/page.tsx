@@ -23,7 +23,7 @@ function asignarMesa(s: NexoState, personas: number, ini: number, minutos: numbe
 }
 
 export default function Reservas() {
-  return <Shell roles={["caja", "mozo"]} titulo="Reservas · calendario por franja"><Calendario /></Shell>;
+  return <Shell roles={["caja", "mozo"]} titulo="Reservas"><Calendario /></Shell>;
 }
 
 function Calendario() {
