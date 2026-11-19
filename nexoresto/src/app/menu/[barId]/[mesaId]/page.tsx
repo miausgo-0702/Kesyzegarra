@@ -16,7 +16,7 @@ import { nuevoId } from "@/lib/store/backend";
 import { cronometro, cx, fechaCorta, hhmm, money } from "@/lib/format";
 import { crashActivo } from "@/lib/exchangeEngine";
 import { getSmartUpsell } from "@/lib/ai/learningEngine";
-import { extrasItem } from "@/lib/store/selectors";
+import { disponible, extrasItem } from "@/lib/store/selectors";
 import type { ModificadorElegido, Producto } from "@/lib/types";
 
 type Tab = "carta" | "fotos" | "eventos" | "pedido";
@@ -116,10 +116,11 @@ function Carta({ onAbrir, enCrashIds }: { onAbrir: (p: Producto) => void; enCras
               {ps.map((p) => {
                 const cr = enCrashIds.includes(p.id);
                 const up = p.variacion_porcentaje >= 0;
+                const ok = disponible(s, p);
                 return (
                   <li key={p.id}>
-                    <button onClick={() => onAbrir(p)} className={cx("flex w-full items-center gap-3 rounded-2xl border bg-card p-3 text-left active:scale-[0.99]", cr ? "border-crash/50" : "border-line")}>
-                      <ProductIcon icono={p.icono} size={64} />
+                    <button onClick={() => ok && onAbrir(p)} disabled={!ok} className={cx("press flex w-full items-center gap-3 rounded-2xl border bg-card p-2.5 text-left disabled:opacity-50", cr ? "border-crash/50" : "border-line")}>
+                      <ProductIcon icono={p.icono} size={76} alt={p.nombre} />
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-1.5 font-semibold">{p.nombre}{cr && <Zap size={13} className="text-crash" />}</span>
                         <span className="line-clamp-1 text-xs text-mute">{p.descripcion}</span>
@@ -128,7 +129,7 @@ function Carta({ onAbrir, enCrashIds }: { onAbrir: (p: Producto) => void; enCras
                           {p.es_cotizable_bolsa && <span className={cx("text-xs", up ? "text-up" : "text-down")}>{up ? "▲" : "▼"} {Math.abs(p.variacion_porcentaje).toFixed(1).replace(".", ",")}%</span>}
                         </span>
                       </span>
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-up text-black"><Plus size={18} /></span>
+                      {ok ? <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-up text-black"><Plus size={18} /></span> : <Badge tono="mute">Agotado</Badge>}
                     </button>
                   </li>
                 );
@@ -156,8 +157,8 @@ function DetalleProducto({ p, onClose, onAgregar }: { p: Producto; onClose: () =
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-black/70 backdrop-blur-sm" onClick={onClose}>
       <div className="mx-auto max-h-[92dvh] w-full max-w-md animate-slideIn overflow-y-auto rounded-t-3xl border-t border-line bg-panel" onClick={(e) => e.stopPropagation()}>
-        <div className="relative grid place-items-center bg-[radial-gradient(circle_at_50%_40%,#1d2833,#0b1016)] py-6">
-          <ProductIcon icono={p.icono} size={150} tile={false} />
+        <div className="relative">
+          <ProductIcon icono={p.icono} size="full" alt={p.nombre} className="!aspect-[4/3] !rounded-none" />
           <button onClick={onClose} className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-black/50" aria-label="Cerrar"><X size={18} /></button>
         </div>
         <div className="p-5">
@@ -218,7 +219,7 @@ function Carrito({ lineas, setLineas, onClose, mesaId, sesion, esDelivery, onEnv
       items: lineas.map((l) => ({ producto_id: l.producto_id, cantidad: l.cantidad, modificadores: l.modificadores, notas: l.notas || null, precio_visto: l.precio_visto })),
     });
     if (err) return toast(err, "down");
-    toast("¡Pedido enviado! Ya está en cocina y barra 🙌");
+    toast("Pedido enviado. Ya está en cocina y barra");
     const key = idem.current;
     idem.current = nuevoId();
     if (esDelivery) {
@@ -357,7 +358,7 @@ function Fotos({ mesaId, sesion }: { mesaId: string | null; sesion: string }) {
   const miVoto = s.votos.find((v) => v.sesion_cliente === sesion);
   const ganadoraMia = mias.find((f) => f.es_ganadora && f.cupon_codigo);
 
-  useEffect(() => { if (ganadoraMia) toast("¡Tu foto ganó! Mirá tu cupón 🏆"); }, [ganadoraMia?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (ganadoraMia) toast("¡Tu foto ganó! Mirá tu cupón"); }, [ganadoraMia?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-5 p-4">
@@ -382,7 +383,7 @@ function Fotos({ mesaId, sesion }: { mesaId: string | null; sesion: string }) {
             <input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Descripción (ej: Pizza Napo con extra albahaca)" className={inputCls} maxLength={140} />
             <div className="grid grid-cols-2 gap-2">
               <Btn onClick={() => setPreview(null)}>Descartar</Btn>
-              <Btn variant="primary" onClick={async () => { const e = await dispatch({ type: "subirFoto", mesa_id: mesaId, url_foto: preview, descripcion: desc, sesion_cliente: sesion }); if (e) return toast(e, "down"); toast("Enviada a moderación ✨"); setPreview(null); setDesc(""); }}>Enviar a moderación</Btn>
+              <Btn variant="primary" onClick={async () => { const e = await dispatch({ type: "subirFoto", mesa_id: mesaId, url_foto: preview, descripcion: desc, sesion_cliente: sesion }); if (e) return toast(e, "down"); toast("Foto enviada a moderación"); setPreview(null); setDesc(""); }}>Enviar a moderación</Btn>
             </div>
           </div>
         ) : <Btn variant="primary" size="lg" className="mt-3 w-full" onClick={() => input.current?.click()}><Camera size={18} />Sacar / elegir foto</Btn>}
@@ -391,13 +392,13 @@ function Fotos({ mesaId, sesion }: { mesaId: string | null; sesion: string }) {
 
       <div>
         <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-bold">Votá la mejor foto</h2><Badge tono="down" dot>En vivo</Badge></div>
-        <p className="mb-3 text-xs text-mute">{miVoto ? "Ya usaste tu voto de esta ronda ✔" : "Tenés 1 voto por ronda."}</p>
+        <p className="mb-3 text-xs text-mute">{miVoto ? "Ya usaste tu voto de esta ronda." : "Tenés 1 voto por ronda."}</p>
         <div className="grid grid-cols-2 gap-3">
           {aprobadas.map((f) => {
             const votada = miVoto?.foto_id === f.id;
             return (
               <div key={f.id} className={cx("overflow-hidden rounded-2xl border bg-card", votada ? "border-up/60" : "border-line")}>
-                <FotoView url={f.url_foto} size={200} className="!h-auto !w-full aspect-square rounded-none" />
+                <FotoView url={f.url_foto} size="full" className="rounded-none" />
                 <div className="p-2.5">
                   <div className="flex items-center justify-between text-xs"><span>Mesa {f.mesa_numero ?? "—"}</span><span className="flex items-center gap-1 font-mono text-up"><Heart size={12} fill="currentColor" />{f.votos_count}</span></div>
                   <Btn size="sm" variant={votada ? "primary" : "ghost"} className="mt-2 w-full" disabled={!!miVoto || f.sesion_cliente === sesion}

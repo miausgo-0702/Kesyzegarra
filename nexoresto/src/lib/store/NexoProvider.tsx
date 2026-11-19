@@ -33,10 +33,17 @@ function Esperar({ backend, children }: { backend: Backend; children: ReactNode 
 }
 
 function Cargando() {
+  // Esqueleto del layout en vez de un spinner: la pantalla ya "tiene forma" mientras conecta
   return (
-    <div className="grid min-h-dvh place-items-center bg-bg">
-      <div className="flex items-center gap-3 font-mono text-sm text-mute">
-        <span className="h-2 w-2 animate-blink rounded-full bg-up" /> Conectando con el núcleo…
+    <div className="flex min-h-dvh bg-bg" aria-busy="true" aria-label="Cargando">
+      <div className="hidden w-56 shrink-0 flex-col gap-3 border-r border-line p-4 lg:flex">
+        <div className="skeleton h-6 w-32" />
+        {Array.from({ length: 6 }, (_, i) => <div key={i} className="skeleton h-9" />)}
+      </div>
+      <div className="flex flex-1 flex-col gap-4 p-6">
+        <div className="skeleton h-8 w-64" />
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{Array.from({ length: 4 }, (_, i) => <div key={i} className="skeleton h-24" />)}</div>
+        <div className="skeleton h-64" />
       </div>
     </div>
   );
@@ -63,6 +70,19 @@ export function useDispatch() {
   return useCallback(async (a: Accion): Promise<string | null> => {
     try { await b.dispatch(a); return null; } catch (e) { return e instanceof Error ? e.message : String(e); }
   }, [b]);
+}
+
+/** Estado de la conexión y acciones esperando en la cola offline. */
+export function useConexion() {
+  const b = useBackend();
+  const [estado, setEstado] = useState({ online: true, pendientes: 0 });
+  useEffect(() => {
+    const leer = () => setEstado({ online: navigator.onLine, pendientes: "pendientes" in b ? (b as unknown as { pendientes(): number }).pendientes() : 0 });
+    leer();
+    window.addEventListener("online", leer); window.addEventListener("offline", leer); window.addEventListener("nexoresto:cola", leer);
+    return () => { window.removeEventListener("online", leer); window.removeEventListener("offline", leer); window.removeEventListener("nexoresto:cola", leer); };
+  }, [b]);
+  return estado;
 }
 
 /** Reloj compartido (re-render cada `ms`). */

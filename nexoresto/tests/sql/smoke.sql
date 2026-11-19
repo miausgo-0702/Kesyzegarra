@@ -84,3 +84,25 @@ begin
   end;
   raise notice 'SMOKE OK';
 end $$;
+
+-- 0003: agotado, disponibilidad y mover mesa
+do $$
+declare bar uuid := '00000000-0000-4000-8000-00000000b001'; burger uuid := '00000000-0000-4000-8000-ab0000000009'; v uuid; n int;
+begin
+  perform marcar_agotado(burger, true);
+  begin
+    perform crear_pedido(bar, 'salon', '00000000-0000-4000-8000-ae0000000002', jsonb_build_array(jsonb_build_object('producto_id', burger, 'cantidad', 1)), 'idem-86');
+    raise exception 'debió rechazar el agotado';
+  exception when others then if sqlerrm not like '%agotado%' then raise; end if;
+  end;
+  assert not producto_disponible(burger), 'agotado no disponible';
+  perform marcar_agotado(burger, false);
+  assert producto_disponible(burger), 'vuelve a estar disponible';
+  v := crear_pedido(bar, 'salon', '00000000-0000-4000-8000-ae0000000002', jsonb_build_array(jsonb_build_object('producto_id', burger, 'cantidad', 1)), 'idem-mv');
+  n := mover_mesa('00000000-0000-4000-8000-ae0000000002', '00000000-0000-4000-8000-ae0000000003');
+  assert n = 1 and (select mesa_id from pedidos where id = v) = '00000000-0000-4000-8000-ae0000000003', 'mover mesa';
+  assert (select estado from mesas where id = '00000000-0000-4000-8000-ae0000000002') = 'libre', 'origen libre';
+  v := crear_pedido(bar, 'mostrador', null, jsonb_build_array(jsonb_build_object('producto_id', burger, 'cantidad', 1)), 'idem-most');
+  assert (select tipo from pedidos where id = v) = 'mostrador', 'venta mostrador';
+  raise notice 'SMOKE 0003 OK';
+end $$;

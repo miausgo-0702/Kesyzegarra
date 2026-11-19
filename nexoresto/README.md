@@ -37,7 +37,8 @@ La sesión es **por pestaña**: podés tener caja, cocina y salón abiertos a la
 1. **Supabase** → nuevo proyecto → *SQL Editor* → ejecutá en orden:
    1. `supabase/migrations/0001_nucleo.sql` (tablas, RLS, triggers, RPC, vistas, Realtime, Storage)
    2. `supabase/migrations/0002_ia.sql` (memoria y aprendizaje de la IA)
-   3. `supabase/seed.sql` (bar de ejemplo con carta, recetas, insumos y mesas)
+   3. `supabase/migrations/0003_operacion.sql` (agotados "86", mover/unir mesas, reportes de cierre Z)
+   4. `supabase/seed.sql` (bar de ejemplo con carta, recetas, insumos y mesas)
 2. **Usuarios**: *Authentication → Add user* (email + contraseña) para cada empleado y vinculalo:
    ```sql
    insert into perfiles_usuarios (id, bar_id, nombre, rol, pin_hash)
@@ -69,6 +70,15 @@ La sesión es **por pestaña**: podés tener caja, cocina y salón abiertos a la
 | 5 · WebApp QR + CM | Carta mobile-first con cotización en vivo, carrito con precio congelado y confirmación, delivery, "Subí tu foto y ganá" (compresión en el navegador), votación 1 por ronda, cupón ganador con QR, cartelera; CM con moderación 1 clic, botón rojo de Market Crash, eventos con flyer, promos y cierre de votación | `src/app/menu/[barId]/[mesaId]/page.tsx`, `src/app/cm/page.tsx` |
 | 6 · Dashboard + Super Admin | KPIs con **ganancia neta real** (ventas − costo de receta − mermas), ventas por hora/horas pico, rentabilidad, alertas, stock con compras/mermas y costo promedio ponderado, auditoría y reversión de precios, exportación **Excel/CSV**; panel del programador con bares/licencias, reglas del Exchange versionadas + simulador, logs y estado de APIs | `src/app/admin/*`, `src/app/superadmin/page.tsx`, `src/lib/exportar.ts` |
 | 7 · IA | Tablas de patrones (EMA por producto/día/franja), afinidad (market basket por trigger al cerrar pedidos), log de recomendaciones con impacto medido; motor de compras (8 semanas mismo día), upsell (confianza × margen), ETA de cocina y anomalías; copiloto Claude con *tool use* de solo lectura y acciones que se confirman con un clic | `supabase/migrations/0002_ia.sql`, `src/lib/ai/learningEngine.ts`, `src/lib/ai/copilotTools.ts`, `src/app/api/ai-copilot/route.ts`, `src/components/ai/AiAssistantPanel.tsx` |
+
+| Mejoras operativas | **Carta y precios** (rango del Exchange, receta con costo y piso real, foto, destacados), **agotado "86"** y disponibilidad automática por stock de insumos en POS, carta QR y TV; **venta rápida de mostrador**; **mover y unir mesas**; **reportes** (cierre Z por medio de pago, ventas por mozo y categoría, impacto del Exchange vs. precio base); **cola offline** con indicador de conexión | `src/app/admin/carta`, `src/app/admin/reportes`, `supabase/migrations/0003_operacion.sql`, `src/lib/store/supabaseBackend.ts` |
+
+### Diseño
+
+- Fotografías reales de cada producto y del salón en `public/fotos` (Unsplash, licencia de uso comercial libre; detalle en `public/fotos/CREDITOS.md`). Si una foto falla, se usa la ilustración vectorial.
+- Movimiento con curvas de salida rápidas (`cubic-bezier(0.23, 1, 0.32, 1)`), 150–260 ms, escala 0,97 al presionar, hojas modales que suben desde abajo en el celular.
+- Estados completos: foco visible, selección, scrollbars y cursor con la paleta, esqueletos de carga, toasts con ícono, agotado, sin conexión.
+- Íconos de Lucide en lugar de emojis en toda la interfaz.
 
 ---
 
@@ -105,7 +115,7 @@ nexoresto/
 ## Calidad y verificación
 
 ```bash
-npm test                 # 14 tests: motor Exchange (reproduce la tabla de la propuesta) + reductor
+npm test                 # 18 tests: motor Exchange (reproduce la tabla de la propuesta) + reductor
 npm run typecheck
 npm run build
 tests/sql/run.sh         # aplica migraciones + seed en un Postgres local y corre asserts de negocio
@@ -115,7 +125,7 @@ El smoke SQL verifica: idempotencia de pedidos y pagos, descuento de stock por r
 
 ## Pendiente / a definir con el bar piloto
 
-- **Cola offline (IndexedDB + Service Worker)**: las claves idempotentes ya están en pedidos y pagos; falta la cola local y la sincronización al reconectar.
+- **Service Worker** para abrir la app sin conexión desde cero: la cola offline de acciones ya funciona con la app abierta.
 - **Pasarela de pagos QR, facturación electrónica ARCA e impresora térmica**: integraciones a elegir según proveedor.
 - **Realtime filtrado por estación**: hoy el adaptador de Supabase escucha el canal del bar y refresca el snapshot; para bares grandes conviene un canal por estación.
 - El filtro automático de fotos es un marcador (`filtro_auto`): la moderación real la hace el CM.

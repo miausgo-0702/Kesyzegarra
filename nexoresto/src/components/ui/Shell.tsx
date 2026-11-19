@@ -3,13 +3,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  BarChart3, Bell, Bike, Boxes, CalendarDays, ChefHat, ChevronLeft, CircleUserRound, Cpu, LayoutGrid, LogOut, Martini,
+  BarChart3, Bell, BookOpen, FileBarChart, Bike, Boxes, CalendarDays, ChefHat, ChevronLeft, CircleUserRound, Cpu, LayoutGrid, LogOut, Martini,
   Megaphone, MonitorPlay, QrCode, Receipt, ShieldCheck, Wallet,
 } from "lucide-react";
 import { Logo, Badge } from "./kit";
 import { cx, hhmmss } from "@/lib/format";
 import type { Rol } from "@/lib/types";
-import { guardarSesion, useBackend, useNexo, useNow, useSesion } from "@/lib/store/NexoProvider";
+import { guardarSesion, useBackend, useConexion, useNexo, useNow, useSesion } from "@/lib/store/NexoProvider";
 import { PinPad } from "./PinPad";
 import { crashActivo } from "@/lib/exchangeEngine";
 
@@ -24,6 +24,8 @@ export const NAV: NavItem[] = [
   { href: "/kds/barra", label: "Barra BDS", icon: <Martini size={18} />, roles: ["bartender"] },
   { href: "/cm", label: "Community", icon: <Megaphone size={18} />, roles: ["cm"] },
   { href: "/admin/dashboard", label: "Dashboard", icon: <BarChart3 size={18} />, roles: [] },
+  { href: "/admin/carta", label: "Carta y precios", icon: <BookOpen size={18} />, roles: [] },
+  { href: "/admin/reportes", label: "Reportes", icon: <FileBarChart size={18} />, roles: [] },
   { href: "/admin/stock", label: "Stock y recetas", icon: <Boxes size={18} />, roles: [] },
   { href: "/admin/auditoria", label: "Auditoría", icon: <Receipt size={18} />, roles: [] },
   { href: "/cadete", label: "Cadete", icon: <Bike size={18} />, roles: ["cadete"] },
@@ -101,6 +103,7 @@ function Topbar({ titulo, acciones }: { titulo?: ReactNode; acciones?: ReactNode
         <div className="truncate text-sm font-semibold">{titulo}</div>
         <div className="truncate text-[11px] text-mute">{barNombre}</div>
       </div>
+      <IndicadorConexion />
       {crashActivo(crash, now) && <Badge tono="crash" dot className="animate-blink">Market crash · {Math.max(0, Math.ceil((new Date(crash!.fin_at).getTime() - now) / 60000))} min</Badge>}
       {acciones}
       <span className="hidden font-mono text-sm tabular-nums text-mute sm:block">{hhmmss(now)}</span>
@@ -118,6 +121,16 @@ function Topbar({ titulo, acciones }: { titulo?: ReactNode; acciones?: ReactNode
       </div>
       <button onClick={() => guardarSesion(null)} className="grid h-9 w-9 place-items-center rounded-full text-mute hover:bg-raised hover:text-ink" title="Cerrar sesión" aria-label="Cerrar sesión"><LogOut size={16} /></button>
     </header>
+  );
+}
+
+function IndicadorConexion() {
+  const { online, pendientes } = useConexion();
+  if (online && !pendientes) return null;
+  return (
+    <Badge tono={online ? "info" : "warn"} dot className={online ? "" : "animate-blink"}>
+      {online ? `Sincronizando ${pendientes}…` : `Sin conexión${pendientes ? ` · ${pendientes} en cola` : " · se guarda en el equipo"}`}
+    </Badge>
   );
 }
 

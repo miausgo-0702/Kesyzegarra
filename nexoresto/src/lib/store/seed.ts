@@ -6,7 +6,7 @@ import { REGLAS_DEFAULT, variacion } from "../exchangeEngine";
 import { BAR_ID, BAR_SLUG, CATEGORIAS, INSUMOS, MESAS_RAW, MODIFICADORES, PRODUCTOS, RECETAS, SECTORES, USUARIOS, mesaId, prodId } from "./catalogo";
 import { costoProducto, importeItem } from "./selectors";
 
-export const STATE_VERSION = 3;
+export const STATE_VERSION = 4;
 
 // PRNG determinista para que la demo sea reproducible
 function rng(seed: number) {
@@ -207,12 +207,12 @@ export function crearEstadoInicial(ahora = Date.now()): NexoState {
     { id: uid(), titulo: "Combo parrilla", tipo: "combo", descuento_pct: 15, categoria_id: CATEGORIAS[3].id, dias: [6], hora_desde: "21:00", hora_hasta: "23:00", activa: false },
   ];
   const fotos: [mesa: number, icono: string, desc: string, votos: number, estado: FotoCliente["estado"], filtro: FotoCliente["filtro_auto"]][] = [
-    [12, "burger", "La mejor burger de Santiago 🍔", 128, "aprobada", "ok"],
+    [12, "burger", "La mejor burger de Santiago", 128, "aprobada", "ok"],
     [7, "pizza", "Pizza Napo con extra albahaca", 96, "aprobada", "ok"],
     [3, "mojito", "Mojitos para arrancar", 71, "aprobada", "ok"],
     [9, "salad", "Algo liviano", 44, "aprobada", "ok"],
     [14, "beer", "Pinta IPA bien fría", 0, "pendiente", "ok"],
-    [2, "fries", "Papas cheddar 🔥", 0, "pendiente", "revisar"],
+    [2, "fries", "Papas cheddar recién salidas", 0, "pendiente", "revisar"],
     [11, "aperol", "Spritz time", 0, "pendiente", "pendiente"],
   ];
   state.fotos = fotos.map(([m, ic, d, v, e, f], i) => ({ id: uid(), mesa_id: mesaId(m), mesa_numero: m, url_foto: `icon:${ic}`, descripcion: d, sesion_cliente: `seed-ses-${i}`, estado: e, filtro_auto: f, codigo_voto: ["K7M2", "P4Q9", "Z1X8", "R5T3", "H2J6", "W9E4", "B3N7"][i], votos_count: v, es_ganadora: false, cupon_codigo: null, created_at: iso(ahora - (90 - i * 9) * min) }));

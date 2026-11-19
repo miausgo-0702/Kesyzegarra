@@ -2,6 +2,17 @@
 import type { MedioPago, NexoState, Pedido, PedidoItem, Producto } from "../types";
 import { crashActivo } from "../exchangeEngine";
 
+/** Disponible para vender: no está marcado agotado y alcanza el stock de todos sus insumos. */
+export function disponible(s: Pick<NexoState, "recetas" | "insumos">, p: Producto): boolean {
+  if (p.agotado || !p.activo) return false;
+  for (const r of s.recetas) {
+    if (r.producto_id !== p.id) continue;
+    const i = s.insumos.find((x) => x.id === r.insumo_id);
+    if (i && i.stock_actual < r.cantidad) return false;
+  }
+  return true;
+}
+
 export function costoProducto(s: Pick<NexoState, "recetas" | "insumos">, productoId: string): number {
   let c = 0;
   for (const r of s.recetas) {

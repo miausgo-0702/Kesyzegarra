@@ -2,7 +2,7 @@
 // En producción las mismas acciones se traducen a RPCs de Supabase
 // (ver supabaseBackend.ts) y la base de datos es la fuente de verdad.
 import type {
-  Bar, EstadoCocina, EstadoMesa, EstadoReserva, Estacion, Evento, IaRecomendacion, MedioPago,
+  Bar, Producto, EstadoCocina, EstadoMesa, EstadoReserva, Estacion, Evento, IaRecomendacion, MedioPago,
   ModificadorElegido, NexoState, Pedido, PedidoItem, Promocion, ReglasPrecios, TipoPedido,
 } from "../types";
 import { crashActivo, evaluarMercado, triggerMarketCrash, variacion, type VentaRegistro } from "../exchangeEngine";
@@ -55,6 +55,9 @@ export type Accion =
   | { type: "guardarBar"; bar: Partial<Bar> & { id?: string; nombre: string; slug: string } }
   | { type: "licenciaBar"; bar_id: string; estado: Bar["estado_licencia"] }
   | { type: "toggleSimulacion" }
+  | { type: "guardarProducto"; producto: Partial<Producto> & { nombre: string; categoria_id: string; precio_base: number }; receta?: { insumo_id: string; cantidad: number }[]; usuario?: string }
+  | { type: "toggleAgotado"; producto_id: string; usuario?: string }
+  | { type: "moverMesa"; origen_id: string; destino_id: string; usuario?: string }
   | { type: "log"; nivel: "info" | "warn" | "error"; origen: string; mensaje: string };
 
 export interface Ctx { now: number; uid: () => string }
@@ -111,6 +114,7 @@ export function reducir(prev: NexoState, a: Accion, ctx: Ctx): NexoState {
       const items: PedidoItem[] = a.items.map((it) => {
         const p = s.productos.find((x) => x.id === it.producto_id);
         if (!p || !p.activo) throw new Error("Producto no disponible");
+        if (p.agotado) throw new Error(`${p.nombre} está agotado`);
         // Precio congelado: el vigente, o el que vio el cliente si es menor/igual y reciente (protege al cliente ante un cambio mientras pedía)
         const precio = it.precio_visto && it.precio_visto <= p.precio_actual ? it.precio_visto : p.precio_actual;
         return {
@@ -444,6 +448,53 @@ export function reducir(prev: NexoState, a: Accion, ctx: Ctx): NexoState {
       return s;
     }
     case "toggleSimulacion": s.simulacion = !s.simulacion; return s;
+
+    case "guardarProducto": {
+      const d = a.producto;
+      if (!d.nombre.trim()) throw new Error("El producto necesita un nombre");
+      if (!(d.precio_base > 0)) throw new Error("El precio base debe ser mayor a cero");
+      const r50 = (n: number) => Math.round(n / 50) * 50;
+      const cat = s.categorias.find((c) => c.id === d.categoria_id);
+      const existente = d.id ? s.productos.find((p) => p.id === d.id) : undefined;
+      const cotiza = d.es_cotizable_bolsa ?? existente?.es_cotizable_bolsa ?? true;
+      const minimo = cotiza ? d.precio_minimo ?? r50(d.precio_base * 0.75) : d.precio_base;
+      const maximo = cotiza ? d.precio_maximo ?? r50(d.precio_base * (1 + s.bar.reglas_precios.tope_pct / 100)) : d.precio_base;
+      if (minimo > d.precio_base || maximo < d.precio_base) throw new Error("El precio base tiene que quedar entre el mínimo y el máximo");
+      const base: Producto = existente ?? {
+        id: ctx.uid(), categoria_id: d.categoria_id, nombre: d.nombre, descripcion: "", icono: "burger", estacion: cat?.estacion ?? "cocina",
+        precio_base: d.precio_base, precio_minimo: minimo, precio_maximo: maximo, precio_actual: d.precio_base, precio_anterior: null,
+        variacion_porcentaje: 0, es_cotizable_bolsa: cotiza, objetivo_ventana: 2, tiempo_objetivo_min: 10, destacado: false, activo: true, agotado: false,
+      };
+      const actual = Math.min(Math.max(existente ? existente.precio_actual : d.precio_base, minimo), maximo);
+      const nuevo: Producto = { ...base, ...d, estacion: cat?.estacion ?? base.estacion, precio_minimo: minimo, precio_maximo: maximo, es_cotizable_bolsa: cotiza,
+        precio_actual: cotiza ? actual : d.precio_base, variacion_porcentaje: variacion(cotiza ? actual : d.precio_base, d.precio_base) } as Producto;
+      s.productos = existente ? s.productos.map((p) => (p.id === nuevo.id ? nuevo : p)) : [...s.productos, nuevo];
+      if (!existente) s.historial = { ...s.historial, [nuevo.id]: [{ t: now, p: nuevo.precio_actual }] };
+      if (a.receta) s.recetas = [...s.recetas.filter((r) => r.producto_id !== nuevo.id), ...a.receta.filter((r) => r.cantidad > 0).map((r) => ({ ...r, producto_id: nuevo.id }))];
+      audit(s, ctx, { usuario: a.usuario ?? "—", accion: "cambio_precio", tipo: "precio", detalle: `${existente ? "Editado" : "Nuevo"}: ${nuevo.nombre} · base ${nuevo.precio_base}, rango ${minimo}–${maximo}`, monto: nuevo.precio_base });
+      return s;
+    }
+    case "toggleAgotado": {
+      const p = s.productos.find((x) => x.id === a.producto_id);
+      if (!p) return prev;
+      s.productos = s.productos.map((x) => (x.id === p.id ? { ...x, agotado: !x.agotado } : x));
+      audit(s, ctx, { usuario: a.usuario ?? "—", accion: "agotado", tipo: "operacion", detalle: `${p.nombre} ${p.agotado ? "vuelve a la venta" : "marcado agotado (86)"}` });
+      return s;
+    }
+    case "moverMesa": {
+      if (a.origen_id === a.destino_id) return prev;
+      const origen = s.mesas.find((m) => m.id === a.origen_id), destino = s.mesas.find((m) => m.id === a.destino_id);
+      if (!origen || !destino) throw new Error("Mesa inexistente");
+      const abiertos = s.pedidos.filter((p) => p.mesa_id === origen.id && p.estado !== "cerrado" && p.estado !== "anulado");
+      if (!abiertos.length) throw new Error("La mesa de origen no tiene pedidos abiertos");
+      const ids = new Set(abiertos.map((p) => p.id));
+      s.pedidos = s.pedidos.map((p) => (ids.has(p.id) ? { ...p, mesa_id: destino.id } : p));
+      const uniendo = destino.estado !== "libre" && destino.estado !== "reservada";
+      s.mesas = s.mesas.map((m) => m.id === origen.id ? { ...m, estado: "libre", mozo_id: null, ocupada_desde: null }
+        : m.id === destino.id ? { ...m, estado: uniendo ? m.estado : origen.estado, mozo_id: m.mozo_id ?? origen.mozo_id, ocupada_desde: m.ocupada_desde ?? origen.ocupada_desde } : m);
+      audit(s, ctx, { usuario: a.usuario ?? "—", accion: "mover_mesa", tipo: "operacion", detalle: `${uniendo ? "Unió" : "Movió"} mesa ${origen.numero} → mesa ${destino.numero} (${abiertos.length} pedido${abiertos.length > 1 ? "s" : ""})` });
+      return s;
+    }
     case "log": log(s, ctx, a.nivel, a.origen, a.mensaje); return s;
   }
 }

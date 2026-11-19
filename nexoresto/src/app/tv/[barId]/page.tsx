@@ -6,7 +6,7 @@
 //  Tiempo real: Supabase Realtime (producción) o sincronización local (demo).
 // =============================================================================
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Volume2, VolumeX, Maximize } from "lucide-react";
+import { Maximize, Music, Star, Trophy, Volume2, VolumeX, Zap } from "lucide-react";
 import { useNexo, useNow } from "@/lib/store/NexoProvider";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { FotoView, ProductIcon } from "@/components/icons/ProductIcon";
@@ -78,7 +78,7 @@ export default function PantallaTV({ params }: { params: Promise<{ barId: string
       {/* ---------- Banner Market Crash ---------- */}
       {enCrash && (
         <div className="flex items-center justify-between gap-4 bg-crash px-[2.2vw] py-[1vh] text-black">
-          <span className="animate-blink text-[clamp(18px,2.2vw,44px)] font-extrabold tracking-tight">⚡ {s.crash!.mensaje.toUpperCase()}</span>
+          <span className="animate-blink text-[clamp(18px,2.2vw,44px)] font-extrabold tracking-tight"><Zap className="mr-2 inline h-[0.9em] w-[0.9em] -translate-y-[0.08em]" strokeWidth={3} />{s.crash!.mensaje.toUpperCase()}</span>
           <span className="text-[clamp(12px,1.1vw,22px)] font-bold">{s.crash!.productos.length} PRODUCTOS A PRECIO PISO · TERMINA EN</span>
           <span className="text-[clamp(22px,2.6vw,52px)] font-extrabold tabular-nums">{cronometro(new Date(s.crash!.fin_at).getTime() - now)}</span>
         </div>
@@ -98,7 +98,7 @@ export default function PantallaTV({ params }: { params: Promise<{ barId: string
             <div className="mb-2 text-[clamp(9px,0.7vw,14px)] font-semibold tracking-[0.18em] text-white/50">FOTO DE LA NOCHE · RANKING EN VIVO</div>
             {ganadora ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-                <div className="text-[clamp(12px,1vw,20px)] font-bold text-neon">🏆 GANADORA · MESA {ganadora.mesa_numero}</div>
+                <div className="text-[clamp(12px,1vw,20px)] font-bold text-neon"><Trophy className="mr-1.5 inline h-[1em] w-[1em] -translate-y-[0.1em]" />GANADORA · MESA {ganadora.mesa_numero}</div>
                 <FotoView url={ganadora.url_foto} size={170} className="rounded-xl" />
                 <div className="text-[clamp(10px,0.8vw,15px)] text-white/60">{ganadora.votos_count} votos · cupón enviado a la mesa</div>
               </div>
@@ -197,7 +197,7 @@ function TablaCotizaciones({ productos, crashIds }: { productos: Producto[]; cra
               const cr = crashIds.includes(p.id);
               return (
                 <tr key={p.id} className="border-t border-white/[0.06]">
-                  <td className="truncate py-[0.55vh] pr-2 font-semibold uppercase">{cr && <span className="mr-1 text-crash">⚡</span>}{p.nombre}</td>
+                  <td className="truncate py-[0.55vh] pr-2 font-semibold uppercase">{cr && <Zap className="mr-1 inline h-[0.85em] w-[0.85em] -translate-y-[0.08em] text-crash" strokeWidth={3} />}{p.nombre}</td>
                   <td className="py-[0.55vh] text-right tabular-nums text-white/45">{p.precio_anterior ? money(p.precio_anterior) : "—"}</td>
                   <td key={p.precio_actual} className={cx("py-[0.55vh] text-right font-bold tabular-nums", up ? NEON : RED, up ? "animate-flashUp" : "animate-flashDown")}>{money(p.precio_actual)}</td>
                   <td className={cx("py-[0.55vh] text-right tabular-nums", p.variacion_porcentaje >= 0 ? NEON : RED)}>{p.variacion_porcentaje >= 0 ? "▲" : "▼"} {Math.abs(p.variacion_porcentaje).toFixed(1).replace(".", ",")}%</td>
@@ -216,13 +216,13 @@ function Ticker() {
   const now = useNow(5000);
   const enCrash = crashActivo(s.crash, now);
   const piezas: { k: string; node: React.ReactNode }[] = [];
-  if (enCrash) piezas.push({ k: "crash", node: <span className="font-black text-crash">⚡ MARKET CRASH · {s.crash!.mensaje.toUpperCase()} · PRECIOS MÍNIMOS POR TIEMPO LIMITADO ⚡</span> });
+  if (enCrash) piezas.push({ k: "crash", node: <span className="font-black text-crash"><Zap className="mr-2 inline h-[0.9em] w-[0.9em] -translate-y-[0.08em]" strokeWidth={3} />MARKET CRASH · {s.crash!.mensaje.toUpperCase()} · PRECIOS MÍNIMOS POR TIEMPO LIMITADO</span> });
   for (const p of s.productos.filter((x) => x.es_cotizable_bolsa)) {
     const up = p.variacion_porcentaje >= 0;
     piezas.push({ k: p.id, node: <span><b>{p.nombre.toUpperCase()}</b> <span className="text-white/80">{money(p.precio_actual)}</span> <span className={up ? NEON : RED}>{up ? "▲ +" : "▼ −"}{Math.abs(p.variacion_porcentaje).toFixed(1).replace(".", ",")}%</span></span> });
   }
-  for (const pr of s.promociones.filter((x) => x.activa)) piezas.push({ k: pr.id, node: <span className="text-warn">★ {pr.titulo.toUpperCase()} {pr.hora_desde}–{pr.hora_hasta}</span> });
-  for (const e of s.eventos.filter((x) => x.estado === "publicado").slice(0, 3)) piezas.push({ k: e.id, node: <span className="text-info">♪ {e.titulo.toUpperCase()} · {fechaCorta(e.fecha)} {hhmm(e.fecha)}</span> });
+  for (const pr of s.promociones.filter((x) => x.activa)) piezas.push({ k: pr.id, node: <span className="text-warn"><Star className="mr-2 inline h-[0.8em] w-[0.8em] -translate-y-[0.08em]" />{pr.titulo.toUpperCase()} {pr.hora_desde}–{pr.hora_hasta}</span> });
+  for (const e of s.eventos.filter((x) => x.estado === "publicado").slice(0, 3)) piezas.push({ k: e.id, node: <span className="text-info"><Music className="mr-2 inline h-[0.8em] w-[0.8em] -translate-y-[0.08em]" />{e.titulo.toUpperCase()} · {fechaCorta(e.fecha)} {hhmm(e.fecha)}</span> });
   const fila = piezas.map((x) => <span key={x.k} className="mx-[2vw] inline-block">{x.node}</span>);
   return (
     <footer className={cx("relative overflow-hidden whitespace-nowrap border-t py-[1.3vh] text-[clamp(14px,1.5vw,30px)]", enCrash ? "border-crash bg-crash/10" : "border-neon/20 bg-[#03140b]")}>

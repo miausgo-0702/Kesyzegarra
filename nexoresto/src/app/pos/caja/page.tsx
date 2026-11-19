@@ -5,10 +5,11 @@
 // =============================================================================
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Banknote, Bike, CalendarDays, CreditCard, Delete, Eye, Lock, Printer, QrCode, Receipt, ShieldCheck, Ticket, Unlock, Wallet, ArrowLeftRight } from "lucide-react";
+import { Banknote, Bike, CalendarDays, CreditCard, Delete, Eye, Lock, Printer, QrCode, Receipt, ShieldCheck, Ticket, Unlock, Wallet, ArrowLeftRight, Zap } from "lucide-react";
 import { Shell } from "@/components/ui/Shell";
 import { Badge, Btn, Empty, Field, Kpi, Modal, Panel, Segmented, inputCls, toast } from "@/components/ui/kit";
-import { useDispatch, useNexo, useNow, useSesion } from "@/lib/store/NexoProvider";
+import { useBackend, useDispatch, useNexo, useNow, useSesion } from "@/lib/store/NexoProvider";
+import { ComandaEditor } from "@/components/pos/ComandaEditor";
 import { nuevoId } from "@/lib/store/backend";
 import { cx, hhmm, money } from "@/lib/format";
 import { esperadoTurno, importeItem, itemsDe } from "@/lib/store/selectors";
@@ -105,10 +106,24 @@ function Cobro({ turnoId }: { turnoId: string }) {
   const [itemsSel, setItemsSel] = useState<Set<string> | null>(null);
   const idem = useRef(nuevoId());
   const [ticket, setTicket] = useState<null | { titulo: string; total: number; pagos: typeof pagos; propina: number; idem: string }>(null);
+  const [ventaRapida, setVentaRapida] = useState(false);
+  const backend = useBackend();
+  const modalVenta = (
+    <Modal open={ventaRapida} onClose={() => setVentaRapida(false)} wide title="Venta rápida de mostrador">
+      <div className="h-[70dvh]">
+        <ComandaEditor mesa={null} onEnviado={(key) => {
+          const ped = backend.getState()?.pedidos.find((p) => p.idempotency_key === key);
+          setVentaRapida(false);
+          if (ped) setSel(ped.id);
+        }} />
+      </div>
+    </Modal>
+  );
+  const botonVenta = <Btn size="sm" variant="primary" onClick={() => setVentaRapida(true)}><Zap size={14} />Venta rápida</Btn>;
 
   useEffect(() => { setPagos([]); setImporte(""); setPartes(1); setItemsSel(null); setCupon(""); idem.current = nuevoId(); }, [cuenta?.key]);
 
-  if (!cuenta) return <Panel><Empty icon={<Receipt size={34} />} title="No hay cuentas abiertas" hint="Las mesas que piden la cuenta aparecen arriba en amarillo." /></Panel>;
+  if (!cuenta) return <Panel action={botonVenta}><Empty icon={<Receipt size={34} />} title="No hay cuentas abiertas" hint="Las mesas que piden la cuenta aparecen arriba en amarillo. Para vender en el mostrador usá Venta rápida." />{modalVenta}</Panel>;
 
   const items = cuenta.pedidos.flatMap((p) => itemsDe(s, p.id)).filter((i) => i.estado_cocina !== "anulado");
   const base = itemsSel ? items.filter((i) => itemsSel.has(i.id)).reduce((a, i) => a + importeItem(i), 0) : cuenta.saldo / partes;
@@ -154,7 +169,7 @@ function Cobro({ turnoId }: { turnoId: string }) {
   return (
     <div className="grid gap-4 xl:grid-cols-[260px_1fr_420px]">
       {/* cuentas */}
-      <Panel title={`Cuentas abiertas · ${cuentas.length}`} className="max-h-[78dvh] overflow-y-auto scroll-thin">
+      <Panel title={`Cuentas abiertas · ${cuentas.length}`} action={botonVenta} className="max-h-[78dvh] overflow-y-auto scroll-thin">
         <ul className="flex flex-col gap-1.5">
           {cuentas.map((c) => (
             <li key={c.key}>
@@ -176,7 +191,7 @@ function Cobro({ turnoId }: { turnoId: string }) {
         </header>
         <div className="flex-1 overflow-y-auto px-4 py-2 scroll-thin">
           <table className="w-full text-sm">
-            <thead><tr className="eyebrow text-left"><th className="py-2">{itemsSel ? "✓" : ""}</th><th className="py-2">Producto</th><th className="py-2 text-right">Precio</th></tr></thead>
+            <thead><tr className="eyebrow text-left"><th className="py-2">{itemsSel ? "Paga" : ""}</th><th className="py-2">Producto</th><th className="py-2 text-right">Precio</th></tr></thead>
             <tbody>
               {items.map((i) => (
                 <tr key={i.id} className={cx("border-t border-line/60", itemsSel && !itemsSel.has(i.id) && "opacity-40")} onClick={() => itemsSel && setItemsSel((x) => { const n = new Set(x); if (n.has(i.id)) n.delete(i.id); else n.add(i.id); return n; })}>
@@ -244,6 +259,7 @@ function Cobro({ turnoId }: { turnoId: string }) {
         <div className="flex justify-between font-mono text-[10px] text-dim"><span>Idempotency-Key: {idem.current.slice(0, 13)}…</span><span>Factura A/B electrónica lista</span></div>
       </div>
 
+      {modalVenta}
       <Modal open={!!ticket} onClose={() => setTicket(null)} title="Comprobante">
         {ticket && (
           <div className="mx-auto max-w-xs rounded-lg bg-white p-5 font-mono text-[12px] leading-relaxed text-black">

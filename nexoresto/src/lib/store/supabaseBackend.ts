@@ -46,6 +46,8 @@ export class SupabaseBackend implements Backend {
     }
     if (!this.barId) { console.error("Nexoresto: bar no encontrado"); return; }
     await this.refrescar();
+    window.addEventListener("online", () => void this.vaciarCola());
+    void this.vaciarCola();
     this.sb.channel(`bar:${this.barId}`)
       .on("postgres_changes", { event: "*", schema: "public", filter: `bar_id=eq.${this.barId}` }, () => this.programarRefresco())
       .subscribe();
@@ -133,7 +135,47 @@ export class SupabaseBackend implements Backend {
     this.programarRefresco();
   }
 
+  // ---------------------------------------------------------------------------
+  // Cola offline: si no hay conexión, las acciones idempotentes se guardan en el
+  // dispositivo y se envían en orden al volver internet. La clave idempotente de
+  // pedidos y pagos garantiza que un reintento nunca duplique nada.
+  // ---------------------------------------------------------------------------
+  private static COLA = "nexoresto:cola-offline";
+  private static ENCOLABLES = new Set<Accion["type"]>(["crearPedido", "registrarPago", "itemEstado", "despacharComanda", "entregarPedido", "mesaEstado", "gps", "votar"]);
+  private enviando = false;
+
+  private leerCola(): Accion[] { try { return JSON.parse(localStorage.getItem(SupabaseBackend.COLA) ?? "[]"); } catch { return []; } }
+  private escribirCola(c: Accion[]) { localStorage.setItem(SupabaseBackend.COLA, JSON.stringify(c)); window.dispatchEvent(new Event("nexoresto:cola")); }
+  pendientes() { return this.leerCola().length; }
+
+  async vaciarCola() {
+    if (this.enviando || !navigator.onLine) return;
+    this.enviando = true;
+    try {
+      let cola = this.leerCola();
+      while (cola.length) {
+        try { await this.ejecutar(cola[0]); } catch (e) {
+          if (e instanceof TypeError) break;        // sigue sin red: reintenta luego
+          console.error("Acción descartada de la cola:", e); // error de negocio: no se reintenta
+        }
+        cola = cola.slice(1);
+        this.escribirCola(cola);
+      }
+    } finally { this.enviando = false; }
+  }
+
   async dispatch(a: Accion) {
+    if (SupabaseBackend.ENCOLABLES.has(a.type)) {
+      if (!navigator.onLine) { this.escribirCola([...this.leerCola(), a]); return; }
+      try { return await this.ejecutar(a); } catch (e) {
+        if (e instanceof TypeError) { this.escribirCola([...this.leerCola(), a]); return; } // falla de red
+        throw e;
+      }
+    }
+    return this.ejecutar(a);
+  }
+
+  private async ejecutar(a: Accion) {
     const bar = this.barId;
     switch (a.type) {
       case "crearPedido":
@@ -201,6 +243,20 @@ export class SupabaseBackend implements Backend {
         return run(this.sb.from("bares").update({ reglas_precios: a.reglas }).eq("id", bar));
       case "guardarBar": return run(this.sb.from("bares").upsert(a.bar));
       case "licenciaBar": return run(this.sb.from("bares").update({ estado_licencia: a.estado }).eq("id", a.bar_id));
+      case "toggleAgotado": { const p = this.state?.productos.find((x) => x.id === a.producto_id); return this.rpc("marcar_agotado", { p_producto: a.producto_id, p_agotado: !p?.agotado }); }
+      case "moverMesa": return this.rpc("mover_mesa", { p_origen: a.origen_id, p_destino: a.destino_id });
+      case "guardarProducto": {
+        const { id, ...datos } = a.producto;
+        const fila = { ...datos, bar_id: bar, ...(id ? { id } : {}) };
+        const { data, error } = await this.sb.from("productos").upsert(fila).select("id").single();
+        if (error) throw new Error(error.message);
+        if (a.receta) {
+          await this.sb.from("recetas").delete().eq("producto_id", data.id);
+          if (a.receta.length) await run(this.sb.from("recetas").insert(a.receta.map((r) => ({ ...r, bar_id: bar, producto_id: data.id }))));
+        }
+        this.programarRefresco();
+        return;
+      }
       case "revertirPrecio": { const p = this.state?.productos.find((x) => x.id === a.producto_id); return run(this.sb.from("productos").update({ precio_actual: p?.precio_base }).eq("id", a.producto_id)); }
       default:
         // exchangeTick (lo corre pg_cron / Vercel Cron), simulación y notificaciones locales no aplican en producción

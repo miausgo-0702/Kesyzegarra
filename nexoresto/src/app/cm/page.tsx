@@ -5,7 +5,7 @@
 //  promos 2×1 / Happy Hour · cierre de votación con cupón automático.
 // =============================================================================
 import { useMemo, useRef, useState } from "react";
-import { CalendarPlus, Check, Image as ImageIcon, Percent, Power, Trash2, Trophy, X, Zap } from "lucide-react";
+import { CalendarPlus, Check, Image as ImageIcon, Martini, Monitor, Percent, Smartphone, Volume2, Power, Trash2, Trophy, X, Zap } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { Shell } from "@/components/ui/Shell";
 import { Badge, Btn, Empty, Field, Kpi, Modal, Panel, Segmented, inputCls, toast } from "@/components/ui/kit";
@@ -73,7 +73,7 @@ function MarketCrash() {
     const e = await dispatch({ type: "marketCrash", ids, mensaje: msg, minutos: min, descuento_pct: modo === "descuento" ? desc : null, usuario: sesion?.nombre });
     if (e) return toast(e, "down");
     sonido.crash();
-    toast("💥 Market Crash lanzado en TV, BDS y WebApp", "down");
+    toast("Market Crash lanzado en la TV, la barra y la carta QR", "down");
   }
 
   return (
@@ -109,7 +109,7 @@ function MarketCrash() {
                 return <button key={p.id} onClick={() => setIds((x) => on ? x.filter((i) => i !== p.id) : [...x, p.id])} className={cx("flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-sm", on ? "border-crash/60 bg-crash/10 text-ink" : "border-line text-mute")}><ProductIcon icono={p.icono} size={26} />{p.nombre}<span className="font-mono text-xs">{money(modo === "minimo" ? p.precio_minimo : Math.max(p.precio_minimo, Math.round(p.precio_actual * (1 - desc / 100) / 50) * 50))}</span></button>;
               })}
             </div>
-            <div className="mt-4 flex flex-wrap gap-2 text-xs">{["🔊 Alerta sonora", "📺 Pantalla NYSE", "📱 WebApp", "🍸 BDS"].map((t) => <Badge key={t} tono="mute">{t}</Badge>)}</div>
+            <div className="mt-4 flex flex-wrap gap-2 text-xs">{([[Volume2, "Alerta sonora"], [Monitor, "Pantalla NYSE"], [Smartphone, "Carta QR"], [Martini, "Barra BDS"]] as const).map(([I, t]) => <Badge key={t} tono="mute"><I size={12} />{t}</Badge>)}</div>
             <button onClick={() => setConfirmar(true)} disabled={!ids.length}
               className="mt-6 h-20 w-full rounded-2xl bg-crash text-2xl font-black tracking-tight text-black shadow-[0_20px_60px_-15px_#ff3333] transition hover:brightness-110 active:scale-[0.99] disabled:opacity-40">
               ACTIVAR MARKET CRASH
@@ -176,7 +176,7 @@ function Moderacion() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           {pend.map((f) => (
             <div key={f.id} className="overflow-hidden rounded-2xl border border-line bg-bg">
-              <FotoView url={f.url_foto} size={220} className="!h-auto !w-full aspect-square rounded-none" />
+              <FotoView url={f.url_foto} size="full" className="rounded-none" />
               <div className="p-3">
                 <div className="flex items-center justify-between text-xs"><span>Mesa {String(f.mesa_numero ?? "—").padStart(2, "0")}</span><Badge tono={filtro[f.filtro_auto].tono}>{filtro[f.filtro_auto].t}</Badge></div>
                 {f.descripcion && <p className="mt-1 line-clamp-2 text-xs text-mute">{f.descripcion}</p>}
@@ -213,7 +213,7 @@ function Moderacion() {
       <Modal open={confirmar} onClose={() => setConfirmar(false)} title="¿Cerrar la votación?" footer={<div className="flex justify-end gap-2"><Btn onClick={() => setConfirmar(false)}>Cancelar</Btn><Btn variant="primary" onClick={cerrar}>Cerrar y emitir cupón</Btn></div>}>
         <p className="text-sm text-mute">Se premia a la foto con más votos y se reinicia la ronda (todos pueden volver a votar).</p>
       </Modal>
-      <Modal open={!!resultado} onClose={() => setResultado(null)} title="🏆 Foto ganadora">
+      <Modal open={!!resultado} onClose={() => setResultado(null)} title={<span className="flex items-center gap-2"><Trophy size={18} className="text-up" />Foto ganadora</span>}>
         {resultado && (
           <div className="flex flex-col items-center gap-3 text-center">
             <FotoView url={resultado.url} size={160} className="rounded-2xl" />

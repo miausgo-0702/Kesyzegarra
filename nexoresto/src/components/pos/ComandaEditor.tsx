@@ -8,7 +8,7 @@ import { ProductIcon } from "@/components/icons/ProductIcon";
 import { useDispatch, useNexo, useNow, useSesion } from "@/lib/store/NexoProvider";
 import { nuevoId } from "@/lib/store/backend";
 import { cx, money } from "@/lib/format";
-import { enCrash, extrasItem, importeItem, itemsDe, pedidosAbiertosMesa } from "@/lib/store/selectors";
+import { disponible, enCrash, extrasItem, importeItem, itemsDe, pedidosAbiertosMesa } from "@/lib/store/selectors";
 import { getSmartUpsell } from "@/lib/ai/learningEngine";
 import type { Mesa, ModificadorElegido, Producto } from "@/lib/types";
 
@@ -18,7 +18,8 @@ const ESTADO_ITEM: Record<string, { t: string; tono: "info" | "warn" | "up" | "m
   pendiente: { t: "Pendiente", tono: "info" }, marchando: { t: "Marchando", tono: "warn" }, listo: { t: "Listo", tono: "up" }, entregado: { t: "Entregado", tono: "mute" }, anulado: { t: "Anulado", tono: "down" },
 };
 
-export function ComandaEditor({ mesa, onEnviado }: { mesa: Mesa; onEnviado?: () => void }) {
+/** `mesa = null` → venta rápida de mostrador (sin mesa, se cobra al instante en caja). */
+export function ComandaEditor({ mesa, onEnviado }: { mesa: Mesa | null; onEnviado?: (pedidoKey: string) => void }) {
   const s = useNexo();
   const now = useNow(5000);
   const dispatch = useDispatch();
@@ -37,7 +38,7 @@ export function ComandaEditor({ mesa, onEnviado }: { mesa: Mesa; onEnviado?: () 
     return s.productos.filter((p) => p.activo && (t ? p.nombre.toLowerCase().includes(t) || p.descripcion.toLowerCase().includes(t) : p.categoria_id === cat));
   }, [s.productos, q, cat]);
 
-  const pedidos = pedidosAbiertosMesa(s, mesa.id);
+  const pedidos = mesa ? pedidosAbiertosMesa(s, mesa.id) : [];
   const itemsMesa = pedidos.flatMap((p) => itemsDe(s, p.id));
   const upsell = useMemo(() => getSmartUpsell(s, [...carrito.map((l) => l.producto.id), ...itemsMesa.map((i) => i.producto_id)], 2),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -55,7 +56,7 @@ export function ComandaEditor({ mesa, onEnviado }: { mesa: Mesa; onEnviado?: () 
   async function enviar() {
     if (!carrito.length) return;
     const err = await dispatch({
-      type: "crearPedido", tipo: "salon", mesa_id: mesa.id, idempotency_key: idem.current, mozo_id: sesion?.usuario_id ?? null,
+      type: "crearPedido", tipo: mesa ? "salon" : "mostrador", mesa_id: mesa?.id ?? null, idempotency_key: idem.current, mozo_id: sesion?.usuario_id ?? null,
       items: carrito.map((l) => ({ producto_id: l.producto.id, cantidad: l.cantidad, modificadores: l.modificadores, notas: l.notas || null, persona: l.persona, precio_visto: l.precio_visto })),
     });
     if (err) return toast(err, "down");
@@ -63,8 +64,9 @@ export function ComandaEditor({ mesa, onEnviado }: { mesa: Mesa; onEnviado?: () 
     const barra = carrito.filter((l) => l.producto.estacion === "barra").reduce((a, l) => a + l.cantidad, 0);
     toast(`Enviado · ${cocina} a cocina · ${barra} a barra`);
     setCarrito([]);
+    const enviada = idem.current;
     idem.current = nuevoId(); // nueva clave para el próximo envío
-    onEnviado?.();
+    onEnviado?.(enviada);
   }
 
   const totalCarrito = carrito.reduce((a, l) => a + l.cantidad * (l.precio_visto + extrasItem(l)), 0);
@@ -88,15 +90,18 @@ export function ComandaEditor({ mesa, onEnviado }: { mesa: Mesa; onEnviado?: () 
             </button>
           ))}
         </div>
-        <div className="mt-3 grid min-h-0 flex-1 auto-rows-max grid-cols-2 gap-2 overflow-y-auto pr-1 scroll-thin sm:grid-cols-3">
+        <div className="mt-3 grid min-h-0 flex-1 auto-rows-max grid-cols-2 gap-2 overflow-y-auto pr-1 scroll-thin sm:grid-cols-3 xl:grid-cols-4">
           {productos.map((p) => {
             const crash = enCrash(s, p.id, now);
             const sube = (p.precio_anterior ?? p.precio_actual) <= p.precio_actual;
+            const ok = disponible(s, p);
             return (
-              <button key={p.id} onClick={() => agregar(p)} className={cx("flex flex-col items-start gap-2 rounded-2xl border bg-card p-3 text-left transition active:scale-[0.97] hover:border-mute", crash ? "border-crash/60" : "border-line")}>
-                <div className="flex w-full items-start justify-between">
-                  <ProductIcon icono={p.icono} size={52} />
-                  {crash && <Badge tono="crash"><Zap size={10} />Crash</Badge>}
+              <button key={p.id} onClick={() => ok ? agregar(p) : toast(`${p.nombre}: ${p.agotado ? "marcado agotado" : "sin stock de insumos"}`, "warn")} aria-disabled={!ok}
+                className={cx("press flex flex-col items-start gap-2 rounded-2xl border bg-card p-2.5 text-left hover:border-mute", crash ? "border-crash/60" : "border-line", !ok && "opacity-45")}>
+                <div className="relative w-full">
+                  <ProductIcon icono={p.icono} size="full" />
+                  {crash && <Badge tono="crash" className="absolute left-1.5 top-1.5 bg-black/70"><Zap size={10} />Crash</Badge>}
+                  {!ok && <Badge tono="down" className="absolute left-1.5 top-1.5 bg-black/70">Agotado</Badge>}
                 </div>
                 <div className="text-sm font-semibold leading-tight">{p.nombre}</div>
                 <div className={cx("font-mono text-sm", sube ? "text-up" : "text-down")}>{money(p.precio_actual)} {p.es_cotizable_bolsa && (sube ? "▲" : "▼")}</div>
@@ -109,7 +114,7 @@ export function ComandaEditor({ mesa, onEnviado }: { mesa: Mesa; onEnviado?: () 
 
       {/* --------- comanda / cuenta --------- */}
       <div className="flex min-h-0 flex-col rounded-2xl border border-line bg-bg/60 p-3">
-        <Segmented value={tab} onChange={setTab} options={[{ value: "comanda", label: "Comanda" }, { value: "cuenta", label: `Cuenta · ${money(totalMesa)}` }]} className="self-start" />
+        {mesa ? <Segmented value={tab} onChange={setTab} options={[{ value: "comanda", label: "Comanda" }, { value: "cuenta", label: `Cuenta · ${money(totalMesa)}` }]} className="self-start" /> : <div className="eyebrow">Venta de mostrador</div>}
 
         {tab === "comanda" ? (
           <>
@@ -173,9 +178,9 @@ export function ComandaEditor({ mesa, onEnviado }: { mesa: Mesa; onEnviado?: () 
               <Btn variant="primary" size="xl" className="w-full" disabled={!carrito.length} onClick={enviar}><Send size={18} />Enviar a cocina y barra</Btn>
             </div>
           </>
-        ) : (
+        ) : mesa ? (
           <CuentaDividida mesa={mesa} personas={personas} setPersonas={setPersonas} />
-        )}
+        ) : null}
       </div>
     </div>
   );

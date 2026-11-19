@@ -13,7 +13,7 @@ const pin = (color: string) => L.divIcon({
 });
 const moto = L.divIcon({
   className: "",
-  html: `<div style="width:34px;height:34px;border-radius:999px;background:#4c9dff;border:3px solid #05070a;box-shadow:0 0 0 6px rgba(76,157,255,.25),0 0 18px #4c9dff;display:grid;place-items:center;font-size:16px">🛵</div>`,
+  html: `<div style="width:34px;height:34px;border-radius:999px;background:#4c9dff;border:3px solid #05070a;box-shadow:0 0 0 6px rgba(76,157,255,.25),0 0 18px #4c9dff;display:grid;place-items:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg></div>`,
   iconSize: [34, 34],
   iconAnchor: [17, 17],
 });

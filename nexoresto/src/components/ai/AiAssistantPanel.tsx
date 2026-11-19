@@ -104,7 +104,7 @@ function AlertasProactivas() {
                 setOcupado(null);
                 if (e) return toast(e, "down");
                 await dispatch({ type: "recomendacion", id: r.id, estado: "aplicada" });
-                toast("Aplicado ✔ · queda registrado para medir el impacto");
+                toast("Aplicado. Queda registrado para medir el impacto");
               }}>{ocupado === r.id ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}Aplicar en 1 clic</Btn>
             </div>
           </li>
@@ -151,7 +151,7 @@ function ChatCopiloto() {
       if (!r.ok) throw new Error(j.error ?? "Error");
       setMsgs((m) => [...m, { role: "assistant", content: j.texto, graficos: j.graficos, propuestas: j.propuestas, modo: j.modo }]);
     } catch (e) {
-      setMsgs((m) => [...m, { role: "assistant", content: `⚠️ ${e instanceof Error ? e.message : "No pude responder"}` }]);
+      setMsgs((m) => [...m, { role: "assistant", content: `${e instanceof Error ? e.message : "No pude responder"}` }]);
     } finally { setCargando(false); }
   }
 

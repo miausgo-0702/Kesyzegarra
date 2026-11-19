@@ -78,4 +78,35 @@ describe("reductor del sistema (modo demo)", () => {
     const despues = s.productos.find((p) => p.id === prodId(1))!.precio_actual;
     expect(Math.abs(despues - antes) / antes).toBeLessThanOrEqual(0.031);
   });
+
+  it("agotado (86): no se puede vender y vuelve al reponer", () => {
+    let s = run({ ...crearEstadoInicial(), simulacion: false }, { type: "toggleAgotado", producto_id: prodId(9) });
+    expect(() => reducir(s, { type: "crearPedido", tipo: "salon", mesa_id: mesaId(1), idempotency_key: "k86", items: [{ producto_id: prodId(9), cantidad: 1 }] }, ctx())).toThrow(/agotado/);
+    s = run(s, { type: "toggleAgotado", producto_id: prodId(9) });
+    expect(run(s, { type: "crearPedido", tipo: "salon", mesa_id: mesaId(1), idempotency_key: "k86b", items: [{ producto_id: prodId(9), cantidad: 1 }] }).pedidos.some((p) => p.idempotency_key === "k86b")).toBe(true);
+  });
+
+  it("mover y unir mesas lleva los pedidos abiertos y libera la de origen", () => {
+    let s = run({ ...crearEstadoInicial(), simulacion: false }, { type: "crearPedido", tipo: "salon", mesa_id: mesaId(1), idempotency_key: "mv", items: [{ producto_id: prodId(1), cantidad: 1 }] });
+    s = run(s, { type: "moverMesa", origen_id: mesaId(1), destino_id: mesaId(8) });
+    expect(s.pedidos.find((p) => p.idempotency_key === "mv")!.mesa_id).toBe(mesaId(8));
+    expect(s.mesas.find((m) => m.id === mesaId(1))!.estado).toBe("libre");
+    expect(s.mesas.find((m) => m.id === mesaId(8))!.estado).not.toBe("libre");
+  });
+
+  it("guardar producto valida el rango y respeta el precio dentro de piso y tope", () => {
+    const s0 = crearEstadoInicial();
+    expect(() => reducir(s0, { type: "guardarProducto", producto: { nombre: "X", categoria_id: s0.categorias[0].id, precio_base: 1000, precio_minimo: 1200 } }, ctx())).toThrow(/entre el mínimo y el máximo/);
+    const s1 = run(s0, { type: "guardarProducto", producto: { nombre: "Caipirinha", categoria_id: s0.categorias[0].id, precio_base: 4000 }, receta: [{ insumo_id: s0.insumos[1].id, cantidad: 1 }] });
+    const p = s1.productos.find((x) => x.nombre === "Caipirinha")!;
+    expect([p.precio_minimo, p.precio_actual, p.precio_maximo]).toEqual([3000, 4000, 5600]);
+    expect(s1.recetas.filter((r) => r.producto_id === p.id)).toHaveLength(1);
+  });
+
+  it("venta de mostrador: pedido sin mesa", () => {
+    const s = run({ ...crearEstadoInicial(), simulacion: false }, { type: "crearPedido", tipo: "mostrador", mesa_id: null, idempotency_key: "mos", items: [{ producto_id: prodId(5), cantidad: 2 }] });
+    const p = s.pedidos.find((x) => x.idempotency_key === "mos")!;
+    expect(p.tipo).toBe("mostrador");
+    expect(p.mesa_id).toBeNull();
+  });
 });

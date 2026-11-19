@@ -1,3 +1,5 @@
+"use client";
+import { useState } from "react";
 // Ilustraciones planas de productos (SVG propio, sin imágenes externas).
 import type { ReactElement } from "react";
 
@@ -139,15 +141,39 @@ const ICONS: Record<string, () => ReactElement> = {
 
 export const ICONOS_DISPONIBLES = Object.keys(ICONS);
 
-export function ProductIcon({ icono, size = 56, className, tile = true }: { icono: string; size?: number; className?: string; tile?: boolean }) {
+/** Ruta base de los assets públicos (en la demo estática del visor se usa "./"). */
+export const ASSET_BASE = process.env.NEXT_PUBLIC_ASSET_BASE ?? "/";
+const CON_FOTO = new Set(["mojito", "gintonic", "negroni", "aperol", "fernet", "cuba", "beer", "beerlight", "burger", "pizza", "milanesa", "fries", "salad", "provoleta", "dessert", "lemonade", "water"]);
+export const fotoProducto = (icono: string) => (CON_FOTO.has(icono) ? `${ASSET_BASE}fotos/${icono}.jpg` : null);
+
+/**
+ * Imagen del producto: fotografía real (public/fotos, licencia Unsplash) recortada en cuadrado.
+ * Si el producto no tiene foto o la imagen falla, usa la ilustración vectorial como respaldo.
+ */
+export function ProductIcon({ icono, size = 56, className, tile = true, alt = "" }: { icono: string; size?: number | "full"; className?: string; tile?: boolean; alt?: string }) {
+  const [fallo, setFallo] = useState(false);
+  const src = fotoProducto(icono);
+  const dim = size === "full" ? undefined : { width: size, height: size };
+  const radio = size !== "full" && size < 48 ? "rounded-lg" : "rounded-xl";
+  if (src && !fallo) {
+    return (
+      <span className={`relative inline-block shrink-0 overflow-hidden ${radio} bg-raised ${size === "full" ? "aspect-square w-full" : ""} ${className ?? ""}`} style={dim} aria-hidden={!alt}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt={alt} loading="lazy" decoding="async" draggable={false} onError={() => setFallo(true)}
+          className="h-full w-full object-cover" />
+        <span className="pointer-events-none absolute inset-0 rounded-[inherit] ring-1 ring-inset ring-white/10" />
+      </span>
+    );
+  }
   const Svg = ICONS[icono] ?? ICONS.burger;
+  const px = size === "full" ? 120 : size;
   return (
     <span
-      className={`relative inline-grid shrink-0 place-items-center overflow-hidden rounded-xl ${tile ? "bg-[radial-gradient(circle_at_50%_35%,#1d2833,#0b1016)]" : ""} ${className ?? ""}`}
-      style={{ width: size, height: size }}
+      className={`relative inline-grid shrink-0 place-items-center overflow-hidden ${radio} ${tile ? "bg-[radial-gradient(circle_at_50%_35%,#1d2833,#0b1016)]" : ""} ${size === "full" ? "aspect-square w-full" : ""} ${className ?? ""}`}
+      style={dim}
       aria-hidden
     >
-      <svg viewBox="0 0 64 64" width={size * 0.82} height={size * 0.82}>
+      <svg viewBox="0 0 64 64" width={px * 0.82} height={px * 0.82}>
         <ellipse cx="32" cy="59" rx="16" ry="2.5" fill="#000" fillOpacity=".45" />
         <Svg />
       </svg>
@@ -156,8 +182,12 @@ export function ProductIcon({ icono, size = 56, className, tile = true }: { icon
 }
 
 /** Foto de cliente: data URL / URL real, o ilustración si es una foto de demo ("icon:burger"). */
-export function FotoView({ url, className, size = 120 }: { url: string; className?: string; size?: number }) {
+export function FotoView({ url, className, size = 120 }: { url: string; className?: string; size?: number | "full" }) {
   if (url.startsWith("icon:")) return <ProductIcon icono={url.slice(5)} size={size} className={className} />;
+  if (size === "full") {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={url} alt="Foto de cliente" className={`aspect-square w-full object-cover ${className ?? ""}`} />;
+  }
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={url} alt="Foto de cliente" className={`object-cover ${className ?? ""}`} style={{ width: size, height: size }} />;
 }

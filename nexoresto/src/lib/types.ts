@@ -92,6 +92,7 @@ export interface Producto {
   objetivo_ventana: number;
   tiempo_objetivo_min: number;
   destacado: boolean;
+  agotado?: boolean;            // "86": sin stock, se oculta de la venta sin borrar el producto
   activo: boolean;
 }
 

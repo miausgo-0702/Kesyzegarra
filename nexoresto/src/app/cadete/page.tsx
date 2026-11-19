@@ -79,7 +79,7 @@ function ViajeActivo({ envio }: { envio: Envio }) {
     watch.current = null;
     await dispatch({ type: "entregarEnvio", envio_id: envio.id });
     setGps("off");
-    toast("¡Entregado! Buen trabajo 🙌");
+    toast("Entregado. Buen trabajo");
   }
 
   return (

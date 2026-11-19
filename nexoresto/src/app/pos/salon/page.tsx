@@ -5,7 +5,7 @@
 //  y comanda táctil al tocar una mesa.
 // =============================================================================
 import { useMemo, useState } from "react";
-import { BellRing, Check, Clock3, Users } from "lucide-react";
+import { ArrowRightLeft, BellRing, Check, Clock3, Users } from "lucide-react";
 import { Shell } from "@/components/ui/Shell";
 import { Badge, Btn, Kpi, Modal, Segmented, toast } from "@/components/ui/kit";
 import { ComandaEditor } from "@/components/pos/ComandaEditor";
@@ -133,11 +133,41 @@ function MapaSalon() {
       <Modal open={!!abierta} onClose={() => setAbierta(null)} wide
         title={abierta && <span className="flex items-center gap-3">Mesa {String(abierta.numero).padStart(2, "0")} · {abierta.capacidad} pax <Badge tono="mute">{ESTILO_MESA[estadoVisual(s, s.mesas.find((x) => x.id === abierta.id) ?? abierta, now)].label}</Badge></span>}>
         {abierta && (
-          <div className="h-[70dvh]">
-            <ComandaEditor mesa={s.mesas.find((x) => x.id === abierta.id) ?? abierta} />
+          <div className="flex h-[72dvh] flex-col gap-3">
+            <MoverMesa mesaId={abierta.id} onMovida={(n) => { setAbierta(null); toast(n); }} />
+            <div className="min-h-0 flex-1"><ComandaEditor mesa={s.mesas.find((x) => x.id === abierta.id) ?? abierta} /></div>
           </div>
         )}
       </Modal>
+    </div>
+  );
+}
+
+/** Mover los pedidos a otra mesa (si la destino está ocupada, se unen las cuentas). */
+function MoverMesa({ mesaId, onMovida }: { mesaId: string; onMovida: (msg: string) => void }) {
+  const s = useNexo();
+  const dispatch = useDispatch();
+  const sesion = useSesion();
+  const [destino, setDestino] = useState("");
+  const tieneAbiertos = s.pedidos.some((p) => p.mesa_id === mesaId && p.estado !== "cerrado" && p.estado !== "anulado");
+  if (!tieneAbiertos) return null;
+  const origen = s.mesas.find((m) => m.id === mesaId)!;
+  const d = s.mesas.find((m) => m.id === destino);
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-bg/60 px-3 py-2 text-sm">
+      <ArrowRightLeft size={16} className="text-mute" />
+      <span className="text-mute">Mover o unir con</span>
+      <select id="mover-mesa" value={destino} onChange={(e) => setDestino(e.target.value)} className="h-9 rounded-lg border border-line bg-bg px-2 text-sm">
+        <option value="">elegí mesa…</option>
+        {s.mesas.filter((m) => m.id !== mesaId).map((m) => (
+          <option key={m.id} value={m.id}>Mesa {m.numero} · {m.estado === "libre" ? "libre" : m.estado === "reservada" ? "reservada" : "ocupada (unir)"}</option>
+        ))}
+      </select>
+      <Btn size="sm" variant={d && d.estado !== "libre" && d.estado !== "reservada" ? "warn" : "primary"} disabled={!destino} onClick={async () => {
+        const e = await dispatch({ type: "moverMesa", origen_id: mesaId, destino_id: destino, usuario: sesion?.nombre });
+        if (e) return toast(e, "down");
+        onMovida(d && d.estado !== "libre" && d.estado !== "reservada" ? `Mesa ${origen.numero} unida a la mesa ${d.numero}` : `Pedidos movidos a la mesa ${d?.numero}`);
+      }}>{d && d.estado !== "libre" && d.estado !== "reservada" ? "Unir cuentas" : "Mover"}</Btn>
     </div>
   );
 }
