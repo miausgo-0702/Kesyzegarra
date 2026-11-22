@@ -63,9 +63,9 @@ body{display:grid;place-items:center;overflow:hidden}
 <div id="stage">
   <div id="type"></div>
   <svg width="0" height="0" style="position:absolute"><filter id="liquid" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence id="turb" type="fractalNoise" baseFrequency="0.006 0.012" numOctaves="1" seed="4"/><feDisplacementMap id="disp" in="SourceGraphic" scale="30" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
-  <div class="line" id="l1"></div>
   <div class="line" id="l2"></div>
   <div class="layer" id="tragos"></div>
+  <div class="line" id="l1"></div>
   <div id="logo">
     <div id="aura" class="neon">AURA</div>
     <div id="barrow" class="neon"><i></i><div id="bar" class="neon">BAR</div><i></i></div>
@@ -139,7 +139,7 @@ window.render = function (t) {
   setState(tag, stateAt(TAG_FX, t));
   const pulse = 0.82 + 0.18 * Math.sin(p * TAU * 4);
   lines.forEach(l => l.style.opacity = pulse);
-  tragos.style.transform = `translateY(${6 * Math.sin(p * TAU * 2)}px)`;
+  tragos.style.transform = `translateY(${4 * Math.sin(p * TAU * 2)}px)`;
 };
 
 function scaleStage() {
