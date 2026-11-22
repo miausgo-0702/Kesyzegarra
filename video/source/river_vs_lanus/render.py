@@ -5,7 +5,7 @@ FPS = 30
 OUT = sys.argv[1]
 DUR = float(sys.argv[2]) if len(sys.argv) > 2 else 12.0
 OW, OH = 1080, 1920
-bg = D['bg']; Hs, Ws = bg.shape[:2]
+bg = D['bg'] * (np.array([244, 214, 228], np.float32) / 245.0); Hs, Ws = bg.shape[:2]
 rng = np.random.default_rng(3)
 
 def clamp(x, a=0., b=1.): return max(a, min(b, x))
