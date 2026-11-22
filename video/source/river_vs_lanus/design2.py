@@ -188,7 +188,7 @@ T_PLATE = rot_text('PLATE', BLKI, 150, WHITE, 730, 775)
 T_LANUS = rot_text('LANÚS', BLKI, 150, WHITE, 345, 1320)
 S_RIVER, S_PLATE, S_LANUS = shadowed(T_RIVER), shadowed(T_PLATE), shadowed(T_LANUS)
 # VS: big gradient letters with outline
-vF, vA, vM = text_layer('VS', BLKI, 300, WHITE, stroke=10, stroke_fill=WHITE, pad=40, outline_only='both')
+vF, vA, vM = text_layer('X', BLKI, 380, WHITE, stroke=10, stroke_fill=WHITE, pad=40, outline_only='both')
 g = np.linspace(0, 1, vA.shape[0])[:, None, None]
 fillF = np.array(RED, np.float32) * (1 - g) + np.array(DMAR, np.float32) * g
 VS_F = (fillF * vM[..., None] + 255.0 * (1 - vM[..., None])).astype(np.float32)
