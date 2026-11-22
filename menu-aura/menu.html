@@ -63,7 +63,7 @@
     font-family:"Archivo Black",sans-serif;font-size:36px;line-height:1.05;color:var(--v);
     border-bottom:4px solid var(--v);padding-bottom:10px;margin-bottom:16px;
   }
-  section h3 small{font-family:Inter,sans-serif;font-weight:700;font-size:17px;letter-spacing:0;margin-left:6px}
+  section h3 small{display:block;font-family:Inter,sans-serif;font-weight:700;font-size:17px;letter-spacing:0;margin-top:6px}
   .item{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:9px 0}
   .item b{font-weight:800;font-size:19px;text-transform:uppercase;letter-spacing:.2px}
   .item .p{font-weight:800;font-size:19px;white-space:nowrap}
@@ -74,7 +74,7 @@
   /* ---------- LICUADOS ---------- */
   .lic h3{display:flex;justify-content:space-between;align-items:flex-end}
   .price-badge{
-    font-family:"Archivo Black",sans-serif;font-size:26px;color:#fff;background:var(--v);
+    font-family:"Archivo Black",sans-serif;font-size:22px;color:#fff;background:var(--v);
     padding:6px 18px;border-radius:12px;box-shadow:0 0 0 3px var(--paper),0 0 0 6px var(--v);
   }
   .lgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:0 36px}
@@ -110,7 +110,7 @@
       <section>
         <h3>Panificados</h3>
         <div class="item"><b>Medialunas</b><span class="p">$2.000</span></div>
-        <div class="item"><b>Medialunas J&amp;Q</b><span class="p">$4.000</span></div>
+        <div class="item"><b>Medialunas J&amp;Q<span class="d">(Jamón y Queso)</span></b><span class="p">$4.000</span></div>
         <div class="item"><b>Tortillitas</b><span class="p">$1.500</span></div>
       </section>
 
@@ -124,15 +124,15 @@
     <div>
       <section class="lined">
         <h3>Desayunos &amp; Meriendas</h3>
-        <div class="item"><b>Clásico<span class="d">(Infusión, soda, 2 panificados)</span></b><span class="p">$6.000</span></div>
-        <div class="item"><b>Light<span class="d">(Infusión, soda, 2 tostadas, queso crema, mermelada y jugo de naranja)</span></b><span class="p">$8.000</span></div>
-        <div class="item"><b>Avocado<span class="d">(Infusión, soda, toston, palta, huevo, cherry y jugo de naranja)</span></b><span class="p">$10.000</span></div>
-        <div class="item"><b>Proteico<span class="d">(Infusión, soda, toston, huevo, jamón y queso y jugo de naranja)</span></b><span class="p">$10.000</span></div>
-        <div class="item"><b>Licuado más tostado J&amp;Q<span class="d">(Licuado, soda, tostado J&amp;Q (miga o pan árabe)</span></b><span class="p">$10.000</span></div>
+        <div class="item"><b>Clásico<span class="d">Infusión, soda y 2 panificados.</span></b><span class="p">$6.000</span></div>
+        <div class="item"><b>Light<span class="d">Infusión, soda, 2 tostadas, queso crema, mermelada y jugo de naranja.</span></b><span class="p">$8.000</span></div>
+        <div class="item"><b>Avocado<span class="d">Infusión, soda, toston, palta, huevo, cherry y jugo de naranja.</span></b><span class="p">$10.000</span></div>
+        <div class="item"><b>Proteico<span class="d">Infusión, soda, toston, huevo, jamón y queso, y jugo de naranja.</span></b><span class="p">$10.000</span></div>
+        <div class="item"><b>Licuado más tostado J&amp;Q<span class="d">Licuado, soda y tostado J&amp;Q (a elegir entre pan de miga o pan árabe).</span></b><span class="p">$10.000</span></div>
       </section>
 
       <section>
-        <h3>Tostados <small>(Miga o árabe)</small></h3>
+        <h3>Tostados <small>(Opciones de pan: Miga o árabe)</small></h3>
         <div class="item"><b>Jamón y queso</b><span class="p">$7.000</span></div>
         <div class="item"><b>Rúcula, crudo y queso</b><span class="p">$9.000</span></div>
       </section>
@@ -140,13 +140,13 @@
   </div>
 
   <section class="lic">
-    <h3>Licuados <span class="price-badge">$5.000 c/u</span></h3>
+    <h3>Licuados <span class="price-badge">Precio general: $5.000 c/u</span></h3>
     <div class="lgrid">
-      <div class="item"><b>Antioxidante<span class="d">Arándano, frutilla y banana</span></b></div>
-      <div class="item"><b>Energético<span class="d">Durazno, ananá y frutilla</span></b></div>
-      <div class="item"><b>Refrescante<span class="d">Melón, ananá y durazno</span></b></div>
-      <div class="item"><b>Tuttifresh<span class="d">Durazno, pera, ananá y banana</span></b></div>
-      <div class="item"><b>Frutilla<span class="d">Frutilla</span></b></div>
+      <div class="item"><b>Antioxidante<span class="d">Arándano, frutilla y banana.</span></b></div>
+      <div class="item"><b>Energético<span class="d">Durazno, ananá y frutilla.</span></b></div>
+      <div class="item"><b>Refrescante<span class="d">Melón, ananá y durazno.</span></b></div>
+      <div class="item"><b>Tuttifresh<span class="d">Durazno, pera, ananá y banana.</span></b></div>
+      <div class="item"><b>Frutilla<span class="d">Frutilla.</span></b></div>
     </div>
   </section>
 </div>
