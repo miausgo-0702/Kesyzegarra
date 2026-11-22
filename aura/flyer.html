@@ -41,15 +41,20 @@ body{display:grid;place-items:center;overflow:hidden}
 #l1{top:282px}#l2{top:1650px}
 
 /* ---------- Wavy COCKTAILS ---------- */
-#type{position:absolute;left:51px;right:51px;top:306px;height:1334px}
+#type{position:absolute;left:51px;right:51px;top:306px;height:1334px;filter:url(#liquid)}
 .row{position:absolute;left:0;right:0;height:340px;display:flex;justify-content:space-between;align-items:center}
 .row span{display:block;font-family:Anton,Impact,sans-serif;font-size:300px;line-height:1;
-  position:relative;text-align:center;flex:none;
-  color:var(--violet);-webkit-text-stroke:3px #6a1ab0;
+  position:relative;text-align:center;flex:none;color:transparent;
   will-change:transform;transform-origin:50% 50%}
-.row span::before{content:attr(data-c);position:absolute;inset:0;z-index:-1;
-  -webkit-text-stroke:16px #f8c2ff;color:#f8c2ff;
-  filter:drop-shadow(0 0 10px #c060ff) drop-shadow(0 0 22px rgba(178,60,255,.55))}
+.row span i,.row span b{position:absolute;inset:0;font-style:normal;font-weight:400}
+/* concentric 70s rings, outermost first */
+.row span .r3{-webkit-text-stroke:54px #ff7fe0;color:#ff7fe0;filter:drop-shadow(0 0 16px #c34dff)}
+.row span .r2{-webkit-text-stroke:38px #6c12c4;color:#6c12c4}
+.row span .r1{-webkit-text-stroke:20px #ffe0ff;color:#ffe0ff}
+/* liquid striped fill */
+.row span b{color:transparent;-webkit-text-stroke:3px #4b0a8f;
+  background:repeating-linear-gradient(180deg,#7414d6 0 34px,#b12cff 34px 62px,#ff3fc8 62px 86px,#ff9a3c 86px 100px,#ff3fc8 100px 124px,#b12cff 124px 152px);
+  background-size:100% 152px;-webkit-background-clip:text;background-clip:text}
 #tragos{background:url(tragos.png) center/1080px 1920px no-repeat;
   filter:drop-shadow(0 30px 40px rgba(60,10,90,.35))}
 </style>
@@ -57,6 +62,7 @@ body{display:grid;place-items:center;overflow:hidden}
 <body>
 <div id="stage">
   <div id="type"></div>
+  <svg width="0" height="0" style="position:absolute"><filter id="liquid" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence id="turb" type="fractalNoise" baseFrequency="0.006 0.012" numOctaves="1" seed="4"/><feDisplacementMap id="disp" in="SourceGraphic" scale="30" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
   <div class="line" id="l1"></div>
   <div class="line" id="l2"></div>
   <div class="layer" id="tragos"></div>
@@ -77,9 +83,10 @@ for (let r = 0; r < ROWS; r++) {
   row.style.top = (r * 330 - 4) + 'px';
   [...WORD].forEach((ch, i) => {
     const s = document.createElement('span');
-    s.textContent = ch; s.dataset.c = ch;
+    s.innerHTML = `<i class=r3>${ch}</i><i class=r2>${ch}</i><i class=r1>${ch}</i><b>${ch}</b><span style="visibility:hidden;display:inline">${ch}</span>`;
+    s.dataset.c = ch;
     row.appendChild(s);
-    letters.push({ el: s, r, i });
+    letters.push({ el: s, r, i, b: s.querySelector('b') });
   });
   type.appendChild(row);
 }
@@ -104,7 +111,7 @@ const setState = (el, s) => { el.classList.toggle('off', s === 'off'); el.classL
 
 const aura = document.getElementById('aura'), bar = document.getElementById('bar'),
       barrow = document.getElementById('barrow'), tag = document.getElementById('tag'),
-      lines = [...document.querySelectorAll('.line')], tragos = document.getElementById('tragos');
+      lines = [...document.querySelectorAll('.line')], turb = document.getElementById('turb'), disp = document.getElementById('disp'), tragos = document.getElementById('tragos');
 
 window.render = function (t) {
   t = ((t % LOOP) + LOOP) % LOOP;
@@ -115,11 +122,17 @@ window.render = function (t) {
     const sx = +rows[L.r].dataset.sx || 1;
     const dir = L.r % 2 ? -1 : 1;
     const ph = L.i * 0.62 + L.r * 1.3 - dir * p * TAU * 2;
-    const sy = 1.04 + 0.22 * Math.sin(ph);
-    const y = 18 * Math.cos(ph);
-    const sk = 6 * Math.cos(ph + L.r);
-    L.el.style.transform = `translateY(${y}px) scale(${sx * (1 - 0.06 * Math.sin(ph))}, ${sy * 1.04}) skewX(${sk}deg)`;
+    const sy = 1.05 + 0.3 * Math.sin(ph);
+    const y = 26 * Math.cos(ph);
+    const sk = 10 * Math.cos(ph + L.r);
+    const rot = 4 * Math.sin(ph * 0.5 + L.r) * Math.cos(p * TAU);
+    L.el.style.transform = `translateY(${y}px) rotate(${rot}deg) scale(${sx * (1 - 0.08 * Math.sin(ph))}, ${sy}) skewX(${sk}deg)`;
+    // stripes flow through the letters, opposite per row
+    L.b.style.backgroundPosition = `0 ${dir * p * 152 * 6 + L.i * 17}px`;
   }
+  rows.forEach((row, r) => row.style.filter = `hue-rotate(${30 * Math.sin(p * TAU + r * 1.6)}deg) saturate(1.15)`);
+  turb.setAttribute('baseFrequency', `${0.006 + 0.002 * Math.sin(p * TAU)} ${0.012 + 0.004 * Math.cos(p * TAU)}`);
+  disp.setAttribute('scale', 34 + 16 * Math.sin(p * TAU * 2));
   setState(aura, stateAt(AURA_FX, t));
   const b = stateAt(BAR_FX, t);
   setState(bar, b); setState(barrow, b);
