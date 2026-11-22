@@ -122,13 +122,16 @@ def ease(x):
     return 0.5 - 0.5 * math.cos(math.pi * x)
 
 FOC = 950.0      # stronger perspective
-THICK = 46       # extrusion depth (px)
-SLICES = 26
+THICK = 115      # extrusion depth (px)
+SLICES = 58
 
 # per-group helpers: smoothed colour for the extrusion walls, local coords
 for g in groups:
     h, w = g['a'].shape
-    g['wall'] = cv2.GaussianBlur(g['rgb'], (0, 0), 6)
+    wl = cv2.GaussianBlur(g['rgb'], (0, 0), 4)
+    hsv = cv2.cvtColor(wl, cv2.COLOR_BGR2HSV)
+    hsv[..., 1] = np.clip(hsv[..., 1] * 2.2 + 0.25, 0, 1)   # saturated chrome walls
+    g['wall'] = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
     g['uu'], g['vv'] = np.meshgrid(np.arange(w, dtype=np.float32), np.arange(h, dtype=np.float32))
     # inner edge (bevel rim) to brighten the front face outline
     a8 = (g['a'] * 255).astype(np.uint8)
@@ -190,7 +193,10 @@ def draw_group(canvas, g, theta, dx, dy, tilt, hue, t):
     for i in range(SLICES - 1, 0, -1):
         layers.append((THICK * i / SLICES, 'wall'))
     layers.append((0.0, 'front'))
-    layers.sort(key=lambda L: -L[0] * c * math.cos(tilt))  # far -> near
+    wcache = {}
+    step = THICK / SLICES
+    i_edge = lambda z: (z % (THICK / 4)) < step * 0.99   # thin bright ridge lines along the depth
+    out = []
     for z0, kind in layers:
         if kind == 'front':
             img = face
@@ -199,9 +205,15 @@ def draw_group(canvas, g, theta, dx, dy, tilt, hue, t):
         else:
             d = z0 / THICK
             # walls: chrome gradient, darker deeper in, lit by side light
-            lit = 0.55 + 0.35 * abs(sn) - 0.35 * d
-            img = wall * lit + np.float32([0.18, 0.10, 0.16]) * (1 - d) * 0.6
-        warp_into(canvas, g, img, g['a'], theta, z0, dx, dy, tilt)
+            lit = 0.70 + 0.35 * abs(sn) - 0.55 * d
+            q = int(d * 7)
+            if q not in wcache:
+                wcache[q] = hue_shift(g['wall'], hue + q * 14)
+            img = wcache[q] * lit
+            if i_edge(z0):
+                img = img * 1.25 + 0.12
+        out.append((-z0 * c * math.cos(tilt), img, z0))
+    return out
 
 # ---------- timeline ----------
 SPIN = 5.0          # seconds per full turn (slow)
@@ -233,11 +245,16 @@ def frame(i):
     # contact shadow (projected onto the background)
     sh = np.ones_like(canvas)
     for g, th, dx, dy, tilt, hue in params:
-        warp_into(sh, g, None, g['a'], th, THICK, dx + 16, dy + 26, tilt, mode='shadow', strength=0.75)
+        warp_into(sh, g, None, g['a'], th, THICK, dx + 24, dy + 40, tilt, mode='shadow', strength=0.8)
     sh = cv2.GaussianBlur(sh, (0, 0), 14)
     canvas = canvas * sh
+    allL = []
     for g, th, dx, dy, tilt, hue in params:
-        draw_group(canvas, g, th, dx, dy, tilt, hue, t)
+        for key, img, z0 in draw_group(canvas, g, th, dx, dy, tilt, hue, t):
+            allL.append((key, z0 == 0.0, img, g, th, z0, dx, dy, tilt))
+    allL.sort(key=lambda L: (L[0], L[1]))  # far -> near, fronts last on ties
+    for key, _, img, g, th, z0, dx, dy, tilt in allL:
+        warp_into(canvas, g, img, g['a'], th, z0, dx, dy, tilt)
     canvas = canvas * (1 - logo_a) + im * logo_a
     canvas = canvas + rng.normal(0, 0.018, (H, W, 1)).astype(np.float32)
     return (np.clip(canvas, 0, 1) * 255).astype(np.uint8)
