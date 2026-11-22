@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aura Bar Cocktails</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Montserrat:wght@600;700;800&display=swap">
+<style>
+:root{
+  --cream:#f7e2ca; --violet:#8f2fd6; --violet-deep:#5a1596; --tube:#f8c4ff; --glow:#b23cff;
+}
+html,body{margin:0;height:100%;background:#120a18}
+body{display:grid;place-items:center;overflow:hidden}
+/* 1080x1920 stage, scaled to fit the window (render mode keeps 1:1) */
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden;background:var(--cream) url(fondo.jpg) center/cover;transform-origin:center;flex:none}
+.layer{position:absolute;inset:0}
+
+/* ---------- Logo neon ---------- */
+#logo{position:absolute;left:0;right:0;top:34px;text-align:center;font-family:Montserrat,sans-serif;color:var(--violet)}
+.neon{transition:none}
+#aura{font-weight:800;font-size:122px;line-height:1;letter-spacing:2px;
+  color:#9a3be0;-webkit-text-stroke:7px var(--tube);paint-order:stroke fill;
+  filter:drop-shadow(0 0 6px #d27bff) drop-shadow(0 0 22px var(--glow)) drop-shadow(0 0 48px rgba(178,60,255,.6))}
+#barrow{display:flex;align-items:center;justify-content:center;gap:22px;margin-top:4px}
+#barrow i{display:block;width:130px;height:3px;background:#fff;border-radius:2px;box-shadow:0 0 6px #e3a6ff,0 0 14px var(--glow)}
+#bar{font-weight:700;font-size:44px;letter-spacing:8px;line-height:1;color:#fff;
+  text-shadow:0 0 6px #fff,0 0 16px #d48bff,0 0 30px var(--glow),0 0 50px var(--glow)}
+#tag{margin-top:10px;font-weight:700;font-size:21px;letter-spacing:.5px;color:#fff;
+  text-shadow:0 0 4px #fff,0 0 12px #c46dff,0 0 24px var(--glow)}
+/* neon tube switched off */
+.off#aura{color:#c9a5d6;-webkit-text-stroke-color:#e8d3ea;filter:drop-shadow(0 2px 2px rgba(90,21,150,.25))}
+.off#bar,.off#tag{color:#d9c3dd;text-shadow:0 1px 1px rgba(90,21,150,.25)}
+.off#barrow i{background:#dcc6df;box-shadow:none}
+.dim#aura{filter:drop-shadow(0 0 4px #d27bff) drop-shadow(0 0 10px rgba(178,60,255,.5));color:#b57de0}
+
+/* ---------- Neon frame lines ---------- */
+.line{position:absolute;left:51px;right:51px;height:9px;border-radius:6px;background:#ffe4ff;
+  box-shadow:0 0 0 3px #a842f0,0 0 14px #b23cff,0 0 34px rgba(178,60,255,.7)}
+#l1{top:282px}#l2{top:1650px}
+
+/* ---------- Wavy COCKTAILS ---------- */
+#type{position:absolute;left:51px;right:51px;top:306px;height:1334px}
+.row{position:absolute;left:0;right:0;height:340px;display:flex;justify-content:space-between;align-items:center}
+.row span{display:block;font-family:Anton,Impact,sans-serif;font-size:300px;line-height:1;
+  position:relative;text-align:center;flex:none;
+  color:var(--violet);-webkit-text-stroke:3px #6a1ab0;
+  will-change:transform;transform-origin:50% 50%}
+.row span::before{content:attr(data-c);position:absolute;inset:0;z-index:-1;
+  -webkit-text-stroke:16px #f8c2ff;color:#f8c2ff;
+  filter:drop-shadow(0 0 10px #c060ff) drop-shadow(0 0 22px rgba(178,60,255,.55))}
+#tragos{background:url(tragos.png) center/1080px 1920px no-repeat;
+  filter:drop-shadow(0 30px 40px rgba(60,10,90,.35))}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="type"></div>
+  <div class="line" id="l1"></div>
+  <div class="line" id="l2"></div>
+  <div class="layer" id="tragos"></div>
+  <div id="logo">
+    <div id="aura" class="neon">AURA</div>
+    <div id="barrow" class="neon"><i></i><div id="bar" class="neon">BAR</div><i></i></div>
+    <div id="tag" class="neon">COMIDA, TRAGOS, AMIGOS Y BUENA VIBRA</div>
+  </div>
+</div>
+<script>
+const LOOP = 8;               // seconds, seamless loop
+const WORD = 'COCKTAILS', ROWS = 4;
+const type = document.getElementById('type');
+const letters = [];
+for (let r = 0; r < ROWS; r++) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.style.top = (r * 330 - 4) + 'px';
+  [...WORD].forEach((ch, i) => {
+    const s = document.createElement('span');
+    s.textContent = ch; s.dataset.c = ch;
+    row.appendChild(s);
+    letters.push({ el: s, r, i });
+  });
+  type.appendChild(row);
+}
+// squeeze letters so the 9 glyphs fill the row width (condensed look of the original)
+function fit() {
+  document.querySelectorAll('.row').forEach(row => {
+    const spans = [...row.children];
+    const total = spans.reduce((a, s) => a + s.offsetWidth, 0);
+    const sx = Math.min(1, (row.clientWidth - 24) / total);
+    row.dataset.sx = sx;
+    spans.forEach(s => s.style.width = (s.offsetWidth * sx) + 'px');
+  });
+}
+
+const TAU = Math.PI * 2;
+// neon flicker script: [start, end, state] within the 8s loop
+const AURA_FX = [[0.9,0.96,'off'],[1.02,1.07,'off'],[1.12,1.2,'dim'],[3.6,3.66,'off'],[5.3,5.36,'off'],[5.42,5.6,'dim'],[5.66,5.72,'off'],[7.1,7.16,'dim']];
+const BAR_FX  = [[2.2,2.28,'off'],[2.35,2.4,'off'],[6.2,6.27,'off'],[6.35,6.6,'off']];
+const TAG_FX  = [[4.4,4.47,'off'],[6.4,6.46,'off']];
+const stateAt = (fx, t) => (fx.find(([a, b]) => t >= a && t < b) || [])[2] || '';
+const setState = (el, s) => { el.classList.toggle('off', s === 'off'); el.classList.toggle('dim', s === 'dim'); };
+
+const aura = document.getElementById('aura'), bar = document.getElementById('bar'),
+      barrow = document.getElementById('barrow'), tag = document.getElementById('tag'),
+      lines = [...document.querySelectorAll('.line')], tragos = document.getElementById('tragos');
+
+window.render = function (t) {
+  t = ((t % LOOP) + LOOP) % LOOP;
+  const p = t / LOOP;
+  // travelling wave: letters stretch & squash, alternating rows run opposite ways
+  const rows = document.querySelectorAll('.row');
+  for (const L of letters) {
+    const sx = +rows[L.r].dataset.sx || 1;
+    const dir = L.r % 2 ? -1 : 1;
+    const ph = L.i * 0.62 + L.r * 1.3 - dir * p * TAU * 2;
+    const sy = 1.04 + 0.22 * Math.sin(ph);
+    const y = 18 * Math.cos(ph);
+    const sk = 6 * Math.cos(ph + L.r);
+    L.el.style.transform = `translateY(${y}px) scale(${sx * (1 - 0.06 * Math.sin(ph))}, ${sy * 1.04}) skewX(${sk}deg)`;
+  }
+  setState(aura, stateAt(AURA_FX, t));
+  const b = stateAt(BAR_FX, t);
+  setState(bar, b); setState(barrow, b);
+  setState(tag, stateAt(TAG_FX, t));
+  const pulse = 0.82 + 0.18 * Math.sin(p * TAU * 4);
+  lines.forEach(l => l.style.opacity = pulse);
+  tragos.style.transform = `translateY(${6 * Math.sin(p * TAU * 2)}px)`;
+};
+
+function scaleStage() {
+  const st = document.getElementById('stage');
+  if (window.__RENDER__) { st.style.transform = 'none'; return; }
+  const k = Math.min(innerWidth / 1080, innerHeight / 1920);
+  st.style.transform = `scale(${k})`;
+}
+addEventListener('resize', scaleStage);
+window.ready = document.fonts.ready.then(() => { fit(); scaleStage(); render(0); });
+if (!window.__RENDER__) {
+  const t0 = performance.now();
+  (function loop(now) { render((now - t0) / 1000); requestAnimationFrame(loop); })(t0);
+}
+</script>
+</body>
+</html>
