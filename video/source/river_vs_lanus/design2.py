@@ -188,7 +188,7 @@ T_PLATE = rot_text('PLATE', BLKI, 150, WHITE, 730, 775)
 T_LANUS = rot_text('LANÚS', BLKI, 150, WHITE, 345, 1320)
 S_RIVER, S_PLATE, S_LANUS = shadowed(T_RIVER), shadowed(T_PLATE), shadowed(T_LANUS)
 # VS: big gradient letters with outline
-vF, vA, vM = text_layer('X', BLKI, 380, WHITE, stroke=10, stroke_fill=WHITE, pad=40, outline_only='both')
+vF, vA, vM = text_layer('X', BLKI, 230, WHITE, stroke=10, stroke_fill=WHITE, pad=40, outline_only='both')
 g = np.linspace(0, 1, vA.shape[0])[:, None, None]
 fillF = np.array(RED, np.float32) * (1 - g) + np.array(DMAR, np.float32) * g
 VS_F = (fillF * vM[..., None] + 255.0 * (1 - vM[..., None])).astype(np.float32)
@@ -313,7 +313,7 @@ def frame(i):
         q = eo(tt / 0.22)
         pulse = 1 + 0.05 * max(0, math.cos((t - 3) * 2 * math.pi * 0.9)) ** 10 if t > 3 else 1
         sfl = 1.0 if tt > 0.3 else (1 if int(tt / 0.05) % 2 else 0)
-        SLASH.comp(cv, sc=(0.3 + 0.7 * eo(tt / 0.15)) * pulse, op=0.9 * sfl)
+        pass  # SLASH.comp(cv, sc=(0.3 + 0.7 * eo(tt / 0.15)) * pulse, op=0.9 * sfl)
         VS_SH.comp(cv, sc=(3.2 - 2.2 * q) * pulse, op=clamp(tt / 0.1) * q, ang=-6 * (1 - q))
         VS.comp(cv, sc=(3.2 - 2.2 * q) * pulse, op=clamp(tt / 0.1), ang=-6 * (1 - q))
         if tt < 0.45: shake = (1 - tt / 0.45) * (tt > 0.18)
