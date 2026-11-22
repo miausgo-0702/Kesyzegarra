@@ -1,8 +1,8 @@
 import cv2, numpy as np, subprocess, sys, math
 
-SRC = 'src.jpg'
+SRC = sys.argv[3] if len(sys.argv) > 3 else 'src.jpg'
 OUT = sys.argv[1] if len(sys.argv) > 1 else 'aura_night.mp4'
-FPS, DUR = 30, 8.0
+FPS, DUR = 30, 12.0
 N = int(FPS * DUR)
 
 im = cv2.imread(SRC).astype(np.float32) / 255.0
@@ -75,63 +75,6 @@ def hue_shift(rgb, deg):
     hsv[..., 0] = (hsv[..., 0] + deg) % 360
     return cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 
-def ease(x):
-    x = np.clip(x, 0, 1)
-    return 4 * x ** 3 if x < 0.5 else 1 - (-2 * x + 2) ** 3 / 2
-
-FOC = 1100.0
-THICK = 22
-SLICES = 9
-
-def project(g, theta, z0, dx, dy, tilt):
-    h, w = g['a'].shape
-    cx, cy = g['cx'], g['cy']
-    src = np.float32([[0, 0], [w, 0], [w, h], [0, h]])
-    dst = []
-    for (u, v) in src:
-        X = g['x0'] + u - cx
-        Y = g['y0'] + v - cy
-        # small tilt around x axis
-        Yt = Y * math.cos(tilt) - z0 * math.sin(tilt)
-        Zt = Y * math.sin(tilt) + z0 * math.cos(tilt)
-        xr = X * math.cos(theta) + Zt * math.sin(theta)
-        zr = -X * math.sin(theta) + Zt * math.cos(theta)
-        k = FOC / (FOC + zr)
-        dst.append([cx + dx + xr * k, cy + dy + Yt * k])
-    return cv2.getPerspectiveTransform(src, np.float32(dst))
-
-def draw_group(canvas, g, theta, dx, dy, tilt, hue):
-    rgb = hue_shift(g['rgb'], hue)
-    c, sn = math.cos(theta), math.sin(theta)
-    # extrusion slices (only visible when turned)
-    layers = []
-    if abs(sn) > 0.03:
-        for i in range(SLICES, 0, -1):
-            z0 = THICK * i / SLICES
-            layers.append(z0)
-    layers.append(0.0)
-    # far -> near : larger z0*cos is farther
-    layers.sort(key=lambda z: -z * c)
-    for z0 in layers:
-        Mx = project(g, theta, z0, dx, dy, tilt)
-        a = cv2.warpPerspective(g['a'], Mx, (W, H), flags=cv2.INTER_LINEAR)
-        if z0 == 0.0:
-            col = cv2.warpPerspective(rgb, Mx, (W, H), flags=cv2.INTER_LINEAR)
-            # back side slightly darker, specular flash near edge-on
-            shade = 0.78 + 0.22 * max(c, 0) if c < 0 else 1.0
-            flash = max(0.0, 1 - abs(c) * 3.0) * 0.35
-            col = col * shade + flash
-        else:
-            col = cv2.warpPerspective(rgb, Mx, (W, H), flags=cv2.INTER_LINEAR)
-            col = col * 0.55 + np.float32([0.25, 0.12, 0.22]) * 0.3  # chrome-ish side
-        a3 = a[..., None]
-        canvas[:] = canvas * (1 - a3) + col * a3
-
-# soft drop shadow helper not needed; glow instead
-def glow(layer_alpha, color_img):
-    gl = cv2.GaussianBlur(color_img * layer_alpha[..., None], (0, 0), 18)
-    return gl
-
 # ---------- background animation ----------
 yv, xv = np.mgrid[0:H, 0:W].astype(np.float32)
 stars = rng.random((260, 4)).astype(np.float32)  # x, y, speed, size
@@ -172,48 +115,135 @@ def background(t):
         cv2.circle(bg, (x, y), r, (br, br, br), -1, lineType=cv2.LINE_AA)
     return bg
 
-# ---------- timeline ----------
-# each group spins 360 twice per loop, staggered
-def spin_angle(t, delay):
-    tot = 0.0
-    for start in (0.6 + delay, 4.6 + delay):
-        tot += ease((t - start) / 1.6)
-    return 2 * math.pi * tot
 
-delays = [0.0, 0.25, 0.5]
+def ease(x):
+    # gentle sine ease-in-out (slow start, slow end)
+    x = min(max(x, 0.0), 1.0)
+    return 0.5 - 0.5 * math.cos(math.pi * x)
+
+FOC = 950.0      # stronger perspective
+THICK = 46       # extrusion depth (px)
+SLICES = 26
+
+# per-group helpers: smoothed colour for the extrusion walls, local coords
+for g in groups:
+    h, w = g['a'].shape
+    g['wall'] = cv2.GaussianBlur(g['rgb'], (0, 0), 6)
+    g['uu'], g['vv'] = np.meshgrid(np.arange(w, dtype=np.float32), np.arange(h, dtype=np.float32))
+    # inner edge (bevel rim) to brighten the front face outline
+    a8 = (g['a'] * 255).astype(np.uint8)
+    er = cv2.erode(a8, np.ones((5, 5), np.uint8)).astype(np.float32) / 255
+    g['rim'] = np.clip(g['a'] - er, 0, 1)
+
+def corners(g, theta, z0, dx, dy, tilt):
+    h, w = g['a'].shape
+    cx, cy = g['cx'], g['cy']
+    out = []
+    for (u, v) in ((0, 0), (w, 0), (w, h), (0, h)):
+        X = g['x0'] + u - cx
+        Y = g['y0'] + v - cy
+        Yt = Y * math.cos(tilt) - z0 * math.sin(tilt)
+        Zt = Y * math.sin(tilt) + z0 * math.cos(tilt)
+        xr = X * math.cos(theta) + Zt * math.sin(theta)
+        zr = -X * math.sin(theta) + Zt * math.cos(theta)
+        k = FOC / (FOC + zr)
+        out.append([cx + dx + xr * k, cy + dy + Yt * k])
+    return np.float32(out)
+
+def warp_into(canvas, g, img, a, theta, z0, dx, dy, tilt, mode='over', strength=1.0):
+    h, w = a.shape
+    dst = corners(g, theta, z0, dx, dy, tilt)
+    x0 = int(max(math.floor(dst[:, 0].min()) - 2, 0)); x1 = int(min(math.ceil(dst[:, 0].max()) + 2, W))
+    y0 = int(max(math.floor(dst[:, 1].min()) - 2, 0)); y1 = int(min(math.ceil(dst[:, 1].max()) + 2, H))
+    if x1 - x0 < 2 or y1 - y0 < 2:
+        return
+    src = np.float32([[0, 0], [w, 0], [w, h], [0, h]])
+    M = cv2.getPerspectiveTransform(src, dst - np.float32([x0, y0]))
+    sz = (x1 - x0, y1 - y0)
+    aw = cv2.warpPerspective(a, M, sz, flags=cv2.INTER_LINEAR)[..., None] * strength
+    roi = canvas[y0:y1, x0:x1]
+    if mode == 'shadow':
+        roi *= (1 - aw)
+        return
+    cw = cv2.warpPerspective(img, M, sz, flags=cv2.INTER_LINEAR)
+    roi[:] = roi * (1 - aw) + cw * aw
+
+def draw_group(canvas, g, theta, dx, dy, tilt, hue, t):
+    c, sn = math.cos(theta), math.sin(theta)
+    front = hue_shift(g['rgb'], hue)
+    wall = hue_shift(g['wall'], hue)
+    # light from upper-left: face brightness depends on its orientation
+    face_light = 0.80 + 0.20 * max(c, 0) + 0.12 * sn
+    # moving specular sweep across the front face
+    h, w = g['a'].shape
+    pos = (0.5 - 0.9 * sn) * (w + h)
+    band = np.exp(-(((g['uu'] + g['vv'] * 0.6) - pos * 0.8) / (w * 0.09)) ** 2)[..., None]
+    face = front * face_light + band * 0.35 + g['rim'][..., None] * 0.25
+    flash = max(0.0, 1 - abs(c) * 2.5) * 0.30
+    face = face + flash
+    if c < 0:
+        face = face * 0.82
+    # back cap
+    back = (front * 0.85 + band * 0.3 + g['rim'][..., None] * 0.25) * (0.80 + 0.20 * max(-c, 0) - 0.12 * sn)
+    # build layer list: (z, kind)
+    layers = [(THICK, 'back')]
+    for i in range(SLICES - 1, 0, -1):
+        layers.append((THICK * i / SLICES, 'wall'))
+    layers.append((0.0, 'front'))
+    layers.sort(key=lambda L: -L[0] * c * math.cos(tilt))  # far -> near
+    for z0, kind in layers:
+        if kind == 'front':
+            img = face
+        elif kind == 'back':
+            img = back
+        else:
+            d = z0 / THICK
+            # walls: chrome gradient, darker deeper in, lit by side light
+            lit = 0.55 + 0.35 * abs(sn) - 0.35 * d
+            img = wall * lit + np.float32([0.18, 0.10, 0.16]) * (1 - d) * 0.6
+        warp_into(canvas, g, img, g['a'], theta, z0, dx, dy, tilt)
+
+# ---------- timeline ----------
+SPIN = 5.0          # seconds per full turn (slow)
+delays = [0.0, 0.9, 1.8]
+
+def spin_angle(t, delay):
+    return 2 * math.pi * ease((t - 1.2 - delay) / SPIN)
 
 def frame(i):
     t = i / FPS
     ph = 2 * math.pi * t / DUR
     canvas = background(t)
-    # glow behind letters
-    glow_layer = np.zeros_like(canvas)
     params = []
     for k, g in enumerate(groups):
-        th = spin_angle(t, delays[k]) + 0.12 * math.sin(ph * 2 + k)
-        dy = 7 * math.sin(ph * 2 + k * 1.3)
-        dx = 4 * math.sin(ph + k)
-        tilt = 0.08 * math.sin(ph * 2 + k * 0.9)
-        hue = math.degrees(th) % 360 if math.degrees(th) % 360 > 1 else 0
-        hue = 180 * (1 - math.cos(th)) / 2 * (1 if math.sin(th) >= 0 else -1)
+        # slow turn + permanent gentle 3/4 sway so the depth is always visible
+        th = spin_angle(t, delays[k]) + 0.32 * math.sin(ph * 2 + k * 0.8)
+        dy = 6 * math.sin(ph * 2 + k * 1.3)
+        dx = 3 * math.sin(ph + k)
+        tilt = 0.16 + 0.07 * math.sin(ph * 2 + k * 0.9)   # look slightly from above
+        sp = spin_angle(t, delays[k])
+        hue = 60 * math.sin(sp / 2) ** 2 * (1 if math.sin(sp) >= 0 else -1) if sp > 0 else 0.0
         params.append((g, th, dx, dy, tilt, hue))
+    # glow
     gl = np.zeros_like(canvas)
     for g, th, dx, dy, tilt, hue in params:
-        Mx = project(g, th, 0, dx, dy, tilt)
-        a = cv2.warpPerspective(g['a'], Mx, (W, H))
-        col = cv2.warpPerspective(hue_shift(g['rgb'], hue), Mx, (W, H))
-        gl += col * a[..., None]
-    gl = cv2.GaussianBlur(gl, (0, 0), 22)
-    canvas = canvas + gl * (0.35 + 0.15 * math.sin(ph * 4))
+        warp_into(gl, g, hue_shift(g['rgb'], hue), g['a'], th, 0, dx, dy, tilt)
+    gl = cv2.GaussianBlur(gl, (0, 0), 24)
+    canvas = canvas + gl * (0.30 + 0.10 * math.sin(ph * 4))
+    # contact shadow (projected onto the background)
+    sh = np.ones_like(canvas)
     for g, th, dx, dy, tilt, hue in params:
-        draw_group(canvas, g, th, dx, dy, tilt, hue)
+        warp_into(sh, g, None, g['a'], th, THICK, dx + 16, dy + 26, tilt, mode='shadow', strength=0.75)
+    sh = cv2.GaussianBlur(sh, (0, 0), 14)
+    canvas = canvas * sh
+    for g, th, dx, dy, tilt, hue in params:
+        draw_group(canvas, g, th, dx, dy, tilt, hue, t)
     canvas = canvas * (1 - logo_a) + im * logo_a
-    # film grain
     canvas = canvas + rng.normal(0, 0.018, (H, W, 1)).astype(np.float32)
     return (np.clip(canvas, 0, 1) * 255).astype(np.uint8)
 
 if __name__ == '__main__':
-    only = sys.argv[2] if len(sys.argv) > 2 else None
+    only = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] != '-' else None
     if only:
         for i in map(int, only.split(',')):
             cv2.imwrite(f'f{i:03d}.png', frame(i))
@@ -221,7 +251,7 @@ if __name__ == '__main__':
     p = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'bgr24',
                           '-s', f'{W}x{H}', '-r', str(FPS), '-i', '-',
                           '-vf', 'scale=1080:1920:flags=lanczos',
-                          '-c:v', 'libx264', '-preset', 'slow', '-crf', '17', '-pix_fmt', 'yuv420p',
+                          '-c:v', 'libx264', '-preset', 'slow', '-crf', '21', '-pix_fmt', 'yuv420p',
                           '-movflags', '+faststart', OUT], stdin=subprocess.PIPE)
     for i in range(N):
         p.stdin.write(frame(i).tobytes())
