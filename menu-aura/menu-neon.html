@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aura Bar Neón</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;700;800&family=Poppins:wght@700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e0319; --card:rgba(40,12,72,.55); --line:#8f3dff;
+    --neon:#c77dff; --pink:#ff4fd8; --white:#fff; --soft:#d9c4f5;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07010d;font-family:Inter,system-ui,sans-serif;color:var(--white)}
+  .page{
+    width:1000px;margin:0 auto;padding:48px 44px 40px;position:relative;overflow:hidden;
+    background:
+      radial-gradient(600px 400px at 15% 8%,rgba(143,61,255,.35),transparent 70%),
+      radial-gradient(500px 420px at 92% 32%,rgba(255,79,216,.22),transparent 70%),
+      radial-gradient(700px 500px at 30% 78%,rgba(110,40,255,.28),transparent 70%),
+      radial-gradient(500px 400px at 95% 96%,rgba(255,79,216,.2),transparent 70%),
+      var(--bg);
+  }
+  /* rejilla sutil de fondo */
+  .page::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.07;
+    background-image:linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px);background-size:40px 40px}
+  .page>*{position:relative}
+
+  /* ---------- LOGO ---------- */
+  header{text-align:center;padding:6px 0 10px}
+  .aura{font-family:Poppins,sans-serif;font-weight:700;font-size:190px;line-height:.95;letter-spacing:6px;color:transparent;
+    -webkit-text-stroke:6px #f6e3ff;
+    text-shadow:0 0 6px #e3a8ff,0 0 16px #c77dff,0 0 34px #9a3dff,0 0 60px #7a1fff,0 0 100px #6a1fd1}
+  .bar{display:flex;align-items:center;justify-content:center;gap:22px;margin-top:4px}
+  .bar span{font-family:Poppins,sans-serif;font-weight:700;font-size:64px;letter-spacing:10px;color:#fff;
+    text-shadow:0 0 8px #e3a8ff,0 0 20px #b65cff,0 0 40px #8f3dff}
+  .bar i{width:170px;height:5px;border-radius:3px;background:#f0d4ff;box-shadow:0 0 10px #c77dff,0 0 22px #8f3dff}
+  .slogan{display:inline-block;margin-top:20px;font-weight:800;font-size:19px;letter-spacing:4px;padding:10px 24px;border-radius:999px;
+    background:linear-gradient(90deg,#8f3dff,#ff4fd8);box-shadow:0 0 24px rgba(255,79,216,.5)}
+
+  /* ---------- TARJETAS ---------- */
+  .card{background:var(--card);border:2px solid var(--line);border-radius:22px;padding:22px 24px 14px;
+    box-shadow:0 0 0 1px rgba(255,255,255,.04) inset,0 0 22px rgba(143,61,255,.45),0 0 2px #c77dff inset;
+    backdrop-filter:blur(2px)}
+  h3{display:flex;align-items:center;gap:12px;font-family:"Archivo Black",sans-serif;font-size:32px;letter-spacing:.5px;
+     color:#fff;text-shadow:0 0 10px #c77dff,0 0 22px #9a3dff;margin-bottom:10px}
+  h3 svg{width:38px;height:38px;flex:none;filter:drop-shadow(0 0 6px #ff4fd8)}
+  h3 small{font-family:Inter,sans-serif;font-size:14px;font-weight:700;color:var(--soft);text-shadow:none;letter-spacing:0;margin-left:auto}
+  .row{display:flex;align-items:baseline;gap:10px;padding:10px 0;font-size:19px;font-weight:700}
+  .row .dots{flex:1;border-bottom:2px dotted rgba(199,125,255,.55);transform:translateY(-5px)}
+  .price{font-family:"Archivo Black",sans-serif;font-size:19px;color:#fff;background:linear-gradient(90deg,#8f3dff,#ff4fd8);
+    padding:4px 12px;border-radius:10px;white-space:nowrap;box-shadow:0 0 12px rgba(255,79,216,.45)}
+  .row small{display:block;font-weight:500;font-size:14px;color:var(--soft)}
+
+  .inf .row{padding:19px 0}
+  .top{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:40px}
+  .stack{display:grid;gap:26px}
+
+  /* ---------- DESAYUNOS ---------- */
+  .breakfast{margin-top:26px}
+  .tiles{display:grid;grid-template-columns:repeat(6,1fr);gap:16px;margin:6px 0 10px}
+  .tile{grid-column:span 2;border-radius:16px;padding:18px 18px 16px;background:linear-gradient(160deg,rgba(143,61,255,.35),rgba(255,79,216,.12));
+    border:1.5px solid rgba(199,125,255,.6);display:flex;flex-direction:column;gap:8px}
+  .tile:nth-child(4),.tile:nth-child(5){grid-column:span 3}
+  .tile h4{font-family:"Archivo Black",sans-serif;font-size:23px;line-height:1.05;color:#fff}
+  .tile p{font-size:14.5px;line-height:1.4;color:var(--soft);flex:1}
+  .tile .price{align-self:flex-start;font-size:22px}
+
+  /* ---------- LICUADOS ---------- */
+  .shakes{margin-top:56px;position:relative}
+  .sticker{position:absolute;right:30px;top:-58px;transform:rotate(6deg);text-align:center;
+    background:#ff4fd8;color:#fff;border-radius:50%;width:132px;height:132px;display:flex;flex-direction:column;justify-content:center;
+    box-shadow:0 0 0 5px #0e0319,0 0 0 8px #ff4fd8,0 0 30px rgba(255,79,216,.7)}
+  .sticker b{font-family:"Archivo Black",sans-serif;font-size:27px;line-height:1}
+  .sticker span{font-weight:800;font-size:11px;letter-spacing:1px}
+  .sticker em{font-style:normal;font-family:"Archivo Black",sans-serif;font-size:20px}
+  .flavors{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:14px 0 10px}
+  .fl{border-radius:16px;padding:16px 14px;min-height:150px;color:#fff;display:flex;flex-direction:column;gap:8px;
+    box-shadow:0 8px 20px rgba(0,0,0,.35)}
+  .fl h4{font-family:"Archivo Black",sans-serif;font-size:19px;line-height:1.05}
+  .fl p{font-size:14px;font-weight:600;line-height:1.35;opacity:.95}
+  .f1{background:linear-gradient(160deg,#5b3df5,#d7266b)}
+  .f2{background:linear-gradient(160deg,#ff9a3d,#e8326a)}
+  .f3{background:linear-gradient(160deg,#18b7c9,#5b6cff)}
+  .f4{background:linear-gradient(160deg,#f2b91d,#ff5a7a)}
+  .f5{background:linear-gradient(160deg,#ff3d6e,#b0125a)}
+
+  footer{text-align:center;margin-top:34px;font-family:"Archivo Black",sans-serif;font-size:30px;letter-spacing:1px;
+    color:#fff;text-shadow:0 0 10px #ff4fd8,0 0 24px #c77dff}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="aura">AURA</div>
+    <div class="bar"><i></i><span>BAR</span><i></i></div>
+    <div class="slogan">COMIDA, TRAGOS, AMIGOS Y BUENA VIBRA</div>
+  </header>
+
+  <div class="top">
+    <section class="card inf">
+      <h3><svg viewBox="0 0 48 48" fill="none" stroke="#ff8ae6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 20h26v10a10 10 0 0 1-10 10h-6A10 10 0 0 1 8 30z"/><path d="M34 23h3a5 5 0 0 1 0 10h-4"/><path d="M16 6c-2 3 2 5 0 9M22 6c-2 3 2 5 0 9M28 6c-2 3 2 5 0 9"/></svg>INFUSIÓN</h3>
+      <div class="row">Café doble<span class="dots"></span><span class="price">$4.000</span></div>
+      <div class="row">Café mediano<span class="dots"></span><span class="price">$3.000</span></div>
+      <div class="row">Café chico<span class="dots"></span><span class="price">$2.000</span></div>
+      <div class="row">Chocolatada<span class="dots"></span><span class="price">$4.000</span></div>
+      <div class="row">Té / Matecocido<span class="dots"></span><span class="price">$2.500</span></div>
+    </section>
+
+    <div class="stack">
+      <section class="card">
+        <h3><svg viewBox="0 0 48 48" fill="none" stroke="#ff8ae6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 30c2-10 10-16 18-16s16 6 18 16c-4 2-8 3-18 3S10 32 6 30z"/><path d="M17 16l3 15M31 16l-3 15M24 14v19"/></svg>PANIFICADOS</h3>
+        <div class="row">Medialunas<span class="dots"></span><span class="price">$2.000</span></div>
+        <div class="row"><span>Medialunas J&amp;Q<small>Jamón y Queso</small></span><span class="dots"></span><span class="price">$4.000</span></div>
+        <div class="row">Tortillitas<span class="dots"></span><span class="price">$1.500</span></div>
+      </section>
+      <section class="card">
+        <h3><svg viewBox="0 0 48 48" fill="none" stroke="#ff8ae6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 38L40 10l2 6L12 42z"/><path d="M6 38l6 4"/><path d="M16 30l14-12"/></svg>TOSTADOS<small>Opciones de pan: Miga o árabe</small></h3>
+        <div class="row">Jamón y queso<span class="dots"></span><span class="price">$7.000</span></div>
+        <div class="row">Rúcula, crudo y queso<span class="dots"></span><span class="price">$9.000</span></div>
+      </section>
+    </div>
+  </div>
+
+  <section class="card breakfast">
+    <h3><svg viewBox="0 0 48 48" fill="none" stroke="#ff8ae6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="26" r="14"/><circle cx="24" cy="26" r="6"/><path d="M10 8v8M14 8v8M12 16v24M38 8c-4 2-4 10 0 12v20"/></svg>DESAYUNOS &amp; MERIENDAS</h3>
+    <div class="tiles">
+      <div class="tile"><h4>Clásico</h4><p>Infusión, soda y 2 panificados.</p><span class="price">$6.000</span></div>
+      <div class="tile"><h4>Light</h4><p>Infusión, soda, 2 tostadas, queso crema, mermelada y jugo de naranja.</p><span class="price">$8.000</span></div>
+      <div class="tile"><h4>Avocado</h4><p>Infusión, soda, toston, palta, huevo, cherry y jugo de naranja.</p><span class="price">$10.000</span></div>
+      <div class="tile"><h4>Proteico</h4><p>Infusión, soda, toston, huevo, jamón y queso, y jugo de naranja.</p><span class="price">$10.000</span></div>
+      <div class="tile"><h4>Licuado más tostado J&amp;Q</h4><p>Licuado, soda y tostado J&amp;Q (a elegir entre pan de miga o pan árabe).</p><span class="price">$10.000</span></div>
+    </div>
+  </section>
+
+  <section class="card shakes">
+    <div class="sticker"><span>PRECIO GENERAL</span><b>$5.000</b><em>c/u</em></div>
+    <h3><svg viewBox="0 0 48 48" fill="none" stroke="#ff8ae6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14h24l-3 28H15z"/><path d="M13 22h22"/><path d="M26 14l6-10h5"/></svg>LICUADOS</h3>
+    <div class="flavors">
+      <div class="fl f1"><h4>Antioxidante</h4><p>Arándano, frutilla y banana.</p></div>
+      <div class="fl f2"><h4>Energético</h4><p>Durazno, ananá y frutilla.</p></div>
+      <div class="fl f3"><h4>Refrescante</h4><p>Melón, ananá y durazno.</p></div>
+      <div class="fl f4"><h4>Tuttifresh</h4><p>Durazno, pera, ananá y banana.</p></div>
+      <div class="fl f5"><h4>Frutilla</h4><p>Frutilla.</p></div>
+    </div>
+  </section>
+
+  <footer>✦ AURA BAR ✦</footer>
+</div>
+</body>
+</html>
