@@ -26,25 +26,27 @@
   .aura { top:285px; }
   .aura img { width:600px; filter: drop-shadow(0 0 18px rgba(166,77,255,.55)); }
 
-  .bottles { position:absolute; left:50%; top:660px; width:0; height:0; }
-  .bottles img { position:absolute; transform-origin:50% 100%; filter: drop-shadow(0 18px 30px rgba(0,0,0,.8)); }
+  .scene { position:absolute; left:0; top:575px; width:1080px; height:640px; }
+  .scene svg { position:absolute; left:0; top:0; width:1080px; height:640px; overflow:visible; }
+  .bottles { position:absolute; left:540px; top:0; width:0; height:0; }
+  .bottles img { position:absolute; transform-origin:50% 100%; filter: drop-shadow(0 10px 20px rgba(0,0,0,.6)); }
 
-  .badge { position:absolute; right:28px; top:720px; transform:rotate(8deg); text-align:center; }
+  .badge { position:absolute; left:14px; top:575px; transform:rotate(-8deg); text-align:center; }
   .badge .n { font-family:'Archivo Black'; font-style:italic; font-size:104px; line-height:.9; color:var(--gold2);
     text-shadow: 4px 4px 0 #6b4a00, 0 0 30px rgba(245,197,24,.5); }
   .badge .t { font-family:'Archivo Black'; font-size:34px; line-height:1; letter-spacing:1px; color:#fff; transform:skewX(-10deg); }
   .badge .t2 { font-family:'Archivo Black'; font-size:28px; color:var(--gold2); transform:skewX(-10deg); }
 
-  .noche { top:1160px; font-family:'Archivo Black'; font-size:140px; line-height:.85; letter-spacing:-2px; color:#fff;
+  .noche { top:1218px; font-family:'Archivo Black'; font-size:128px; line-height:.85; letter-spacing:-2px; color:#fff;
     text-shadow: 0 6px 0 #000, 0 0 40px rgba(0,0,0,.9); }
-  .miller { top:1262px; font-family:'Yellowtail', cursive; font-size:225px; line-height:1; color:var(--gold);
+  .miller { top:1308px; font-family:'Yellowtail', cursive; font-size:190px; line-height:1; color:var(--gold);
     background: linear-gradient(180deg,#ffe27a 0%,#f5c518 45%,#d99a0b 100%); -webkit-background-clip:text; background-clip:text; color:transparent;
     filter: drop-shadow(0 6px 0 rgba(0,0,0,.85)) drop-shadow(0 0 30px rgba(245,197,24,.35)); }
 
-  .promo { top:1488px; }
+  .promo { top:1518px; }
   .promo .l1 { font-weight:800; font-size:38px; letter-spacing:1px; }
   .promo .l1 b { color:var(--gold2); }
-  .promo .price { font-family:'Archivo Black'; font-size:108px; line-height:1.05; color:var(--gold2);
+  .promo .price { font-family:'Archivo Black'; font-size:100px; line-height:1.05; color:var(--gold2);
     text-shadow: 5px 5px 0 #6b4a00, 0 0 40px rgba(245,197,24,.4); }
 
   .addr { top:1662px; }
@@ -52,7 +54,7 @@
   .addr .bar { margin-top:10px; font-family:Montserrat; font-weight:900; font-size:26px; letter-spacing:3px; padding:4px 40px; }
   .legal { top:1675px; font-weight:800; font-size:17px; line-height:1.35; letter-spacing:.5px; }
 
-  .logos { position:absolute; left:70px; right:70px; bottom:95px; height:110px; display:flex; align-items:center; justify-content:space-between; }
+  .logos { position:absolute; left:70px; right:70px; bottom:60px; height:110px; display:flex; align-items:center; justify-content:space-between; }
   .logos img { display:block; }
 </style>
 </head>
@@ -83,12 +85,66 @@
   <div class="center day">LUNES<br><span class="bar">PROMO MILLER</span></div>
   <div class="center aura"><img src="assets/aura.png" alt="Aura Bar"></div>
 
-  <div class="bottles">
-    <img src="assets/miller.png" style="height:420px;left:-250px;top:20px;transform:rotate(-20deg)">
-    <img src="assets/miller.png" style="height:420px;left:134px;top:20px;transform:rotate(20deg)">
-    <img src="assets/miller.png" style="height:460px;left:-180px;top:5px;transform:rotate(-10deg)">
-    <img src="assets/miller.png" style="height:460px;left:52px;top:5px;transform:rotate(10deg)">
-    <img src="assets/miller.png" style="height:510px;left:-70px;top:-10px">
+  <div class="scene">
+    <svg viewBox="0 0 1080 640">
+      <defs>
+        <radialGradient id="inside" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#6d6d6d"/><stop offset="1" stop-color="#2c2c2c"/></radialGradient>
+      </defs>
+      <ellipse cx="540" cy="625" rx="330" ry="22" fill="rgba(0,0,0,.7)" filter="blur(10px)"/>
+      <ellipse cx="540" cy="380" rx="370" ry="56" fill="url(#inside)"/>
+    </svg>
+    <div class="bottles">
+    <img src="assets/miller.png" style="height:380px;left:-267px;top:65px;transform:rotate(-22deg)">
+    <img src="assets/miller.png" style="height:380px;left:163px;top:65px;transform:rotate(22deg)">
+    <img src="assets/miller.png" style="height:415px;left:-169px;top:30px;transform:rotate(-11deg)">
+    <img src="assets/miller.png" style="height:415px;left:55px;top:30px;transform:rotate(11deg)">
+    <img src="assets/miller.png" style="height:450px;left:-62px;top:-5px;transform:rotate(0deg)">
+    </div>
+    <svg viewBox="0 0 1080 640">
+      <defs>
+        <linearGradient id="ice" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="rgba(255,255,255,.95)"/><stop offset=".5" stop-color="rgba(200,228,245,.7)"/><stop offset="1" stop-color="rgba(150,190,215,.8)"/></linearGradient>
+        <linearGradient id="body" x1="0" x2="1"><stop offset="0" stop-color="#8f8f8f"/><stop offset=".22" stop-color="#e2e2e2"/><stop offset=".45" stop-color="#f7f7f7"/><stop offset=".7" stop-color="#dedede"/><stop offset="1" stop-color="#7d7d7d"/></linearGradient>
+        <linearGradient id="bodyV" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(0,0,0,0)"/><stop offset=".75" stop-color="rgba(0,0,0,.12)"/><stop offset="1" stop-color="rgba(0,0,0,.4)"/></linearGradient>
+        <linearGradient id="strap" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cdb07c"/><stop offset="1" stop-color="#8e7346"/></linearGradient>
+        <clipPath id="rimclip"><path d="M150,380 A390,56 0 0 0 930,380 L930,250 L150,250 Z"/></clipPath>
+      </defs>
+      <g clip-path="url(#rimclip)">
+      <rect x="343" y="377" width="37" height="37" rx="9" transform="rotate(7 362 395)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      <rect x="609" y="364" width="32" height="32" rx="9" transform="rotate(24 625 380)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      <rect x="353" y="363" width="46" height="46" rx="9" transform="rotate(-2 376 385)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      <rect x="748" y="373" width="41" height="41" rx="9" transform="rotate(-24 769 393)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      <rect x="612" y="386" width="39" height="39" rx="9" transform="rotate(17 632 406)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      <rect x="635" y="359" width="43" height="43" rx="9" transform="rotate(6 657 380)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      <rect x="383" y="357" width="44" height="44" rx="9" transform="rotate(-2 405 379)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      <rect x="668" y="385" width="42" height="42" rx="9" transform="rotate(29 689 406)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      <rect x="449" y="385" width="38" height="38" rx="9" transform="rotate(30 469 404)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      <rect x="781" y="364" width="34" height="34" rx="9" transform="rotate(-20 798 381)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      <rect x="836" y="372" width="41" height="41" rx="9" transform="rotate(-14 857 392)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      <rect x="526" y="372" width="37" height="37" rx="9" transform="rotate(6 545 390)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      <rect x="577" y="386" width="42" height="42" rx="9" transform="rotate(30 597 407)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      <rect x="762" y="389" width="41" height="41" rx="9" transform="rotate(-24 782 410)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      <rect x="763" y="387" width="45" height="45" rx="9" transform="rotate(5 785 409)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      <rect x="664" y="363" width="44" height="44" rx="9" transform="rotate(5 685 385)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      <rect x="372" y="358" width="44" height="44" rx="9" transform="rotate(34 394 380)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      <rect x="241" y="385" width="38" height="38" rx="9" transform="rotate(-24 260 404)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      <rect x="378" y="380" width="44" height="44" rx="9" transform="rotate(-32 400 403)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      <rect x="597" y="358" width="42" height="42" rx="9" transform="rotate(-12 618 379)" fill="url(#ice)" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+      </g>
+      <!-- handles back part -->
+      <path d="M205,470 C110,470 70,360 150,322" fill="none" stroke="url(#strap)" stroke-width="24" stroke-linecap="round"/>
+      <path d="M875,470 C970,470 1010,360 930,322" fill="none" stroke="url(#strap)" stroke-width="24" stroke-linecap="round"/>
+      <!-- front body -->
+      <path d="M170,380 L285,598 A255,30 0 0 0 795,598 L910,380 A370,56 0 0 1 170,380 Z" fill="url(#body)"/>
+      <path d="M170,380 L285,598 A255,30 0 0 0 795,598 L910,380 A370,56 0 0 1 170,380 Z" fill="url(#bodyV)"/>
+      <!-- rim lip -->
+      <path d="M170,380 A370,56 0 0 0 910,380" fill="none" stroke="#fbfbfb" stroke-width="9"/>
+      <path d="M170,380 A370,56 0 0 1 910,380" fill="none" stroke="#cfcfcf" stroke-width="7"/>
+      <!-- handle fronts with rivets -->
+      <path d="M150,322 C180,310 205,330 212,350" fill="none" stroke="url(#strap)" stroke-width="24" stroke-linecap="round"/>
+      <path d="M930,322 C900,310 875,330 868,350" fill="none" stroke="url(#strap)" stroke-width="24" stroke-linecap="round"/>
+      <circle cx="214" cy="455" r="7" fill="#9a9a9a" stroke="#eee" stroke-width="2"/>
+      <circle cx="866" cy="455" r="7" fill="#9a9a9a" stroke="#eee" stroke-width="2"/>
+    </svg>
   </div>
 
   <div class="badge">
