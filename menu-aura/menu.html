@@ -4,102 +4,74 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Aura Bar Menú</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;700;800&family=Poppins:wght@700;800&family=Yellowtail&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;700;800&family=Poppins:wght@700&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --v:#6a1fd1;        /* violeta principal */
-    --v-dark:#3d0d85;
-    --v-neon:#b65cff;
-    --v-soft:#efe8fa;
-    --paper:#f6f3fb;
-    --ink:#3a1670;
-  }
+  :root{--v:#6a1fd1;--ink:#4a1a95;--paper:#ffffff}
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#d9d2e6;font-family:Inter,system-ui,sans-serif;color:var(--v)}
-  .page{
-    width:1000px;margin:0 auto;background:var(--paper);position:relative;
-    padding:46px 70px 56px;overflow:hidden;
-  }
-  /* bordes a cuadros como en el menú de referencia */
-  .checker{position:absolute;width:30px;
-    background-image:
-      linear-gradient(45deg,var(--v) 25%,transparent 25%,transparent 75%,var(--v) 75%),
-      linear-gradient(45deg,var(--v) 25%,transparent 25%,transparent 75%,var(--v) 75%);
-    background-size:30px 30px;background-position:0 0,15px 15px;}
-  .checker.l{left:0;top:0;height:46%}
-  .checker.r{right:0;bottom:0;height:56%}
+  body{background:#e6e0ef;font-family:Inter,system-ui,sans-serif;color:var(--v)}
+  .page{width:1000px;margin:0 auto;background:var(--paper);padding:44px 48px 40px}
 
-  /* ---------- LOGO NEÓN ---------- */
+  /* ---------- ENCABEZADO ---------- */
+  header{display:grid;grid-template-columns:1fr 290px;gap:28px;align-items:center}
+  .title{font-family:"Archivo Black",sans-serif;font-size:140px;line-height:.86;letter-spacing:-2px;color:var(--v)}
+  .cats{margin-top:20px;font-weight:800;font-size:12.6px;letter-spacing:.1px;white-space:nowrap}
   .logo{
-    background:radial-gradient(ellipse at 50% 40%,#2a0b55 0%,#120424 70%);
-    border-radius:22px;padding:30px 20px 40px;text-align:center;position:relative;
-    box-shadow:0 0 0 3px var(--v),0 0 30px rgba(182,92,255,.35);
+    background:radial-gradient(ellipse at 50% 40%,#2a0b55 0%,#120424 75%);
+    border-radius:20px;padding:26px 10px 24px;text-align:center;
+    box-shadow:0 0 0 3px var(--v),0 0 24px rgba(182,92,255,.35);
   }
-  .aura{
-    font-family:Poppins,sans-serif;font-weight:700;font-size:150px;line-height:1;
-    letter-spacing:4px;color:transparent;
-    -webkit-text-stroke:5px #f3d9ff;
-    text-shadow:0 0 6px #d58cff,0 0 14px #b65cff,0 0 28px #9a3dff,0 0 50px #7a1fff,0 0 80px #6a1fd1;
-  }
-  .bar{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:6px}
-  .bar span{font-family:Poppins,sans-serif;font-weight:700;font-size:52px;color:#fff;letter-spacing:6px;
-    text-shadow:0 0 8px #c77dff,0 0 18px #9a3dff}
-  .bar i{display:block;width:120px;height:4px;border-radius:2px;background:#e9c8ff;box-shadow:0 0 10px #b65cff}
-  .tag{margin-top:12px;color:#fff;font-weight:700;font-size:17px;letter-spacing:2.5px}
-  .script{
-    position:absolute;left:34px;bottom:-30px;font-family:Yellowtail,cursive;font-size:58px;color:var(--v);
-    transform:rotate(-6deg);background:var(--paper);padding:0 14px;border-radius:12px;
-  }
-  .sub{
-    display:flex;justify-content:flex-end;margin-top:46px;border-top:3px solid var(--v);padding-top:10px;
-  }
-  .sub h2{font-family:"Archivo Black",sans-serif;font-size:30px;letter-spacing:.5px;color:var(--v)}
+  .aura{font-family:Poppins,sans-serif;font-weight:700;font-size:84px;line-height:1;color:transparent;
+    -webkit-text-stroke:3px #f3d9ff;
+    text-shadow:0 0 5px #d58cff,0 0 12px #b65cff,0 0 24px #9a3dff,0 0 44px #7a1fff}
+  .bar{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:6px}
+  .bar span{font-family:Poppins,sans-serif;font-weight:700;font-size:30px;color:#fff;letter-spacing:4px;text-shadow:0 0 8px #c77dff,0 0 16px #9a3dff}
+  .bar i{width:60px;height:3px;border-radius:2px;background:#e9c8ff;box-shadow:0 0 8px #b65cff}
+  .slogan{margin-top:12px;color:#fff;font-weight:700;font-size:10.5px;letter-spacing:1.4px}
 
   /* ---------- SECCIONES ---------- */
-  .cols{display:grid;grid-template-columns:1fr 1fr;gap:56px;margin-top:40px}
-  section{margin-bottom:38px}
-  section h3{
-    font-family:"Archivo Black",sans-serif;font-size:36px;line-height:1.05;color:var(--v);
-    border-bottom:4px solid var(--v);padding-bottom:10px;margin-bottom:16px;
-  }
-  section h3 small{display:block;font-family:Inter,sans-serif;font-weight:700;font-size:17px;letter-spacing:0;margin-top:6px}
-  .item{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:9px 0}
-  .item b{font-weight:800;font-size:19px;text-transform:uppercase;letter-spacing:.2px}
-  .item .p{font-weight:800;font-size:19px;white-space:nowrap}
-  .item .d{display:block;font-weight:400;font-size:15.5px;color:var(--ink);margin-top:3px;line-height:1.35;text-transform:none;letter-spacing:0}
-  .lined .item{border-bottom:2px solid var(--v);padding:12px 0}
-  .lined .item:last-child{border-bottom:2px solid var(--v)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:0 44px;margin-top:34px}
+  section{margin-bottom:26px}
+  h3{font-family:"Archivo Black",sans-serif;font-size:31px;line-height:1;display:flex;justify-content:space-between;align-items:flex-end;
+     border-bottom:4px solid var(--v);padding-bottom:8px}
+  h3 small{font-family:Inter,sans-serif;font-weight:800;font-size:14px;letter-spacing:0}
+  .item{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:11px 0;border-bottom:1.5px solid var(--v)}
+  .item b{font-weight:800;font-size:16px;text-transform:uppercase}
+  .item .d{display:block;font-weight:400;font-size:13.5px;color:var(--ink);margin-top:3px;line-height:1.35;text-transform:none}
+  .item .p{font-weight:800;font-size:16px;white-space:nowrap}
 
-  /* ---------- LICUADOS ---------- */
-  .lic h3{display:flex;justify-content:space-between;align-items:flex-end}
-  .price-badge{
-    font-family:"Archivo Black",sans-serif;font-size:22px;color:#fff;background:var(--v);
-    padding:6px 18px;border-radius:12px;box-shadow:0 0 0 3px var(--paper),0 0 0 6px var(--v);
-  }
-  .lgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:0 36px}
-  .lgrid .item{display:block;border-bottom:2px solid var(--v);padding:12px 0}
+  /* recuadro relleno (como "ADD ONS") */
+  .box{background:var(--v);color:#fff;border-radius:12px;padding:16px 18px 10px}
+  .box h3{color:#fff;border-bottom:3px solid #fff}
+  .box .item{border-bottom:1.5px solid rgba(255,255,255,.55);padding:9px 0}
+  .box .item:last-child{border-bottom:0}
+  .box .item .d{color:#efe4ff}
+  .box .badge{display:inline-block;margin-top:10px;background:#fff;color:var(--v);font-family:"Archivo Black",sans-serif;font-size:17px;padding:5px 12px;border-radius:8px}
 
-  .icon{width:44px;height:44px;margin:4px 0 14px}
-  .foot{margin-top:6px;text-align:center;font-family:Yellowtail,cursive;font-size:34px;color:var(--v)}
+  /* ---------- FRANJA INFERIOR (como "OPEN DAILY") ---------- */
+  .band{display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:center;border-top:4px solid var(--v);border-bottom:4px solid var(--v);padding:18px 0;margin-top:6px}
+  .band .big{font-family:"Archivo Black",sans-serif;font-size:64px;line-height:.9;letter-spacing:-1px}
+  .band .mid{font-family:"Archivo Black",sans-serif;font-size:44px;line-height:.95;border-left:4px solid var(--v);padding-left:26px}
+  .foot{display:flex;justify-content:space-between;font-weight:700;font-size:13px;padding-top:12px}
 </style>
 </head>
 <body>
 <div class="page">
-  <div class="checker l"></div>
-  <div class="checker r"></div>
+  <header>
+    <div>
+      <div class="title">AURA<br>BAR</div>
+      <div class="cats">INFUSIÓN | PANIFICADOS | DESAYUNOS &amp; MERIENDAS | TOSTADOS | LICUADOS</div>
+    </div>
+    <div class="logo">
+      <div class="aura">AURA</div>
+      <div class="bar"><i></i><span>BAR</span><i></i></div>
+    </div>
+  </header>
 
-  <div class="logo">
-    <div class="aura">AURA</div>
-    <div class="bar"><i></i><span>BAR</span><i></i></div>
-    <div class="script">Menú</div>
-  </div>
-  <div class="sub"><h2>COMIDA, TRAGOS, AMIGOS Y BUENA VIBRA</h2></div>
-
-  <div class="cols">
+  <div class="grid">
+    <!-- Columna izquierda -->
     <div>
       <section>
-        <h3>Infusión</h3>
+        <h3>INFUSIÓN <small>$</small></h3>
         <div class="item"><b>Café doble</b><span class="p">$4.000</span></div>
         <div class="item"><b>Café mediano</b><span class="p">$3.000</span></div>
         <div class="item"><b>Café chico</b><span class="p">$2.000</span></div>
@@ -108,47 +80,46 @@
       </section>
 
       <section>
-        <h3>Panificados</h3>
-        <div class="item"><b>Medialunas</b><span class="p">$2.000</span></div>
-        <div class="item"><b>Medialunas J&amp;Q<span class="d">(Jamón y Queso)</span></b><span class="p">$4.000</span></div>
-        <div class="item"><b>Tortillitas</b><span class="p">$1.500</span></div>
-      </section>
-
-      <svg class="icon" viewBox="0 0 48 48" fill="none" stroke="#6a1fd1" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M8 20h26v10a10 10 0 0 1-10 10h-6A10 10 0 0 1 8 30z"/><path d="M34 23h3a5 5 0 0 1 0 10h-4"/>
-        <path d="M16 6c-2 3 2 5 0 9M22 6c-2 3 2 5 0 9M28 6c-2 3 2 5 0 9"/>
-      </svg>
-
-    </div>
-
-    <div>
-      <section class="lined">
-        <h3>Desayunos &amp; Meriendas</h3>
+        <h3>DESAYUNOS &amp; MERIENDAS</h3>
         <div class="item"><b>Clásico<span class="d">Infusión, soda y 2 panificados.</span></b><span class="p">$6.000</span></div>
         <div class="item"><b>Light<span class="d">Infusión, soda, 2 tostadas, queso crema, mermelada y jugo de naranja.</span></b><span class="p">$8.000</span></div>
         <div class="item"><b>Avocado<span class="d">Infusión, soda, toston, palta, huevo, cherry y jugo de naranja.</span></b><span class="p">$10.000</span></div>
         <div class="item"><b>Proteico<span class="d">Infusión, soda, toston, huevo, jamón y queso, y jugo de naranja.</span></b><span class="p">$10.000</span></div>
         <div class="item"><b>Licuado más tostado J&amp;Q<span class="d">Licuado, soda y tostado J&amp;Q (a elegir entre pan de miga o pan árabe).</span></b><span class="p">$10.000</span></div>
       </section>
+    </div>
+
+    <!-- Columna derecha -->
+    <div>
+      <section>
+        <h3>PANIFICADOS <small>$</small></h3>
+        <div class="item"><b>Medialunas</b><span class="p">$2.000</span></div>
+        <div class="item"><b>Medialunas J&amp;Q<span class="d">Jamón y Queso</span></b><span class="p">$4.000</span></div>
+        <div class="item"><b>Tortillitas</b><span class="p">$1.500</span></div>
+      </section>
 
       <section>
-        <h3>Tostados <small>(Opciones de pan: Miga o árabe)</small></h3>
+        <h3>TOSTADOS <small>Opciones de pan: Miga o árabe</small></h3>
         <div class="item"><b>Jamón y queso</b><span class="p">$7.000</span></div>
         <div class="item"><b>Rúcula, crudo y queso</b><span class="p">$9.000</span></div>
+      </section>
+
+      <section class="box">
+        <h3>LICUADOS:</h3>
+        <span class="badge">Precio general: $5.000 c/u</span>
+        <div class="item"><b>Antioxidante<span class="d">Arándano, frutilla y banana.</span></b></div>
+        <div class="item"><b>Energético<span class="d">Durazno, ananá y frutilla.</span></b></div>
+        <div class="item"><b>Refrescante<span class="d">Melón, ananá y durazno.</span></b></div>
+        <div class="item"><b>Tuttifresh<span class="d">Durazno, pera, ananá y banana.</span></b></div>
+        <div class="item"><b>Frutilla<span class="d">Frutilla.</span></b></div>
       </section>
     </div>
   </div>
 
-  <section class="lic">
-    <h3>Licuados <span class="price-badge">Precio general: $5.000 c/u</span></h3>
-    <div class="lgrid">
-      <div class="item"><b>Antioxidante<span class="d">Arándano, frutilla y banana.</span></b></div>
-      <div class="item"><b>Energético<span class="d">Durazno, ananá y frutilla.</span></b></div>
-      <div class="item"><b>Refrescante<span class="d">Melón, ananá y durazno.</span></b></div>
-      <div class="item"><b>Tuttifresh<span class="d">Durazno, pera, ananá y banana.</span></b></div>
-      <div class="item"><b>Frutilla<span class="d">Frutilla.</span></b></div>
-    </div>
-  </section>
+  <div class="band">
+    <div class="big">AURA<br>BAR</div>
+    <div class="mid">COMIDA, TRAGOS,<br>AMIGOS Y<br>BUENA VIBRA</div>
+  </div>
 </div>
 </body>
 </html>
