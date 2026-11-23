@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Versículo Diario</string>
+    <string name="widget_name">Versículo del día</string>
+    <string name="widget_desc">Muestra un versículo de la Biblia. Toca para ver otro.</string>
+</resources>
