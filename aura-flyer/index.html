@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aura Bar Copeo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&display=swap">
+<style>
+:root{
+  --bg:#13062a; --cream:#f3ead6; --neon:#a259ff;
+  --W:756; --H:1344;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);overflow:hidden}
+body{display:grid;place-items:center}
+#stage{position:relative;width:756px;height:1344px;overflow:hidden;transform-origin:center;background:#22073f}
+.l{position:absolute;display:block;will-change:transform,opacity}
+.l img{display:block;width:100%;height:100%}
+
+/* ---------- fondo ---------- */
+#bg{inset:0;width:100%;height:100%;background:url(layers/bg.jpg) center/cover;animation:bgIn 1.4s ease-out both, bgDrift 12s ease-in-out infinite alternate}
+@keyframes bgIn{from{opacity:0;filter:brightness(.3)}to{opacity:1;filter:brightness(1)}}
+@keyframes bgDrift{from{transform:scale(1.02)}to{transform:scale(1.08) translateY(-10px)}}
+#glow{inset:0;background:radial-gradient(60% 30% at 50% 8%,rgba(162,89,255,.35),transparent 70%),radial-gradient(50% 25% at 50% 92%,rgba(162,89,255,.18),transparent 70%);mix-blend-mode:screen;animation:glowP 3s ease-in-out infinite alternate}
+@keyframes glowP{from{opacity:.55}to{opacity:1}}
+.dot{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(200,150,255,.9),rgba(162,89,255,0) 70%);mix-blend-mode:screen;animation:float linear infinite}
+@keyframes float{from{transform:translateY(0);opacity:0}15%{opacity:.8}85%{opacity:.6}to{transform:translateY(-560px);opacity:0}}
+
+/* ---------- logo neon ---------- */
+#logo{animation:neonOn 1.3s steps(1) .2s both, neonHum 4s ease-in-out 1.5s infinite}
+#logo img{filter:drop-shadow(0 0 6px rgba(170,100,255,.9)) drop-shadow(0 0 18px rgba(140,60,255,.6))}
+@keyframes neonOn{
+  0%{opacity:0}8%{opacity:.8}12%{opacity:.1}20%{opacity:.9}24%{opacity:.2}
+  34%{opacity:1}40%{opacity:.35}46%{opacity:1}100%{opacity:1}}
+@keyframes neonHum{
+  0%,100%{filter:brightness(1)}45%{filter:brightness(1.25)}
+  70%{filter:brightness(1)}72%{filter:brightness(.55)}73%{filter:brightness(1.2)}75%{filter:brightness(.7)}77%{filter:brightness(1.1)}}
+#tagline{animation:wipe .9s cubic-bezier(.6,0,.2,1) 1.0s both}
+@keyframes wipe{from{clip-path:inset(0 50% 0 50%);opacity:0}to{clip-path:inset(0 0 0 0);opacity:1}}
+
+/* ---------- titulo ---------- */
+.title{--d:0s}
+.title img{animation:titleBreath 6s ease-in-out infinite;animation-delay:calc(var(--d) + 2s)}
+#l1{--d:1.2s;animation:dropIn .9s cubic-bezier(.2,1.4,.4,1) var(--d) both}
+#l2{--d:1.45s;animation:punch 1s cubic-bezier(.2,1.5,.4,1) var(--d) both}
+#l3{--d:1.7s;animation:riseIn .9s cubic-bezier(.2,1.4,.4,1) var(--d) both}
+@keyframes dropIn{from{opacity:0;transform:translateY(-80px) rotateX(70deg);filter:blur(8px)}to{opacity:1;transform:none;filter:blur(0)}}
+@keyframes riseIn{from{opacity:0;transform:translateY(80px) rotateX(-70deg);filter:blur(8px)}to{opacity:1;transform:none;filter:blur(0)}}
+@keyframes punch{from{opacity:0;transform:scale(2.2);filter:blur(10px)}to{opacity:1;transform:none;filter:blur(0)}}
+@keyframes titleBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.025)}}
+/* brillo que recorre las letras */
+.shine{position:absolute;inset:0;pointer-events:none;
+  -webkit-mask:var(--m) center/100% 100%;mask:var(--m) center/100% 100%;
+  background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.95) 48%,rgba(255,240,200,.6) 52%,transparent 65%) no-repeat;
+  background-size:300% 100%;mix-blend-mode:overlay;animation:sweep 6s ease-in-out infinite;animation-delay:calc(var(--d) + 1.6s)}
+@keyframes sweep{0%{background-position:150% 0}35%,100%{background-position:-50% 0}}
+
+/* ---------- info ---------- */
+#guest{animation:slideR .8s cubic-bezier(.2,1,.3,1) 2.1s both}
+@keyframes slideR{from{opacity:0;transform:translateX(-60px)}to{opacity:1;transform:none}}
+#badge{animation:pop .7s cubic-bezier(.2,1.8,.4,1) 2.3s both, pulse 1.6s ease-in-out 3.2s infinite}
+@keyframes pop{from{opacity:0;transform:scale(.2) rotate(-12deg)}to{opacity:1;transform:none}}
+@keyframes pulse{0%,100%{transform:scale(1);filter:drop-shadow(0 0 0 rgba(243,234,214,0))}50%{transform:scale(1.07);filter:drop-shadow(0 0 10px rgba(243,234,214,.55))}}
+
+/* ---------- personas ---------- */
+.ph{overflow:visible}
+.ph .kb{width:100%;height:100%}
+#pl{animation:fromL 1.1s cubic-bezier(.2,1,.3,1) 2.4s both}
+#pr{animation:fromR 1.1s cubic-bezier(.2,1,.3,1) 2.55s both}
+#pl .kb{transform-origin:70% 40%;animation:kbL 7s ease-in-out 3.5s infinite alternate}
+#pr .kb{transform-origin:35% 35%;animation:kbR 7s ease-in-out 3.5s infinite alternate}
+@keyframes fromL{from{opacity:0;transform:translateX(-420px) rotate(-6deg)}to{opacity:1;transform:none}}
+@keyframes fromR{from{opacity:0;transform:translateX(420px) rotate(6deg)}to{opacity:1;transform:none}}
+@keyframes kbL{from{transform:scale(1) translate(0,0)}to{transform:scale(1.045) translate(4px,-6px) rotate(-.4deg)}}
+@keyframes kbR{from{transform:scale(1) translate(0,0)}to{transform:scale(1.045) translate(-4px,-6px) rotate(.4deg)}}
+#flash{left:97px;top:653px;width:562px;height:541px;background:linear-gradient(100deg,transparent 40%,rgba(255,255,255,.35) 50%,transparent 60%) no-repeat;background-size:300% 100%;mix-blend-mode:soft-light;animation:sweep 5s ease-in-out 3.6s infinite}
+#shade{left:97px;top:1000px;width:562px;height:194px;background:linear-gradient(transparent,rgba(0,0,0,.55) 45%,rgba(0,0,0,.85));animation:fade .8s ease 3s both}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+/* ---------- nombres ---------- */
+.name{font-family:Lora,Georgia,serif;font-weight:600;color:var(--cream);text-align:center;line-height:.95;font-size:47px;letter-spacing:.5px;
+  text-shadow:0 2px 0 rgba(0,0,0,.6),0 4px 14px rgba(0,0,0,.7);width:260px}
+.name span{display:inline-block;animation:letter .6s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes letter{from{opacity:0;transform:translateY(40px) scale(.6) rotate(8deg)}to{opacity:1;transform:none}}
+#n1{left:110px;top:1048px}
+#n2{left:385px;top:1048px}
+#sub{left:97px;top:1148px;width:562px;text-align:center;font-family:Lora,Georgia,serif;font-size:22px;color:var(--cream);letter-spacing:.5px;animation:spread 1.2s cubic-bezier(.2,1,.3,1) 4.0s both}
+@keyframes spread{from{opacity:0;letter-spacing:12px;filter:blur(4px)}to{opacity:1;letter-spacing:.5px;filter:blur(0)}}
+
+/* ---------- sponsors ---------- */
+.sp{animation:spIn .7s cubic-bezier(.2,1.8,.4,1) both, bob 3s ease-in-out infinite}
+.sp img{animation:spGlow 4s ease-in-out infinite}
+@keyframes spIn{from{opacity:0;transform:translateY(60px) scale(.4)}to{opacity:1;transform:none}}
+@keyframes bob{0%,100%{translate:0 0}50%{translate:0 -6px}}
+@keyframes spGlow{0%,80%,100%{filter:brightness(1)}88%{filter:brightness(1.6) drop-shadow(0 0 8px rgba(255,255,255,.6))}}
+
+@media (prefers-reduced-motion: reduce){*{animation-duration:.01s!important;animation-iteration-count:1!important}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bg" class="l"></div>
+  <div id="glow" class="l"></div>
+  <div id="dots"></div>
+
+  <div id="logo" class="l" style="left:221px;top:51px;width:318px;height:113px"><img src="layers/logo.png" alt="Aura Bar"></div>
+  <div id="tagline" class="l" style="left:221px;top:164px;width:318px;height:32px"><img src="layers/tagline.png" alt="Comida, tragos, amigos y buena vibra"></div>
+
+  <div id="l1" class="l title" style="left:88px;top:216px;width:584px;height:102px"><img src="layers/l1.png" alt="Noche de"><i class="shine" style="--m:url(layers/l1.png)"></i></div>
+  <div id="l2" class="l title" style="left:124px;top:312px;width:502px;height:106px"><img src="layers/l2.png" alt="Copeo"><i class="shine" style="--m:url(layers/l2.png)"></i></div>
+  <div id="l3" class="l title" style="left:82px;top:422px;width:594px;height:118px"><img src="layers/l3.png" alt="de autor."><i class="shine" style="--m:url(layers/l3.png)"></i></div>
+
+  <div id="guest" class="l" style="left:89px;top:551px;width:200px;height:91px"><img src="layers/guest.png" alt="Guest bartenders vol. 3"></div>
+  <div id="badge" class="l" style="left:494px;top:552px;width:174px;height:58px"><img src="layers/badge.png" alt="20:00 hs."></div>
+
+  <div id="pl" class="l ph" style="left:28px;top:653px;width:350px;height:541px"><div class="kb"><img src="layers/p_left.png" alt="Lucas Llarul"></div></div>
+  <div id="pr" class="l ph" style="left:378px;top:615px;width:362px;height:579px"><div class="kb"><img src="layers/p_right.png" alt="Santi Giménez"></div></div>
+  <div id="flash" class="l"></div>
+  <div id="shade" class="l"></div>
+
+  <div id="n1" class="l name" data-d="3.1">LUCAS<br>LLARUL</div>
+  <div id="n2" class="l name" data-d="3.35">SANTI<br>GIMÉNEZ</div>
+  <div id="sub" class="l">INVITADOS ESPECIALES • VOL. 3</div>
+
+  <div class="l sp" style="left:91px;top:1208px;width:118px;height:114px;animation-delay:4.3s,5.0s"><img src="layers/s1.png" alt="Fernet Branca"></div>
+  <div class="l sp" style="left:218px;top:1221px;width:171px;height:90px;animation-delay:4.45s,5.4s"><img src="layers/s2.png" alt="Carpano" style="animation-delay:5.5s"></div>
+  <div class="l sp" style="left:394px;top:1221px;width:155px;height:88px;animation-delay:4.6s,5.8s"><img src="layers/s3.png" alt="Heineken" style="animation-delay:6s"></div>
+  <div class="l sp" style="left:564px;top:1216px;width:105px;height:100px;animation-delay:4.75s,6.2s"><img src="layers/s4.png" alt="Weisburd" style="animation-delay:6.5s"></div>
+</div>
+<script>
+// letras de los nombres, una por una
+document.querySelectorAll('.name').forEach(el=>{
+  const d=parseFloat(el.dataset.d); let i=0;
+  el.innerHTML=el.innerHTML.split('<br>').map(line=>[...line].map(c=>`<span style="animation-delay:${(d+i++*0.05).toFixed(2)}s">${c}</span>`).join('')).join('<br>');
+});
+// particulas (posiciones fijas para que el render sea repetible)
+const dots=document.getElementById('dots');let s=7;const r=()=>(s=(s*9301+49297)%233280)/233280;
+for(let i=0;i<26;i++){const e=document.createElement('i');e.className='dot';const z=4+r()*14;
+  e.style.cssText=`left:${r()*756}px;top:${700+r()*700}px;width:${z}px;height:${z}px;animation-duration:${6+r()*6}s;animation-delay:${-r()*12}s`;dots.appendChild(e);}
+// escalar al tamaño de pantalla
+function fit(){const st=document.getElementById('stage');const k=Math.min(innerWidth/756,innerHeight/1344);st.style.transform=`scale(${k})`;}
+if(!location.hash.includes('render')){addEventListener('resize',fit);fit();}
+// modo render: congela todas las animaciones en el tiempo t (segundos)
+window.seek=t=>{document.getAnimations().forEach(a=>{a.pause();a.currentTime=t*1000;});};
+</script>
+</body>
+</html>
