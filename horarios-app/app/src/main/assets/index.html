@@ -5,58 +5,112 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mis Horarios</title>
 <style>
-:root{--bg:#f3f5f9;--card:#fff;--ink:#1b2333;--muted:#6b7589;--line:#e2e6ee;--acc:#d7263d;--acc2:#fde8eb;--fix:#eef1f6;}
-@media (prefers-color-scheme:dark){:root{--bg:#10141c;--card:#1a202b;--ink:#e8ecf3;--muted:#98a2b6;--line:#2a3240;--acc:#ff5468;--acc2:#3a1d24;--fix:#222a37;}}
+:root{--bg:#f3f5f9;--card:#fff;--ink:#1b2333;--muted:#6b7589;--line:#e2e6ee;--acc:#d7263d;--acc2:#fde8eb;--fix:#eef1f6;
+--work:#e6f0ff;--workInk:#1d4ed8;--fin:#d7263d;--off:#eef1f6;--fer:#f59e0b;--ferBg:#fff4dc;}
+@media (prefers-color-scheme:dark){:root{--bg:#10141c;--card:#1a202b;--ink:#e8ecf3;--muted:#98a2b6;--line:#2a3240;--acc:#ff5468;--acc2:#3a1d24;--fix:#222a37;
+--work:#1c2a45;--workInk:#8db4ff;--fin:#ff5468;--off:#222a37;--fer:#fbbf24;--ferBg:#3a2e12;}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,Roboto,sans-serif}
 header{background:var(--acc);color:#fff;padding:18px 16px 14px}
 header h1{margin:0;font-size:20px}
 header p{margin:2px 0 0;opacity:.85;font-size:13px}
-main{padding:12px 16px 32px;max-width:640px;margin:0 auto}
+main{padding:12px 12px 32px;max-width:640px;margin:0 auto}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
 label{display:block;font-size:12px;color:var(--muted);margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em}
-select,input[type=date]{width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+select,input{width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
 .row{display:flex;gap:8px;align-items:center}
-.row>*{flex:1}
+.row>*{flex:1;min-width:0}
 .field{margin-bottom:10px}
 button{font:inherit;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:10px 12px}
-button.nav{flex:0 0 auto;font-size:18px;padding:8px 14px}
+button.nav{flex:0 0 auto;font-size:18px;padding:6px 14px}
+button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
 .big{text-align:center}
 .big .who{font-size:14px;color:var(--muted)}
-.big .shift{font-size:30px;font-weight:700;margin:6px 0;color:var(--acc)}
+.big .shift{font-size:28px;font-weight:700;margin:6px 0;color:var(--acc)}
+.big .shift.franco{color:var(--muted)}
 .big .week{font-size:13px;color:var(--muted)}
-.warn{background:var(--acc2);border-radius:10px;padding:8px 10px;font-size:13px;margin-top:10px}
+.pill{display:inline-block;font-size:12px;border-radius:999px;padding:2px 10px;margin:2px;background:var(--fix)}
+.pill.fer{background:var(--ferBg);color:var(--fer);font-weight:600}
+.pill.g{background:var(--acc2);color:var(--acc);font-weight:600}
+.warn{background:var(--acc2);border-radius:10px;padding:8px 10px;font-size:13px;margin-top:10px;text-align:left}
 h2{font-size:15px;margin:0 0 8px}
 table{width:100%;border-collapse:collapse;font-size:14px}
 td{padding:7px 4px;border-bottom:1px solid var(--line);vertical-align:top}
 td.h{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+td.sec{font-size:11px;color:var(--muted);text-transform:uppercase;padding-top:12px}
 tr.me td{background:var(--acc2);font-weight:600}
 tr.fijo td{background:var(--fix)}
-.tag{font-size:10px;background:var(--line);border-radius:6px;padding:1px 5px;margin-left:4px;color:var(--muted)}
+.tag{font-size:10px;background:var(--line);border-radius:6px;padding:1px 5px;margin-left:4px;color:var(--muted);font-weight:400}
 .muted{color:var(--muted);font-size:12px}
+/* calendario */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal .dn{font-size:11px;color:var(--muted);text-align:center;padding:2px 0}
+.cal .d{border-radius:8px;min-height:50px;padding:3px 2px;text-align:center;background:var(--off);border:2px solid transparent;cursor:pointer;overflow:hidden}
+.cal .d .n{font-size:13px;font-weight:600}
+.cal .d .t{font-size:9.5px;line-height:1.15;color:var(--muted);word-break:break-word}
+.cal .d.vacio{background:none;cursor:default}
+.cal .d.w{background:var(--work)} .cal .d.w .t{color:var(--workInk)}
+.cal .d.fw{background:var(--fin);color:#fff} .cal .d.fw .t{color:#fff}
+.cal .d.fer{box-shadow:inset 0 -4px 0 var(--fer)}
+.cal .d.hoy .n{text-decoration:underline}
+.cal .d.sel{border-color:var(--ink)}
+.cal .d.man::after{content:"✎";font-size:9px;display:block}
+.leyenda{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--muted);margin-top:8px}
+.leyenda i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:3px}
+details summary{cursor:pointer;color:var(--muted);font-size:13px}
 </style>
 </head>
 <body>
-<header><h1>Mis Horarios</h1><p>Horario semanal · rota un puesto por semana</p></header>
+<header><h1>Mis Horarios</h1><p>Semana rotativa · fines de semana · feriados</p></header>
 <main>
   <div class="card">
     <div class="field"><label for="sector">Sector</label><select id="sector"></select></div>
     <div class="field"><label for="persona">Persona</label><select id="persona"></select></div>
+    <div class="field"><label for="grupo">Mi grupo de fin de semana</label><select id="grupo"></select></div>
     <label for="fecha">Fecha</label>
     <div class="row">
-      <button class="nav" id="prev" aria-label="Semana anterior">‹</button>
+      <button class="nav" id="prev" aria-label="Día anterior">‹</button>
       <input type="date" id="fecha">
-      <button class="nav" id="next" aria-label="Semana siguiente">›</button>
+      <button class="nav" id="next" aria-label="Día siguiente">›</button>
     </div>
     <div class="row" style="margin-top:8px"><button id="hoy">Hoy</button></div>
   </div>
 
   <div class="card big" id="resultado"></div>
 
-  <div class="card"><h2>Próximas semanas</h2><table id="proximas"></table></div>
+  <div class="card">
+    <div class="row" style="margin-bottom:8px">
+      <button class="nav" id="mPrev" aria-label="Mes anterior">‹</button>
+      <h2 id="mesTitulo" style="text-align:center;margin:0"></h2>
+      <button class="nav" id="mNext" aria-label="Mes siguiente">›</button>
+    </div>
+    <div class="cal" id="cal"></div>
+    <div class="leyenda">
+      <span><i style="background:var(--work)"></i>Semana</span>
+      <span><i style="background:var(--fin)"></i>Trabajo finde/feriado</span>
+      <span><i style="background:var(--off)"></i>Franco</span>
+      <span><i style="background:var(--fer)"></i>Feriado</span>
+      <span>✎ Marcado a mano</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Marcar este día a mano</h2>
+    <p class="muted" style="margin-top:0">Por si hay un cambio o un franco. Queda guardado solo en tu teléfono.</p>
+    <div class="row">
+      <button id="mAuto">Automático</button>
+      <button id="mTrab">Trabajo</button>
+      <button id="mFranco">Franco</button>
+    </div>
+    <div class="field" style="margin-top:8px"><input id="mHora" placeholder="Horario (ej: 8 a 16)"></div>
+  </div>
+
+  <div class="card"><h2>Próximos findes y feriados</h2><table id="eventos"></table></div>
+
+  <div class="card"><h2>Próximas semanas (lunes a viernes)</h2><table id="proximas"></table></div>
 
   <div class="card"><h2 id="tituloSector"></h2><table id="tabla"></table>
-    <p class="muted">Las personas marcadas como <b>fijo</b> (en negrita en la planilla) mantienen su horario y no entran en la rotación.</p>
+    <p class="muted" id="notaTabla"></p>
   </div>
 </main>
 <script src="data.js"></script>
@@ -64,80 +118,218 @@ tr.fijo td{background:var(--fix)}
 const $ = id => document.getElementById(id);
 const DIAS = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const MESES_L = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const DAY = 864e5;
 
 function parseYMD(s){ const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
 function ymd(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
-function lunesDe(d){ const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()); const wd=(x.getDay()+6)%7; x.setDate(x.getDate()-wd); return x; }
+function lunesDe(d){ const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()); x.setDate(x.getDate()-(x.getDay()+6)%7); return x; }
 function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
 function corto(d){ return d.getDate()+" "+MESES[d.getMonth()]; }
-const BASE = parseYMD(BASE_LUNES);
-function semanaOffset(d){ return Math.round((lunesDe(d)-BASE)/(7*864e5)); }
 function mod(a,n){ return ((a%n)+n)%n; }
+function norm(s){ return s.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/\s+/g," ").trim(); }
+function store(k,v){ try{ if(v===undefined) return JSON.parse(localStorage.getItem(k)||"null"); localStorage.setItem(k,JSON.stringify(v)); }catch(e){ return null; } }
 
-// Devuelve el horario de cada persona del sector para un desplazamiento de semanas.
-function horariosSector(sec, k){
-  const rot = sec.personas.filter(p=>!p.fijo);
-  const n = rot.length;
-  return sec.personas.map(p=>{
-    if (p.fijo || n===0) return { ...p, actual: p.h };
-    const i = rot.indexOf(p);
-    return { ...p, actual: rot[mod(i+k,n)].h };
-  });
+const BASE = parseYMD(BASE_LUNES);
+const FBASE = parseYMD(FINDE_BASE_SABADO);
+const otro = g => g==="A"?"B":"A";
+
+/* ---------- semana ---------- */
+function semanaOffset(d){ return Math.round((lunesDe(d)-BASE)/(7*DAY)); }
+function horariosSector(sec,k){
+  const rot = sec.personas.filter(p=>!p.fijo); const n=rot.length;
+  return sec.personas.map(p=> (p.fijo||!n) ? {...p,actual:p.h} : {...p,actual:rot[mod(rot.indexOf(p)+k,n)].h});
 }
 
-function guardar(){ try{ localStorage.setItem("perfil", JSON.stringify({s:$("sector").value,p:$("persona").value})); }catch(e){} }
-function cargar(){ try{ return JSON.parse(localStorage.getItem("perfil")||"null"); }catch(e){ return null; } }
+/* ---------- findes y feriados ---------- */
+function sabadoDe(d){ return addDays(lunesDe(d),5); }                 // sábado de esa semana
+function grupoFinde(sab){ const w=Math.round((sab-FBASE)/(7*DAY)); return mod(w,2)===0?FINDE_BASE_GRUPO:otro(FINDE_BASE_GRUPO); }
+function finde(d){ return d.getDay()===0||d.getDay()===6; }
+function sabadoDelFinde(d){ return d.getDay()===6 ? d : addDays(d,-1); }
+function feriado(d){ return FERIADOS[ymd(d)]||null; }
+function grupoFeriado(d){ // trabaja el grupo que NO hizo el finde anterior
+  const prevSab = addDays(lunesDe(d),-2);
+  return otro(grupoFinde(prevSab));
+}
+function buscar(lista,nombre){ const k=norm(nombre); return (lista||[]).find(r=>norm(r[1])===k); }
+function grupoAuto(nombre){
+  if (GRUPO_FIJO[nombre]) return GRUPO_FIJO[nombre];
+  const enA = buscar(FINDE.A.sab,nombre)||buscar(FINDE.A.dom,nombre)||buscar((FERIADO_PLANILLA.A||{}).lista,nombre);
+  const enB = buscar(FINDE.B.sab,nombre)||buscar(FINDE.B.dom,nombre)||buscar((FERIADO_PLANILLA.B||{}).lista,nombre);
+  return enA&&enB ? "AB" : enA ? "A" : enB ? "B" : "";
+}
+function grupoDe(nombre){ const g=store("grupo:"+nombre); return (g===null||g==="auto") ? grupoAuto(nombre) : g; }
+function esDe(nombre,g){ return grupoDe(nombre).includes(g); }
+
+/* ---------- qué me toca un día ---------- */
+function estadoDia(sec,pi,d){
+  const p = sec.personas[pi];
+  const fer = feriado(d);
+  const man = (store("man:"+p.n)||{})[ymd(d)];
+  let r;
+  if (finde(d)) {
+    const g = grupoFinde(sabadoDelFinde(d));
+    const e = buscar(FINDE[g][d.getDay()===6?"sab":"dom"], p.n);
+    if (e) r={tipo:"finde",trabaja:true,h:e[2],grupo:g};
+    else if (esDe(p.n,g)) r={tipo:"finde",trabaja:true,h:"Horario a confirmar",grupo:g};
+    else r={tipo:"finde",trabaja:false,h:"Franco",grupo:g};
+  } else if (fer) {
+    const g = grupoFeriado(d);
+    const e = buscar((FERIADO_PLANILLA[g]||{}).lista, p.n);
+    if (e) r={tipo:"feriado",trabaja:true,h:e[2],grupo:g,nota:"Horario según planilla de feriado del "+FERIADO_PLANILLA[g].ref};
+    else if (esDe(p.n,g)) r={tipo:"feriado",trabaja:true,h:"Horario a confirmar",grupo:g};
+    else r={tipo:"feriado",trabaja:false,h:"Franco",grupo:g};
+  } else {
+    const h = horariosSector(sec,semanaOffset(d))[pi].actual;
+    r={tipo:"semana",trabaja:!/^Sin horario/.test(h),h:h};
+    if(!r.trabaja) r.h="Franco";
+  }
+  r.feriado = fer;
+  if (man) { r.manual=true; r.trabaja=man.t; r.h = man.t ? (man.h||"Trabajo") : "Franco"; }
+  return r;
+}
+
+/* ---------- UI ---------- */
+let mesVista = null;
+function sec(){ return SECTORES[$("sector").value]; }
+function pi(){ return Number($("persona").value); }
+function fecha(){ return parseYMD($("fecha").value||ymd(new Date())); }
+function setFecha(d){ $("fecha").value=ymd(d); mesVista=new Date(d.getFullYear(),d.getMonth(),1); render(); }
 
 function llenarPersonas(){
-  const sec = SECTORES[$("sector").value];
-  $("persona").innerHTML = sec.personas.map((p,i)=>`<option value="${i}">${p.n}${p.fijo?" (fijo)":""}</option>`).join("");
+  $("persona").innerHTML = sec().personas.map((p,i)=>`<option value="${i}">${p.n}${p.fijo&&!/^Sin/.test(p.h)?" (fijo)":""}</option>`).join("");
+}
+function llenarGrupo(){
+  const n = sec().personas[pi()].n, auto = grupoAuto(n), g = store("grupo:"+n);
+  const txt = auto==="AB"?"A y B":auto||"ninguno";
+  $("grupo").innerHTML = `<option value="auto">Automático (${txt})</option><option value="A">Grupo A</option><option value="B">Grupo B</option><option value="AB">Los dos (todos los findes)</option><option value="">Ninguno</option>`;
+  $("grupo").value = g===null?"auto":g;
 }
 
 function render(){
-  const sec = SECTORES[$("sector").value];
-  const pi = Number($("persona").value);
-  const fecha = parseYMD($("fecha").value || ymd(new Date()));
-  const k = semanaOffset(fecha);
-  const lun = lunesDe(fecha), vie = addDays(lun,4);
-  const lista = horariosSector(sec,k);
-  const yo = lista[pi];
-  const finde = fecha.getDay()===0 || fecha.getDay()===6;
-
+  const s=sec(), i=pi(), d=fecha(), p=s.personas[i];
+  const st = estadoDia(s,i,d);
+  const lun = lunesDe(d);
+  let pills = "";
+  if (st.feriado) pills += `<span class="pill fer">${st.feriado[0]}</span>`;
+  if (st.grupo) pills += `<span class="pill g">${st.tipo==="finde"?"Finde":"Feriado"} del Grupo ${st.grupo}</span>`;
+  if (st.manual) pills += `<span class="pill">✎ marcado a mano</span>`;
+  let sub = st.tipo==="semana" ? `Semana del lunes ${corto(lun)} al viernes ${corto(addDays(lun,4))}` : "";
+  let warn = "";
+  if (st.nota) warn = st.nota;
+  if (st.trabaja && st.h==="Horario a confirmar") warn = `Te toca trabajar con el Grupo ${st.grupo}, pero no estás en la planilla de referencia: confirmá el horario.`;
+  if (st.tipo==="finde" && FINDE[st.grupo].obs) warn += (warn?"<br>":"")+"Obs.: "+FINDE[st.grupo].obs;
   $("resultado").innerHTML =
-    `<div class="who">${yo.n} · ${DIAS[fecha.getDay()]} ${corto(fecha)}</div>
-     <div class="shift">${yo.actual}</div>
-     <div class="week">Semana del lunes ${corto(lun)} al viernes ${corto(vie)}${yo.fijo?" · horario fijo":""}</div>
-     ${finde?'<div class="warn">Es fin de semana: este es el horario semanal. Los findes y feriados tienen planilla aparte.</div>':""}`;
+    `<div class="who">${p.n} · ${DIAS[d.getDay()]} ${corto(d)}</div>
+     <div class="shift ${st.trabaja?"":"franco"}">${st.h}</div>
+     <div>${pills}</div><div class="week">${sub}</div>
+     ${warn?`<div class="warn">${warn}</div>`:""}`;
+
+  $("mHora").value = st.manual && st.trabaja ? ((store("man:"+p.n)||{})[ymd(d)].h||"") : "";
+  ["mAuto","mTrab","mFranco"].forEach(id=>$(id).classList.remove("on"));
+  $(st.manual ? (st.trabaja?"mTrab":"mFranco") : "mAuto").classList.add("on");
+
+  renderCal(s,i,d);
+  renderEventos(s,i,d);
 
   let filas="";
-  for(let j=0;j<8;j++){
-    const l = addDays(lun,7*j);
-    const h = horariosSector(sec,k+j)[pi].actual;
-    filas += `<tr${j===0?' class="me"':''}><td>${corto(l)} – ${corto(addDays(l,4))}</td><td class="h">${h}</td></tr>`;
-  }
+  for(let j=0;j<8;j++){ const l=addDays(lun,7*j);
+    filas+=`<tr${j===0?' class="me"':''}><td>${corto(l)} – ${corto(addDays(l,4))}</td><td class="h">${horariosSector(s,semanaOffset(l))[i].actual}</td></tr>`; }
   $("proximas").innerHTML = filas;
 
-  $("tituloSector").textContent = `${sec.nombre} · semana del ${corto(lun)}`;
-  $("tabla").innerHTML = lista.map((p,i)=>
-    `<tr class="${i===pi?"me":""} ${p.fijo?"fijo":""}"><td>${p.n}${p.fijo?'<span class="tag">fijo</span>':""}</td><td class="h">${p.actual}</td></tr>`
-  ).join("");
-  guardar();
+  // tabla del día
+  if (st.tipo==="semana") {
+    $("tituloSector").textContent = `${s.nombre} · semana del ${corto(lun)}`;
+    $("tabla").innerHTML = horariosSector(s,semanaOffset(d)).map((q,k)=>
+      `<tr class="${k===i?"me":""} ${q.fijo?"fijo":""}"><td>${q.n}${q.fijo&&!/^Sin/.test(q.h)?'<span class="tag">fijo</span>':""}</td><td class="h">${q.actual}</td></tr>`).join("");
+    $("notaTabla").innerHTML = "Las personas marcadas como <b>fijo</b> (en negrita en la planilla) mantienen su horario y no entran en la rotación.";
+  } else {
+    const g = st.grupo;
+    const lista = st.tipo==="finde" ? FINDE[g][d.getDay()===6?"sab":"dom"] : (FERIADO_PLANILLA[g]||{}).lista;
+    $("tituloSector").textContent = `Grupo ${g} · ${DIAS[d.getDay()]} ${corto(d)}`;
+    if (!lista) { $("tabla").innerHTML = `<tr><td>Todavía no hay planilla de feriado del Grupo ${g}.</td></tr>`; }
+    else {
+      let last="", html="";
+      lista.forEach(r=>{ if(r[0]!==last){ html+=`<tr><td class="sec" colspan="2">${r[0]}</td></tr>`; last=r[0]; }
+        html+=`<tr class="${norm(r[1])===norm(p.n)?"me":""}"><td>${r[1]}</td><td class="h">${r[2]}</td></tr>`; });
+      $("tabla").innerHTML = html;
+    }
+    $("notaTabla").textContent = st.tipo==="finde"
+      ? `Horarios de referencia según la planilla del Grupo ${g} (${FINDE[g].ref}).`
+      : (FERIADO_PLANILLA[g] ? `Horarios de referencia según la planilla de feriado del ${FERIADO_PLANILLA[g].ref}.` : "");
+  }
+  store("perfil",{s:$("sector").value,p:$("persona").value});
 }
 
+function corta(h){ if(h==="Franco") return "Franco"; if(h==="Horario a confirmar") return "Trabajo"; return h.split(" · ").map(x=>x.replace(/ a /,"-")).join(" "); }
+
+function renderCal(s,i,sel){
+  const m = mesVista; $("mesTitulo").textContent = MESES_L[m.getMonth()]+" "+m.getFullYear();
+  let html = ["L","M","M","J","V","S","D"].map(x=>`<div class="dn">${x}</div>`).join("");
+  const pad = (m.getDay()+6)%7;
+  for(let k=0;k<pad;k++) html+=`<div class="d vacio"></div>`;
+  const hoy = ymd(new Date());
+  for(let d=new Date(m); d.getMonth()===m.getMonth(); d=addDays(d,1)){
+    const st = estadoDia(s,i,d);
+    let c = "d";
+    if (st.trabaja) c += (st.tipo==="semana") ? " w" : " fw";
+    if (st.feriado) c += " fer";
+    if (st.manual) c += " man";
+    if (ymd(d)===hoy) c += " hoy";
+    if (ymd(d)===ymd(sel)) c += " sel";
+    html += `<div class="${c}" data-d="${ymd(d)}"><div class="n">${d.getDate()}</div><div class="t">${corta(st.h)}</div></div>`;
+  }
+  $("cal").innerHTML = html;
+}
+$("cal").onclick = e=>{ const el=e.target.closest("[data-d]"); if(el){ $("fecha").value=el.dataset.d; render(); } };
+
+function renderEventos(s,i,d){
+  const ev=[]; let x=new Date(d);
+  for(let k=0; k<120 && ev.length<10; k++, x=addDays(x,1)){
+    if (x.getDay()===6) ev.push([x,"finde"]);
+    else if (feriado(x) && !finde(x)) ev.push([x,"fer"]);
+    else if (k===0 && x.getDay()===0) ev.push([x,"dom"]);
+  }
+  $("eventos").innerHTML = ev.map(([x,t])=>{
+    if (t==="finde"){
+      const a=estadoDia(s,i,x), b=estadoDia(s,i,addDays(x,1));
+      const fer = [feriado(x),feriado(addDays(x,1))].filter(Boolean).map(f=>" · "+f[0]).join("");
+      const txt = (!a.trabaja&&!b.trabaja) ? "Franco" : `Sáb ${a.trabaja?corta(a.h):"franco"} / Dom ${b.trabaja?corta(b.h):"franco"}`;
+      return `<tr class="${a.trabaja||b.trabaja?"me":""}"><td>Finde ${corto(x)}–${corto(addDays(x,1))}<br><span class="muted">Grupo ${a.grupo}${fer}</span></td><td class="h">${txt}</td></tr>`;
+    }
+    const st=estadoDia(s,i,x);
+    return `<tr class="${st.trabaja?"me":""}"><td>${DIAS[x.getDay()]} ${corto(x)}<br><span class="muted">${(st.feriado||["Domingo"])[0]}${st.grupo?" · Grupo "+st.grupo:""}</span></td><td class="h">${st.trabaja?corta(st.h):"Franco"}</td></tr>`;
+  }).join("");
+}
+
+function marcar(t){
+  const n = sec().personas[pi()].n, all = store("man:"+n)||{}, k=ymd(fecha());
+  if (t===null) delete all[k]; else all[k]={t:t,h:t?$("mHora").value.trim():""};
+  store("man:"+n,all); render();
+}
+$("mAuto").onclick=()=>marcar(null);
+$("mTrab").onclick=()=>marcar(true);
+$("mFranco").onclick=()=>marcar(false);
+$("mHora").onchange=()=>marcar(true);
+
+/* ---------- inicio ---------- */
 $("sector").innerHTML = SECTORES.map((s,i)=>`<option value="${i}">${s.nombre}</option>`).join("");
-const perfil = cargar();
+const perfil = store("perfil");
 if (perfil && SECTORES[perfil.s]) $("sector").value = perfil.s;
 llenarPersonas();
 if (perfil && SECTORES[perfil.s] && SECTORES[perfil.s].personas[perfil.p]) $("persona").value = perfil.p;
-$("fecha").value = ymd(new Date());
+llenarGrupo();
 
-$("sector").onchange = ()=>{ llenarPersonas(); render(); };
-$("persona").onchange = render;
-$("fecha").onchange = render;
-$("hoy").onclick = ()=>{ $("fecha").value = ymd(new Date()); render(); };
-$("prev").onclick = ()=>{ $("fecha").value = ymd(addDays(parseYMD($("fecha").value),-7)); render(); };
-$("next").onclick = ()=>{ $("fecha").value = ymd(addDays(parseYMD($("fecha").value),7)); render(); };
-render();
+$("sector").onchange = ()=>{ llenarPersonas(); llenarGrupo(); render(); };
+$("persona").onchange = ()=>{ llenarGrupo(); render(); };
+$("grupo").onchange = ()=>{ store("grupo:"+sec().personas[pi()].n,$("grupo").value); render(); };
+$("fecha").onchange = ()=>setFecha(fecha());
+$("hoy").onclick = ()=>setFecha(new Date());
+$("prev").onclick = ()=>setFecha(addDays(fecha(),-1));
+$("next").onclick = ()=>setFecha(addDays(fecha(),1));
+$("mPrev").onclick = ()=>{ mesVista=new Date(mesVista.getFullYear(),mesVista.getMonth()-1,1); render(); };
+$("mNext").onclick = ()=>{ mesVista=new Date(mesVista.getFullYear(),mesVista.getMonth()+1,1); render(); };
+setFecha(new Date());
 </script>
 </body>
 </html>
