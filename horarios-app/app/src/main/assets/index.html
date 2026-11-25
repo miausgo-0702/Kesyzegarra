@@ -67,6 +67,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
     <div class="field"><label for="sector">Sector</label><select id="sector"></select></div>
     <div class="field"><label for="persona">Persona</label><select id="persona"></select></div>
     <div class="field"><label for="grupo">Mi grupo de fin de semana</label><select id="grupo"></select></div>
+    <div class="field"><label for="ferbase">Feriado del lunes 23/11</label><select id="ferbase"></select></div>
     <label for="fecha">Fecha</label>
     <div class="row">
       <button class="nav" id="prev" aria-label="Día anterior">‹</button>
@@ -147,10 +148,11 @@ function grupoFinde(sab){ const w=Math.round((sab-FBASE)/(7*DAY)); return mod(w,
 function finde(d){ return d.getDay()===0||d.getDay()===6; }
 function sabadoDelFinde(d){ return d.getDay()===6 ? d : addDays(d,-1); }
 function feriado(d){ return FERIADOS[ymd(d)]||null; }
-function grupoFeriado(d){ // trabaja el grupo que NO hizo el finde anterior
-  const prevSab = addDays(lunesDe(d),-2);
-  return otro(grupoFinde(prevSab));
-}
+function esFeriadoAlt(d){ const f=feriado(d); return f && f[1]!=="puente" && !finde(d); }
+const FER_ALT = Object.keys(FERIADOS).sort().filter(k=>esFeriadoAlt(parseYMD(k)));
+function feriadoK(d){ return FER_ALT.indexOf(ymd(d)) - FER_ALT.indexOf(FERIADO_BASE); }
+function trabajoFeriadoBaseAuto(nombre){ return !!(TRABAJO_FERIADO_BASE[nombre] || buscar(FERIADO_PLANILLA.B.lista,nombre)); }
+function trabajoFeriadoBase(nombre){ const v=store("ferbase:"+nombre); return v===null ? trabajoFeriadoBaseAuto(nombre) : v; }
 function buscar(lista,nombre){ const k=norm(nombre); return (lista||[]).find(r=>norm(r[1])===k); }
 function grupoAuto(nombre){
   if (GRUPO_FIJO[nombre]) return GRUPO_FIJO[nombre];
@@ -173,12 +175,11 @@ function estadoDia(sec,pi,d){
     if (e) r={tipo:"finde",trabaja:true,h:e[2],grupo:g};
     else if (esDe(p.n,g)) r={tipo:"finde",trabaja:true,h:"Horario a confirmar",grupo:g};
     else r={tipo:"finde",trabaja:false,h:"Franco",grupo:g};
-  } else if (fer) {
-    const g = grupoFeriado(d);
-    const e = buscar((FERIADO_PLANILLA[g]||{}).lista, p.n);
-    if (e) r={tipo:"feriado",trabaja:true,h:e[2],grupo:g,nota:"Horario según planilla de feriado del "+FERIADO_PLANILLA[g].ref};
-    else if (esDe(p.n,g)) r={tipo:"feriado",trabaja:true,h:"Horario a confirmar",grupo:g};
-    else r={tipo:"feriado",trabaja:false,h:"Franco",grupo:g};
+  } else if (fer && fer[1]!=="puente") {
+    const k = feriadoK(d), base = trabajoFeriadoBase(p.n);
+    const trabaja = (mod(k,2)===0) === base;
+    const e = (k===0) ? buscar(FERIADO_PLANILLA.B.lista, p.n) : null;
+    r = trabaja ? {tipo:"feriado",trabaja:true,h:e?e[2]:"Horario a confirmar"} : {tipo:"feriado",trabaja:false,h:"Franco"};
   } else {
     const h = horariosSector(sec,semanaOffset(d))[pi].actual;
     r={tipo:"semana",trabaja:!/^Sin horario/.test(h),h:h};
@@ -206,18 +207,27 @@ function llenarGrupo(){
   $("grupo").value = g===null?"auto":g;
 }
 
+function llenarFerBase(){
+  const n = sec().personas[pi()].n, auto = trabajoFeriadoBaseAuto(n), v = store("ferbase:"+n);
+  $("ferbase").innerHTML = `<option value="auto">Automático (${auto?"lo trabajé":"lo descansé"})</option><option value="1">Lo trabajé</option><option value="0">Lo descansé</option>`;
+  $("ferbase").value = v===null ? "auto" : (v?"1":"0");
+}
 function render(){
   const s=sec(), i=pi(), d=fecha(), p=s.personas[i];
   const st = estadoDia(s,i,d);
   const lun = lunesDe(d);
   let pills = "";
   if (st.feriado) pills += `<span class="pill fer">${st.feriado[0]}</span>`;
-  if (st.grupo) pills += `<span class="pill g">${st.tipo==="finde"?"Finde":"Feriado"} del Grupo ${st.grupo}</span>`;
+  if (st.grupo) pills += `<span class="pill g">Finde del Grupo ${st.grupo}</span>`;
+  if (st.tipo==="feriado") pills += `<span class="pill g">${st.trabaja?"Feriado que trabajás":"Feriado que descansás"}</span>`;
   if (st.manual) pills += `<span class="pill">✎ marcado a mano</span>`;
   let sub = st.tipo==="semana" ? `Semana del lunes ${corto(lun)} al viernes ${corto(addDays(lun,4))}` : "";
   let warn = "";
   if (st.nota) warn = st.nota;
-  if (st.trabaja && st.h==="Horario a confirmar") warn = `Te toca trabajar con el Grupo ${st.grupo}, pero no estás en la planilla de referencia: confirmá el horario.`;
+  if (st.trabaja && st.h==="Horario a confirmar") warn = st.tipo==="finde"
+    ? `Te toca trabajar con el Grupo ${st.grupo}, pero no estás en la planilla de referencia: confirmá el horario.`
+    : "Te toca trabajar este feriado (uno sí, uno no). Confirmá el horario con la planilla del feriado.";
+  if (st.feriado && st.feriado[1]==="puente") warn = "Día no laborable (puente): se toma como día normal y no cuenta en la alternancia de feriados.";
   if (st.tipo==="finde" && FINDE[st.grupo].obs) warn += (warn?"<br>":"")+"Obs.: "+FINDE[st.grupo].obs;
   $("resultado").innerHTML =
     `<div class="who">${p.n} · ${DIAS[d.getDay()]} ${corto(d)}</div>
@@ -245,18 +255,17 @@ function render(){
     $("notaTabla").innerHTML = "Las personas marcadas como <b>fijo</b> (en negrita en la planilla) mantienen su horario y no entran en la rotación.";
   } else {
     const g = st.grupo;
-    const lista = st.tipo==="finde" ? FINDE[g][d.getDay()===6?"sab":"dom"] : (FERIADO_PLANILLA[g]||{}).lista;
-    $("tituloSector").textContent = `Grupo ${g} · ${DIAS[d.getDay()]} ${corto(d)}`;
-    if (!lista) { $("tabla").innerHTML = `<tr><td>Todavía no hay planilla de feriado del Grupo ${g}.</td></tr>`; }
-    else {
-      let last="", html="";
-      lista.forEach(r=>{ if(r[0]!==last){ html+=`<tr><td class="sec" colspan="2">${r[0]}</td></tr>`; last=r[0]; }
-        html+=`<tr class="${norm(r[1])===norm(p.n)?"me":""}"><td>${r[1]}</td><td class="h">${r[2]}</td></tr>`; });
-      $("tabla").innerHTML = html;
-    }
+    const lista = st.tipo==="finde" ? FINDE[g][d.getDay()===6?"sab":"dom"] : FERIADO_PLANILLA.B.lista;
+    const ref = st.tipo==="feriado" && feriadoK(d)!==0;
+    $("tituloSector").textContent = st.tipo==="finde" ? `Grupo ${g} · ${DIAS[d.getDay()]} ${corto(d)}` : `Feriado ${corto(d)} · ${st.feriado[0]}`;
+    let last="", html="";
+    lista.forEach(r=>{ if(r[0]!==last){ html+=`<tr><td class="sec" colspan="2">${r[0]}</td></tr>`; last=r[0]; }
+      html+=`<tr class="${norm(r[1])===norm(p.n)?"me":""}"><td>${r[1]}</td><td class="h">${r[2]}</td></tr>`; });
+    $("tabla").innerHTML = html;
     $("notaTabla").textContent = st.tipo==="finde"
       ? `Horarios de referencia según la planilla del Grupo ${g} (${FINDE[g].ref}).`
-      : (FERIADO_PLANILLA[g] ? `Horarios de referencia según la planilla de feriado del ${FERIADO_PLANILLA[g].ref}.` : "");
+      : (ref ? `Todavía no hay planilla de este feriado. Se muestra como referencia la del ${FERIADO_PLANILLA.B.ref} (los que trabajaron ese día descansan en este si es el siguiente).`
+             : `Planilla del feriado del ${FERIADO_PLANILLA.B.ref}.`);
   }
   store("perfil",{s:$("sector").value,p:$("persona").value});
 }
@@ -298,7 +307,7 @@ function renderEventos(s,i,d){
       return `<tr class="${a.trabaja||b.trabaja?"me":""}"><td>Finde ${corto(x)}–${corto(addDays(x,1))}<br><span class="muted">Grupo ${a.grupo}${fer}</span></td><td class="h">${txt}</td></tr>`;
     }
     const st=estadoDia(s,i,x);
-    return `<tr class="${st.trabaja?"me":""}"><td>${DIAS[x.getDay()]} ${corto(x)}<br><span class="muted">${(st.feriado||["Domingo"])[0]}${st.grupo?" · Grupo "+st.grupo:""}</span></td><td class="h">${st.trabaja?corta(st.h):"Franco"}</td></tr>`;
+    return `<tr class="${st.trabaja?"me":""}"><td>${DIAS[x.getDay()]} ${corto(x)}<br><span class="muted">${(st.feriado||["Domingo"])[0]}${st.grupo?" · Grupo "+st.grupo:""}</span></td><td class="h">${st.feriado&&st.feriado[1]==="puente"?(st.trabaja?corta(st.h)+" (normal)":"Franco"):(st.trabaja?corta(st.h):"Franco")}</td></tr>`;
   }).join("");
 }
 
@@ -319,9 +328,12 @@ if (perfil && SECTORES[perfil.s]) $("sector").value = perfil.s;
 llenarPersonas();
 if (perfil && SECTORES[perfil.s] && SECTORES[perfil.s].personas[perfil.p]) $("persona").value = perfil.p;
 llenarGrupo();
+llenarFerBase();
 
-$("sector").onchange = ()=>{ llenarPersonas(); llenarGrupo(); render(); };
-$("persona").onchange = ()=>{ llenarGrupo(); render(); };
+$("sector").onchange = ()=>{ llenarPersonas(); llenarGrupo(); llenarFerBase(); render(); };
+$("persona").onchange = ()=>{ llenarGrupo(); llenarFerBase(); render(); };
+$("ferbase").onchange = ()=>{ const v=$("ferbase").value, n=sec().personas[pi()].n;
+  try{ if(v==="auto") localStorage.removeItem("ferbase:"+n); else store("ferbase:"+n, v==="1"); }catch(e){} render(); };
 $("grupo").onchange = ()=>{ store("grupo:"+sec().personas[pi()].n,$("grupo").value); render(); };
 $("fecha").onchange = ()=>setFecha(fecha());
 $("hoy").onclick = ()=>setFecha(new Date());

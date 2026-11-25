@@ -193,9 +193,13 @@ window.FERIADO_PLANILLA = {
 };
 
 // ---------------- FERIADOS DE ARGENTINA ----------------
-// Regla: el feriado lo trabaja el grupo que NO trabajó el fin de semana anterior
-// (el 23-11-26 lo hizo el Grupo B, después del finde del Grupo A).
-// tipo "puente" = día no laborable con fines turísticos.
+// Regla: los feriados de lunes a viernes se alternan: uno se trabaja y el siguiente se descansa.
+// Referencia: el 23-11-26 trabajaron los de FERIADO_PLANILLA; el resto descansó.
+// tipo "puente" = día no laborable con fines turísticos: se toma como día normal
+// y no cuenta en la alternancia. Los feriados en sábado o domingo siguen el finde.
+window.FERIADO_BASE = "2026-11-23";
+// Personas que no están en la planilla del 23-11 pero sí trabajaron ese feriado:
+window.TRABAJO_FERIADO_BASE = {};
 window.FERIADOS = {
   "2026-01-01": ["Año Nuevo"],
   "2026-02-16": ["Carnaval"],
