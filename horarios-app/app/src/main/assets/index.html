@@ -108,6 +108,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 
   <div class="card"><h2>Próximos findes y feriados</h2><table id="eventos"></table></div>
 
+  <div class="card"><details id="ferAnio"><summary><b>Feriados del año</b></summary><table id="feriadosTabla" style="margin-top:8px"></table></details></div>
+
   <div class="card"><h2>Próximas semanas (lunes a viernes)</h2><table id="proximas"></table></div>
 
   <div class="card"><h2 id="tituloSector"></h2><table id="tabla"></table>
@@ -115,173 +117,112 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
   </div>
 </main>
 <script src="data.js"></script>
+<script src="logic.js"></script>
 <script>
 const $ = id => document.getElementById(id);
+const {parseYMD, ymd, addDays, lunesDe, norm} = L;
 const DIAS = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const MESES_L = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-const DAY = 864e5;
+const corto = d => d.getDate()+" "+MESES[d.getMonth()];
+function store(k,v){ try{ if(v===undefined) return JSON.parse(localStorage.getItem(k)||"null"); if(v===null) localStorage.removeItem(k); else localStorage.setItem(k,JSON.stringify(v)); }catch(e){ return null; } }
 
-function parseYMD(s){ const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
-function ymd(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
-function lunesDe(d){ const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()); x.setDate(x.getDate()-(x.getDay()+6)%7); return x; }
-function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
-function corto(d){ return d.getDate()+" "+MESES[d.getMonth()]; }
-function mod(a,n){ return ((a%n)+n)%n; }
-function norm(s){ return s.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/\s+/g," ").trim(); }
-function store(k,v){ try{ if(v===undefined) return JSON.parse(localStorage.getItem(k)||"null"); localStorage.setItem(k,JSON.stringify(v)); }catch(e){ return null; } }
-
-const BASE = parseYMD(BASE_LUNES);
-const FBASE = parseYMD(FINDE_BASE_SABADO);
-const otro = g => g==="A"?"B":"A";
-
-/* ---------- semana ---------- */
-function semanaOffset(d){ return Math.round((lunesDe(d)-BASE)/(7*DAY)); }
-function horariosSector(sec,k){
-  const rot = sec.personas.filter(p=>!p.fijo); const n=rot.length;
-  return sec.personas.map(p=> (p.fijo||!n) ? {...p,actual:p.h} : {...p,actual:rot[mod(rot.indexOf(p)+k,n)].h});
-}
-
-/* ---------- findes y feriados ---------- */
-function sabadoDe(d){ return addDays(lunesDe(d),5); }                 // sábado de esa semana
-function grupoFinde(sab){ const w=Math.round((sab-FBASE)/(7*DAY)); return mod(w,2)===0?FINDE_BASE_GRUPO:otro(FINDE_BASE_GRUPO); }
-function finde(d){ return d.getDay()===0||d.getDay()===6; }
-function sabadoDelFinde(d){ return d.getDay()===6 ? d : addDays(d,-1); }
-function feriado(d){ return FERIADOS[ymd(d)]||null; }
-function esFeriadoAlt(d){ const f=feriado(d); return f && f[1]!=="puente" && !finde(d); }
-const FER_ALT = Object.keys(FERIADOS).sort().filter(k=>esFeriadoAlt(parseYMD(k)));
-function feriadoK(d){ return FER_ALT.indexOf(ymd(d)) - FER_ALT.indexOf(FERIADO_BASE); }
-function trabajoFeriadoBaseAuto(nombre){ return !!(TRABAJO_FERIADO_BASE[nombre] || buscar(FERIADO_PLANILLA.B.lista,nombre)); }
-function trabajoFeriadoBase(nombre){ const v=store("ferbase:"+nombre); return v===null ? trabajoFeriadoBaseAuto(nombre) : v; }
-function buscar(lista,nombre){ const k=norm(nombre); return (lista||[]).find(r=>norm(r[1])===k); }
-function grupoAuto(nombre){
-  if (GRUPO_FIJO[nombre]) return GRUPO_FIJO[nombre];
-  const enA = buscar(FINDE.A.sab,nombre)||buscar(FINDE.A.dom,nombre)||buscar((FERIADO_PLANILLA.A||{}).lista,nombre);
-  const enB = buscar(FINDE.B.sab,nombre)||buscar(FINDE.B.dom,nombre)||buscar((FERIADO_PLANILLA.B||{}).lista,nombre);
-  return enA&&enB ? "AB" : enA ? "A" : enB ? "B" : "";
-}
-function grupoDe(nombre){ const g=store("grupo:"+nombre); return (g===null||g==="auto") ? grupoAuto(nombre) : g; }
-function esDe(nombre,g){ return grupoDe(nombre).includes(g); }
-
-/* ---------- qué me toca un día ---------- */
-function estadoDia(sec,pi,d){
-  const p = sec.personas[pi];
-  const fer = feriado(d);
-  const man = (store("man:"+p.n)||{})[ymd(d)];
-  let r;
-  if (finde(d)) {
-    const g = grupoFinde(sabadoDelFinde(d));
-    const e = buscar(FINDE[g][d.getDay()===6?"sab":"dom"], p.n);
-    if (e) r={tipo:"finde",trabaja:true,h:e[2],grupo:g};
-    else if (esDe(p.n,g)) r={tipo:"finde",trabaja:true,h:"Horario a confirmar",grupo:g};
-    else r={tipo:"finde",trabaja:false,h:"Franco",grupo:g};
-  } else if (fer && fer[1]!=="puente") {
-    const k = feriadoK(d), base = trabajoFeriadoBase(p.n);
-    const trabaja = (mod(k,2)===0) === base;
-    const e = (k===0) ? buscar(FERIADO_PLANILLA.B.lista, p.n) : null;
-    r = trabaja ? {tipo:"feriado",trabaja:true,h:e?e[2]:"Horario a confirmar"} : {tipo:"feriado",trabaja:false,h:"Franco"};
-  } else {
-    const h = horariosSector(sec,semanaOffset(d))[pi].actual;
-    r={tipo:"semana",trabaja:!/^Sin horario/.test(h),h:h};
-    if(!r.trabaja) r.h="Franco";
-  }
-  r.feriado = fer;
-  if (man) { r.manual=true; r.trabaja=man.t; r.h = man.t ? (man.h||"Trabajo") : "Franco"; }
-  return r;
-}
-
-/* ---------- UI ---------- */
 let mesVista = null;
-function sec(){ return SECTORES[$("sector").value]; }
-function pi(){ return Number($("persona").value); }
-function fecha(){ return parseYMD($("fecha").value||ymd(new Date())); }
+const sec = () => SECTORES[$("sector").value];
+const pi = () => Number($("persona").value);
+const nombre = () => sec().personas[pi()].n;
+const fecha = () => parseYMD($("fecha").value || ymd(new Date()));
+function pref(d){
+  const n = nombre(), g = store("grupo:"+n), fb = store("ferbase:"+n), man = (store("man:"+n)||{})[ymd(d)];
+  return { grupo: g===null ? undefined : g, ferBase: fb===null ? undefined : fb, manual: man || undefined };
+}
+const estado = d => L.estadoDia(sec(), pi(), d, pref(d));
 function setFecha(d){ $("fecha").value=ymd(d); mesVista=new Date(d.getFullYear(),d.getMonth(),1); render(); }
 
 function llenarPersonas(){
   $("persona").innerHTML = sec().personas.map((p,i)=>`<option value="${i}">${p.n}${p.fijo&&!/^Sin/.test(p.h)?" (fijo)":""}</option>`).join("");
 }
-function llenarGrupo(){
-  const n = sec().personas[pi()].n, auto = grupoAuto(n), g = store("grupo:"+n);
-  const txt = auto==="AB"?"A y B":auto||"ninguno";
-  $("grupo").innerHTML = `<option value="auto">Automático (${txt})</option><option value="A">Grupo A</option><option value="B">Grupo B</option><option value="AB">Los dos (todos los findes)</option><option value="">Ninguno</option>`;
-  $("grupo").value = g===null?"auto":g;
+function llenarPrefs(){
+  const n = nombre(), auto = L.grupoAuto(n), g = store("grupo:"+n);
+  $("grupo").innerHTML = `<option value="auto">Automático (${auto==="AB"?"A y B":auto?"Grupo "+auto:"ninguno"})</option><option value="A">Grupo A</option><option value="B">Grupo B</option><option value="AB">Los dos (todos los findes)</option><option value="">Ninguno</option>`;
+  $("grupo").value = g===null ? "auto" : g;
+  const fa = L.trabajoFeriadoBaseAuto(n), fb = store("ferbase:"+n);
+  $("ferbase").innerHTML = `<option value="auto">Automático (${fa?"lo trabajé":"lo descansé"})</option><option value="1">Lo trabajé</option><option value="0">Lo descansé</option>`;
+  $("ferbase").value = fb===null ? "auto" : (fb?"1":"0");
 }
+const corta = h => h==="Franco" ? "Franco" : h==="Horario a confirmar" ? "Trabajo" : h.split(" · ").map(x=>x.replace(/ a /,"-")).join(" ");
 
-function llenarFerBase(){
-  const n = sec().personas[pi()].n, auto = trabajoFeriadoBaseAuto(n), v = store("ferbase:"+n);
-  $("ferbase").innerHTML = `<option value="auto">Automático (${auto?"lo trabajé":"lo descansé"})</option><option value="1">Lo trabajé</option><option value="0">Lo descansé</option>`;
-  $("ferbase").value = v===null ? "auto" : (v?"1":"0");
-}
 function render(){
-  const s=sec(), i=pi(), d=fecha(), p=s.personas[i];
-  const st = estadoDia(s,i,d);
-  const lun = lunesDe(d);
+  const s=sec(), i=pi(), d=fecha(), p=s.personas[i], st=estado(d), lun=lunesDe(d);
   let pills = "";
-  if (st.feriado) pills += `<span class="pill fer">${st.feriado[0]}</span>`;
-  if (st.grupo) pills += `<span class="pill g">Finde del Grupo ${st.grupo}</span>`;
+  if (st.feriado) pills += `<span class="pill fer">${st.feriado.nombre}</span>`;
+  if (st.tipo==="finde") pills += `<span class="pill g">Finde del Grupo ${st.grupo}</span>`;
   if (st.tipo==="feriado") pills += `<span class="pill g">${st.trabaja?"Feriado que trabajás":"Feriado que descansás"}</span>`;
+  if (st.fijo) pills += `<span class="pill">horario fijo</span>`;
   if (st.manual) pills += `<span class="pill">✎ marcado a mano</span>`;
-  let sub = st.tipo==="semana" ? `Semana del lunes ${corto(lun)} al viernes ${corto(addDays(lun,4))}` : "";
-  let warn = "";
-  if (st.nota) warn = st.nota;
-  if (st.trabaja && st.h==="Horario a confirmar") warn = st.tipo==="finde"
-    ? `Te toca trabajar con el Grupo ${st.grupo}, pero no estás en la planilla de referencia: confirmá el horario.`
-    : "Te toca trabajar este feriado (uno sí, uno no). Confirmá el horario con la planilla del feriado.";
-  if (st.feriado && st.feriado[1]==="puente") warn = "Día no laborable (puente): se toma como día normal y no cuenta en la alternancia de feriados.";
-  if (st.tipo==="finde" && FINDE[st.grupo].obs) warn += (warn?"<br>":"")+"Obs.: "+FINDE[st.grupo].obs;
+  const sub = st.tipo==="semana" ? `Semana del lunes ${corto(lun)} al viernes ${corto(addDays(lun,4))}` : "";
+  let warn = [];
+  if (st.trabaja && st.h==="Horario a confirmar") warn.push(st.tipo==="finde"
+    ? `Te toca trabajar con el Grupo ${st.grupo}, pero no figurás en la planilla del finde: confirmá el horario o marcalo a mano.`
+    : "Te toca trabajar este feriado (uno sí, uno no). No figurás en la planilla del feriado: confirmá el horario o marcalo a mano.");
+  if (st.feriado && st.feriado.tipo==="puente") warn.push("Día no laborable (puente turístico): se trabaja normal y no cuenta en el “uno sí, uno no” de feriados.");
+  if (st.tipo==="finde" && st.trabaja && FINDE[st.grupo].obs) warn.push("Obs.: "+FINDE[st.grupo].obs);
   $("resultado").innerHTML =
     `<div class="who">${p.n} · ${DIAS[d.getDay()]} ${corto(d)}</div>
      <div class="shift ${st.trabaja?"":"franco"}">${st.h}</div>
      <div>${pills}</div><div class="week">${sub}</div>
-     ${warn?`<div class="warn">${warn}</div>`:""}`;
+     ${warn.length?`<div class="warn">${warn.join("<br>")}</div>`:""}`;
 
-  $("mHora").value = st.manual && st.trabaja ? ((store("man:"+p.n)||{})[ymd(d)].h||"") : "";
+  const man = pref(d).manual;
+  $("mHora").value = man && man.t ? (man.h||"") : "";
   ["mAuto","mTrab","mFranco"].forEach(id=>$(id).classList.remove("on"));
-  $(st.manual ? (st.trabaja?"mTrab":"mFranco") : "mAuto").classList.add("on");
+  $(man ? (man.t?"mTrab":"mFranco") : "mAuto").classList.add("on");
 
-  renderCal(s,i,d);
-  renderEventos(s,i,d);
+  renderCal(d); renderEventos(d); renderFeriadosAnio(d);
 
   let filas="";
   for(let j=0;j<8;j++){ const l=addDays(lun,7*j);
-    filas+=`<tr${j===0?' class="me"':''}><td>${corto(l)} – ${corto(addDays(l,4))}</td><td class="h">${horariosSector(s,semanaOffset(l))[i].actual}</td></tr>`; }
+    filas+=`<tr${j===0?' class="me"':''}><td>${corto(l)} – ${corto(addDays(l,4))}</td><td class="h">${L.horariosSector(s,L.semanaK(l))[i].actual}</td></tr>`; }
   $("proximas").innerHTML = filas;
 
-  // tabla del día
   if (st.tipo==="semana") {
     $("tituloSector").textContent = `${s.nombre} · semana del ${corto(lun)}`;
-    $("tabla").innerHTML = horariosSector(s,semanaOffset(d)).map((q,k)=>
+    $("tabla").innerHTML = L.horariosSector(s,L.semanaK(d)).map((q,k)=>
       `<tr class="${k===i?"me":""} ${q.fijo?"fijo":""}"><td>${q.n}${q.fijo&&!/^Sin/.test(q.h)?'<span class="tag">fijo</span>':""}</td><td class="h">${q.actual}</td></tr>`).join("");
     $("notaTabla").innerHTML = "Las personas marcadas como <b>fijo</b> (en negrita en la planilla) mantienen su horario y no entran en la rotación.";
   } else {
-    const g = st.grupo;
-    const lista = st.tipo==="finde" ? FINDE[g][d.getDay()===6?"sab":"dom"] : FERIADO_PLANILLA.B.lista;
-    const ref = st.tipo==="feriado" && feriadoK(d)!==0;
-    $("tituloSector").textContent = st.tipo==="finde" ? `Grupo ${g} · ${DIAS[d.getDay()]} ${corto(d)}` : `Feriado ${corto(d)} · ${st.feriado[0]}`;
+    let lista, titulo, nota;
+    if (st.tipo==="finde") {
+      const f = L.listaFinde(d); lista = f.lista;
+      titulo = `Grupo ${f.grupo} · ${DIAS[d.getDay()]} ${corto(d)}`;
+      nota = f.k===0 ? `Planilla original del Grupo ${f.grupo} (${FINDE[f.grupo].ref}).`
+        : `Calculado: planilla del Grupo ${f.grupo} (${FINDE[f.grupo].ref}) rotada ${f.k>0?f.k:-f.k} ${Math.abs(f.k)===1?"vez":"veces"}${f.k<0?" hacia atrás":""}. Los marcados como fijo no rotan.`;
+    } else {
+      lista = L.listaFeriado(d);
+      titulo = `Feriado ${corto(d)} · ${st.feriado.nombre}`;
+      nota = !lista ? `En este feriado trabajan los que descansaron el ${FERIADO_PLANILLA.B.ref}. Todavía no hay planilla de ese equipo.`
+        : st.k===0 ? `Planilla original del feriado del ${FERIADO_PLANILLA.B.ref}.`
+        : `Calculado: equipo del ${FERIADO_PLANILLA.B.ref} con los horarios rotados ${st.k/2} ${st.k/2===1?"vez":"veces"}.`;
+    }
+    $("tituloSector").textContent = titulo;
     let last="", html="";
-    lista.forEach(r=>{ if(r[0]!==last){ html+=`<tr><td class="sec" colspan="2">${r[0]}</td></tr>`; last=r[0]; }
-      html+=`<tr class="${norm(r[1])===norm(p.n)?"me":""}"><td>${r[1]}</td><td class="h">${r[2]}</td></tr>`; });
+    (lista||[]).forEach(r=>{ if(r.sector!==last){ html+=`<tr><td class="sec" colspan="2">${r.sector}</td></tr>`; last=r.sector; }
+      html+=`<tr class="${norm(r.n)===norm(p.n)?"me":""} ${r.fijo?"fijo":""}"><td>${r.n}${r.fijo?'<span class="tag">fijo</span>':""}</td><td class="h">${r.h}</td></tr>`; });
     $("tabla").innerHTML = html;
-    $("notaTabla").textContent = st.tipo==="finde"
-      ? `Horarios de referencia según la planilla del Grupo ${g} (${FINDE[g].ref}).`
-      : (ref ? `Todavía no hay planilla de este feriado. Se muestra como referencia la del ${FERIADO_PLANILLA.B.ref} (los que trabajaron ese día descansan en este si es el siguiente).`
-             : `Planilla del feriado del ${FERIADO_PLANILLA.B.ref}.`);
+    $("notaTabla").textContent = nota;
   }
   store("perfil",{s:$("sector").value,p:$("persona").value});
 }
 
-function corta(h){ if(h==="Franco") return "Franco"; if(h==="Horario a confirmar") return "Trabajo"; return h.split(" · ").map(x=>x.replace(/ a /,"-")).join(" "); }
-
-function renderCal(s,i,sel){
+function renderCal(sel){
   const m = mesVista; $("mesTitulo").textContent = MESES_L[m.getMonth()]+" "+m.getFullYear();
   let html = ["L","M","M","J","V","S","D"].map(x=>`<div class="dn">${x}</div>`).join("");
-  const pad = (m.getDay()+6)%7;
-  for(let k=0;k<pad;k++) html+=`<div class="d vacio"></div>`;
+  for(let k=0;k<(m.getDay()+6)%7;k++) html+=`<div class="d vacio"></div>`;
   const hoy = ymd(new Date());
   for(let d=new Date(m); d.getMonth()===m.getMonth(); d=addDays(d,1)){
-    const st = estadoDia(s,i,d);
+    const st = estado(d);
     let c = "d";
-    if (st.trabaja) c += (st.tipo==="semana") ? " w" : " fw";
+    if (st.trabaja) c += st.tipo==="semana" ? " w" : " fw";
     if (st.feriado) c += " fer";
     if (st.manual) c += " man";
     if (ymd(d)===hoy) c += " hoy";
@@ -292,27 +233,41 @@ function renderCal(s,i,sel){
 }
 $("cal").onclick = e=>{ const el=e.target.closest("[data-d]"); if(el){ $("fecha").value=el.dataset.d; render(); } };
 
-function renderEventos(s,i,d){
+function renderEventos(d){
   const ev=[]; let x=new Date(d);
-  for(let k=0; k<120 && ev.length<10; k++, x=addDays(x,1)){
+  for(let k=0; k<200 && ev.length<10; k++, x=addDays(x,1)){
     if (x.getDay()===6) ev.push([x,"finde"]);
-    else if (feriado(x) && !finde(x)) ev.push([x,"fer"]);
     else if (k===0 && x.getDay()===0) ev.push([x,"dom"]);
+    else if (L.feriado(x) && !L.finde(x)) ev.push([x,"fer"]);
   }
   $("eventos").innerHTML = ev.map(([x,t])=>{
     if (t==="finde"){
-      const a=estadoDia(s,i,x), b=estadoDia(s,i,addDays(x,1));
-      const fer = [feriado(x),feriado(addDays(x,1))].filter(Boolean).map(f=>" · "+f[0]).join("");
-      const txt = (!a.trabaja&&!b.trabaja) ? "Franco" : `Sáb ${a.trabaja?corta(a.h):"franco"} / Dom ${b.trabaja?corta(b.h):"franco"}`;
-      return `<tr class="${a.trabaja||b.trabaja?"me":""}"><td>Finde ${corto(x)}–${corto(addDays(x,1))}<br><span class="muted">Grupo ${a.grupo}${fer}</span></td><td class="h">${txt}</td></tr>`;
+      const y=addDays(x,1), a=estado(x), b=estado(y);
+      const fer=[L.feriado(x),L.feriado(y)].filter(Boolean).map(f=>" · "+f.nombre).join("");
+      const txt=(!a.trabaja&&!b.trabaja)?"Franco":`Sáb ${a.trabaja?corta(a.h):"franco"}<br>Dom ${b.trabaja?corta(b.h):"franco"}`;
+      return `<tr class="${a.trabaja||b.trabaja?"me":""}" data-d="${ymd(x)}"><td>Finde ${corto(x)}–${corto(y)}<br><span class="muted">Grupo ${a.grupo}${fer}</span></td><td class="h">${txt}</td></tr>`;
     }
-    const st=estadoDia(s,i,x);
-    return `<tr class="${st.trabaja?"me":""}"><td>${DIAS[x.getDay()]} ${corto(x)}<br><span class="muted">${(st.feriado||["Domingo"])[0]}${st.grupo?" · Grupo "+st.grupo:""}</span></td><td class="h">${st.feriado&&st.feriado[1]==="puente"?(st.trabaja?corta(st.h)+" (normal)":"Franco"):(st.trabaja?corta(st.h):"Franco")}</td></tr>`;
+    const st=estado(x);
+    const det = st.feriado ? st.feriado.nombre + (st.feriado.tipo==="puente"?" · día normal":"") : "Grupo "+st.grupo;
+    return `<tr class="${st.trabaja&&st.tipo!=="semana"?"me":""}" data-d="${ymd(x)}"><td>${DIAS[x.getDay()]} ${corto(x)}<br><span class="muted">${det}</span></td><td class="h">${st.trabaja?corta(st.h):"Franco"}</td></tr>`;
   }).join("");
 }
+$("eventos").onclick = e=>{ const el=e.target.closest("[data-d]"); if(el) setFecha(parseYMD(el.dataset.d)); };
+
+function renderFeriadosAnio(d){
+  const y=d.getFullYear(), fs=L.feriadosAnio(y);
+  $("ferAnio").querySelector("summary").innerHTML = `<b>Feriados ${y}</b>`;
+  const sinPuentes = !(PUENTES||{})[y];
+  $("feriadosTabla").innerHTML = Object.keys(fs).sort().map(k=>{
+    const x=parseYMD(k), f=fs[k], st=estado(x);
+    const que = f.tipo==="puente" ? "Día normal" : L.finde(x) ? (st.trabaja?"Trabajás (finde)":"Franco (finde)") : (st.trabaja?"Trabajás":"Descansás");
+    return `<tr class="${st.trabaja&&f.tipo==="feriado"?"me":""}" data-d="${k}"><td>${DIAS[x.getDay()].slice(0,3)} ${corto(x)}<br><span class="muted">${f.nombre}</span></td><td class="h">${que}</td></tr>`;
+  }).join("") + (sinPuentes?`<tr><td colspan="2" class="muted">Los puentes turísticos de ${y} todavía no están cargados.</td></tr>`:"");
+}
+$("feriadosTabla").onclick = e=>{ const el=e.target.closest("[data-d]"); if(el) setFecha(parseYMD(el.dataset.d)); };
 
 function marcar(t){
-  const n = sec().personas[pi()].n, all = store("man:"+n)||{}, k=ymd(fecha());
+  const n=nombre(), all=store("man:"+n)||{}, k=ymd(fecha());
   if (t===null) delete all[k]; else all[k]={t:t,h:t?$("mHora").value.trim():""};
   store("man:"+n,all); render();
 }
@@ -327,14 +282,11 @@ const perfil = store("perfil");
 if (perfil && SECTORES[perfil.s]) $("sector").value = perfil.s;
 llenarPersonas();
 if (perfil && SECTORES[perfil.s] && SECTORES[perfil.s].personas[perfil.p]) $("persona").value = perfil.p;
-llenarGrupo();
-llenarFerBase();
-
-$("sector").onchange = ()=>{ llenarPersonas(); llenarGrupo(); llenarFerBase(); render(); };
-$("persona").onchange = ()=>{ llenarGrupo(); llenarFerBase(); render(); };
-$("ferbase").onchange = ()=>{ const v=$("ferbase").value, n=sec().personas[pi()].n;
-  try{ if(v==="auto") localStorage.removeItem("ferbase:"+n); else store("ferbase:"+n, v==="1"); }catch(e){} render(); };
-$("grupo").onchange = ()=>{ store("grupo:"+sec().personas[pi()].n,$("grupo").value); render(); };
+llenarPrefs();
+$("sector").onchange = ()=>{ llenarPersonas(); llenarPrefs(); render(); };
+$("persona").onchange = ()=>{ llenarPrefs(); render(); };
+$("grupo").onchange = ()=>{ const v=$("grupo").value; store("grupo:"+nombre(), v==="auto"?null:v); render(); };
+$("ferbase").onchange = ()=>{ const v=$("ferbase").value; store("ferbase:"+nombre(), v==="auto"?null:v==="1"); render(); };
 $("fecha").onchange = ()=>setFecha(fecha());
 $("hoy").onclick = ()=>setFecha(new Date());
 $("prev").onclick = ()=>setFecha(addDays(fecha(),-1));

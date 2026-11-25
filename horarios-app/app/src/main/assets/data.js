@@ -73,6 +73,11 @@ window.SECTORES = [
 window.FINDE_BASE_SABADO = "2026-11-14";
 window.FINDE_BASE_GRUPO = "B";
 
+// Los horarios de finde ROTAN igual que los de la semana: cada vez que el grupo
+// trabaja, dentro de cada sector cada uno toma el horario del de abajo (el último
+// toma el del primero). Las filas con 1 al final (negrita) quedan fijas.
+// La planilla cargada corresponde al finde de referencia ("ref") de cada grupo.
+
 // Personas que trabajan los findes de un grupo pero no figuran en la planilla.
 window.GRUPO_FIJO = { "Pacheco Julian": "B" };
 
@@ -93,7 +98,7 @@ window.FINDE = {
       ["Ventas","Juan Renzo","10 a 14 · 19:30 a 00:30"],
       ["Ventas","Daverio Daniela","14 a 22"],
       ["Ventas","Mitre Florencia","16 a 01"],
-      ["Ventas","Lugones Maximiliano","23 a 07"],
+      ["Ventas","Lugones Maximiliano","23 a 07",1],
       ["Carga Medicamentos","Carrillo Jose","8 a 13 · 18 a 22"],
       ["Perfumería","Paez Karina","8:30 a 13 · 18:30 a 23"],
       ["Perfumería","Garcia Maira","9 a 13"],
@@ -115,7 +120,7 @@ window.FINDE = {
       ["Ventas","Juan Renzo","10 a 14 · 19:30 a 00:30"],
       ["Ventas","Silva Virginia","14 a 22"],
       ["Ventas","Mitre Florencia","16 a 01"],
-      ["Ventas","Lugones Maximiliano","23 a 07"],
+      ["Ventas","Lugones Maximiliano","23 a 07",1],
       ["Carga Medicamentos","Carrillo Jose","8:30 a 13 · 17:30 a 22"],
       ["Perfumería","Camusso Carolina","7 a 16"],
       ["Perfumería","Paez Karina","14 a 23"],
@@ -137,7 +142,7 @@ window.FINDE = {
       ["Ventas","Silva Virginia","11 a 14 · 19:30 a 00:30"],
       ["Ventas","Suarez Nahiara","14 a 23"],
       ["Ventas","Peralta Alejandro","16 a 01"],
-      ["Ventas","Banegas Fabian","23 a 07"],
+      ["Ventas","Banegas Fabian","23 a 07",1],
       ["Carga Medicamentos","Orieta Fabian","8 a 13 · 17:30 a 21:30"],
       ["Perfumería","Montes Sabrina","8:30 a 13 · 18:30 a 23"],
       ["Perfumería","Garcia Maira","9 a 13"],
@@ -161,7 +166,7 @@ window.FINDE = {
       ["Ventas","Silva Virginia","11 a 14 · 19:30 a 00:30"],
       ["Ventas","Suarez Nahiara","14 a 23"],
       ["Ventas","Peralta Alejandro","17 a 01"],
-      ["Ventas","Banegas Fabian","23 a 07"],
+      ["Ventas","Banegas Fabian","23 a 07",1],
       ["Perfumería","Montes Sabrina","7 a 16"],
       ["Perfumería","Gerez Gisela","14 a 23"],
       ["Perfumería","Araujo Juan Pablo","9 a 13:30 · 17:30 a 22"],
@@ -185,7 +190,7 @@ window.FERIADO_PLANILLA = {
     ["Ventas","Maguna Noelia","10 a 14 · 19:30 a 00:30"],
     ["Ventas","Vallejos Luis","13 a 22"],
     ["Ventas","Zerda Jonathan","17 a 01"],
-    ["Ventas","Lugones Maximiliano","23 a 07"],
+    ["Ventas","Lugones Maximiliano","23 a 07",1],
     ["Carga Medicamentos","Carrillo Jose","8 a 13 · 18 a 22"],
     ["Perfumería","Camusso Carolina","7 a 16"],
     ["Perfumería","Paez Karina","14 a 23"],
@@ -193,47 +198,21 @@ window.FERIADO_PLANILLA = {
 };
 
 // ---------------- FERIADOS DE ARGENTINA ----------------
-// Regla: los feriados de lunes a viernes se alternan: uno se trabaja y el siguiente se descansa.
+// Los feriados nacionales se calculan solos para cualquier año (Ley 27.399:
+// fijos, Carnaval y Viernes Santo según Pascua, y trasladables al lunes).
+// Los días no laborables con fines turísticos ("puentes") se fijan cada año por
+// resolución: cargarlos acá cuando salgan. Se toman como día normal de trabajo.
+window.PUENTES = {
+  2026: ["2026-03-23", "2026-07-10", "2026-12-07"], // Resolución JGM 164/2025
+};
+// Correcciones manuales por si el Gobierno mueve algo distinto a la regla:
+// FERIADOS_EXTRA: { "AAAA-MM-DD": "Nombre" }   FERIADOS_QUITAR: ["AAAA-MM-DD"]
+window.FERIADOS_EXTRA = {};
+window.FERIADOS_QUITAR = [];
+
+// Regla de feriados: uno se trabaja y el siguiente se descansa (solo los de lunes a viernes).
 // Referencia: el 23-11-26 trabajaron los de FERIADO_PLANILLA; el resto descansó.
-// tipo "puente" = día no laborable con fines turísticos: se toma como día normal
-// y no cuenta en la alternancia. Los feriados en sábado o domingo siguen el finde.
+// Los feriados en sábado o domingo siguen la regla del fin de semana.
 window.FERIADO_BASE = "2026-11-23";
 // Personas que no están en la planilla del 23-11 pero sí trabajaron ese feriado:
 window.TRABAJO_FERIADO_BASE = {};
-window.FERIADOS = {
-  "2026-01-01": ["Año Nuevo"],
-  "2026-02-16": ["Carnaval"],
-  "2026-02-17": ["Carnaval"],
-  "2026-03-23": ["Día no laborable (puente)", "puente"],
-  "2026-03-24": ["Día de la Memoria"],
-  "2026-04-02": ["Día de Malvinas"],
-  "2026-04-03": ["Viernes Santo"],
-  "2026-05-01": ["Día del Trabajador"],
-  "2026-05-25": ["Revolución de Mayo"],
-  "2026-06-15": ["Paso a la Inmortalidad de Güemes"],
-  "2026-06-20": ["Día de la Bandera"],
-  "2026-07-09": ["Día de la Independencia"],
-  "2026-07-10": ["Día no laborable (puente)", "puente"],
-  "2026-08-17": ["Paso a la Inmortalidad de San Martín"],
-  "2026-10-12": ["Día de la Diversidad Cultural"],
-  "2026-11-23": ["Día de la Soberanía Nacional"],
-  "2026-12-07": ["Día no laborable (puente)", "puente"],
-  "2026-12-08": ["Inmaculada Concepción de María"],
-  "2026-12-25": ["Navidad"],
-  "2027-01-01": ["Año Nuevo"],
-  "2027-02-08": ["Carnaval"],
-  "2027-02-09": ["Carnaval"],
-  "2027-03-24": ["Día de la Memoria"],
-  "2027-03-26": ["Viernes Santo"],
-  "2027-04-02": ["Día de Malvinas"],
-  "2027-05-01": ["Día del Trabajador"],
-  "2027-05-25": ["Revolución de Mayo"],
-  "2027-06-20": ["Día de la Bandera"],
-  "2027-06-21": ["Paso a la Inmortalidad de Güemes"],
-  "2027-07-09": ["Día de la Independencia"],
-  "2027-08-16": ["Paso a la Inmortalidad de San Martín"],
-  "2027-10-11": ["Día de la Diversidad Cultural"],
-  "2027-11-22": ["Día de la Soberanía Nacional"],
-  "2027-12-08": ["Inmaculada Concepción de María"],
-  "2027-12-25": ["Navidad"],
-};
