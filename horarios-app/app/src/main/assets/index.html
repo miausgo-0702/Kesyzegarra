@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mis Horarios</title>
+<style>
+:root{--bg:#f3f5f9;--card:#fff;--ink:#1b2333;--muted:#6b7589;--line:#e2e6ee;--acc:#d7263d;--acc2:#fde8eb;--fix:#eef1f6;}
+@media (prefers-color-scheme:dark){:root{--bg:#10141c;--card:#1a202b;--ink:#e8ecf3;--muted:#98a2b6;--line:#2a3240;--acc:#ff5468;--acc2:#3a1d24;--fix:#222a37;}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,Roboto,sans-serif}
+header{background:var(--acc);color:#fff;padding:18px 16px 14px}
+header h1{margin:0;font-size:20px}
+header p{margin:2px 0 0;opacity:.85;font-size:13px}
+main{padding:12px 16px 32px;max-width:640px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+label{display:block;font-size:12px;color:var(--muted);margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em}
+select,input[type=date]{width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{flex:1}
+.field{margin-bottom:10px}
+button{font:inherit;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:10px 12px}
+button.nav{flex:0 0 auto;font-size:18px;padding:8px 14px}
+.big{text-align:center}
+.big .who{font-size:14px;color:var(--muted)}
+.big .shift{font-size:30px;font-weight:700;margin:6px 0;color:var(--acc)}
+.big .week{font-size:13px;color:var(--muted)}
+.warn{background:var(--acc2);border-radius:10px;padding:8px 10px;font-size:13px;margin-top:10px}
+h2{font-size:15px;margin:0 0 8px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td{padding:7px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+td.h{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+tr.me td{background:var(--acc2);font-weight:600}
+tr.fijo td{background:var(--fix)}
+.tag{font-size:10px;background:var(--line);border-radius:6px;padding:1px 5px;margin-left:4px;color:var(--muted)}
+.muted{color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<header><h1>Mis Horarios</h1><p>Horario semanal · rota un puesto por semana</p></header>
+<main>
+  <div class="card">
+    <div class="field"><label for="sector">Sector</label><select id="sector"></select></div>
+    <div class="field"><label for="persona">Persona</label><select id="persona"></select></div>
+    <label for="fecha">Fecha</label>
+    <div class="row">
+      <button class="nav" id="prev" aria-label="Semana anterior">‹</button>
+      <input type="date" id="fecha">
+      <button class="nav" id="next" aria-label="Semana siguiente">›</button>
+    </div>
+    <div class="row" style="margin-top:8px"><button id="hoy">Hoy</button></div>
+  </div>
+
+  <div class="card big" id="resultado"></div>
+
+  <div class="card"><h2>Próximas semanas</h2><table id="proximas"></table></div>
+
+  <div class="card"><h2 id="tituloSector"></h2><table id="tabla"></table>
+    <p class="muted">Las personas marcadas como <b>fijo</b> (en negrita en la planilla) mantienen su horario y no entran en la rotación.</p>
+  </div>
+</main>
+<script src="data.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const DIAS = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+
+function parseYMD(s){ const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
+function ymd(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function lunesDe(d){ const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()); const wd=(x.getDay()+6)%7; x.setDate(x.getDate()-wd); return x; }
+function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function corto(d){ return d.getDate()+" "+MESES[d.getMonth()]; }
+const BASE = parseYMD(BASE_LUNES);
+function semanaOffset(d){ return Math.round((lunesDe(d)-BASE)/(7*864e5)); }
+function mod(a,n){ return ((a%n)+n)%n; }
+
+// Devuelve el horario de cada persona del sector para un desplazamiento de semanas.
+function horariosSector(sec, k){
+  const rot = sec.personas.filter(p=>!p.fijo);
+  const n = rot.length;
+  return sec.personas.map(p=>{
+    if (p.fijo || n===0) return { ...p, actual: p.h };
+    const i = rot.indexOf(p);
+    return { ...p, actual: rot[mod(i+k,n)].h };
+  });
+}
+
+function guardar(){ try{ localStorage.setItem("perfil", JSON.stringify({s:$("sector").value,p:$("persona").value})); }catch(e){} }
+function cargar(){ try{ return JSON.parse(localStorage.getItem("perfil")||"null"); }catch(e){ return null; } }
+
+function llenarPersonas(){
+  const sec = SECTORES[$("sector").value];
+  $("persona").innerHTML = sec.personas.map((p,i)=>`<option value="${i}">${p.n}${p.fijo?" (fijo)":""}</option>`).join("");
+}
+
+function render(){
+  const sec = SECTORES[$("sector").value];
+  const pi = Number($("persona").value);
+  const fecha = parseYMD($("fecha").value || ymd(new Date()));
+  const k = semanaOffset(fecha);
+  const lun = lunesDe(fecha), vie = addDays(lun,4);
+  const lista = horariosSector(sec,k);
+  const yo = lista[pi];
+  const finde = fecha.getDay()===0 || fecha.getDay()===6;
+
+  $("resultado").innerHTML =
+    `<div class="who">${yo.n} · ${DIAS[fecha.getDay()]} ${corto(fecha)}</div>
+     <div class="shift">${yo.actual}</div>
+     <div class="week">Semana del lunes ${corto(lun)} al viernes ${corto(vie)}${yo.fijo?" · horario fijo":""}</div>
+     ${finde?'<div class="warn">Es fin de semana: este es el horario semanal. Los findes y feriados tienen planilla aparte.</div>':""}`;
+
+  let filas="";
+  for(let j=0;j<8;j++){
+    const l = addDays(lun,7*j);
+    const h = horariosSector(sec,k+j)[pi].actual;
+    filas += `<tr${j===0?' class="me"':''}><td>${corto(l)} – ${corto(addDays(l,4))}</td><td class="h">${h}</td></tr>`;
+  }
+  $("proximas").innerHTML = filas;
+
+  $("tituloSector").textContent = `${sec.nombre} · semana del ${corto(lun)}`;
+  $("tabla").innerHTML = lista.map((p,i)=>
+    `<tr class="${i===pi?"me":""} ${p.fijo?"fijo":""}"><td>${p.n}${p.fijo?'<span class="tag">fijo</span>':""}</td><td class="h">${p.actual}</td></tr>`
+  ).join("");
+  guardar();
+}
+
+$("sector").innerHTML = SECTORES.map((s,i)=>`<option value="${i}">${s.nombre}</option>`).join("");
+const perfil = cargar();
+if (perfil && SECTORES[perfil.s]) $("sector").value = perfil.s;
+llenarPersonas();
+if (perfil && SECTORES[perfil.s] && SECTORES[perfil.s].personas[perfil.p]) $("persona").value = perfil.p;
+$("fecha").value = ymd(new Date());
+
+$("sector").onchange = ()=>{ llenarPersonas(); render(); };
+$("persona").onchange = render;
+$("fecha").onchange = render;
+$("hoy").onclick = ()=>{ $("fecha").value = ymd(new Date()); render(); };
+$("prev").onclick = ()=>{ $("fecha").value = ymd(addDays(parseYMD($("fecha").value),-7)); render(); };
+$("next").onclick = ()=>{ $("fecha").value = ymd(addDays(parseYMD($("fecha").value),7)); render(); };
+render();
+</script>
+</body>
+</html>
