@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>VendiX promo</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: #0a0e1f; }
+  body { font-family: "Inter", "Noto Color Emoji", sans-serif; color: #fff; position: relative; }
+  .bg { position: absolute; inset: 0; background: radial-gradient(1200px 900px at 10% 0%, #23306e 0%, transparent 60%), radial-gradient(1000px 900px at 100% 100%, #3b1f78 0%, transparent 60%), #0a0e1f; }
+  .dots { position: absolute; inset: 0; background-image: radial-gradient(rgba(255,255,255,.07) 1.5px, transparent 1.5px); background-size: 34px 34px; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .55; }
+  .scene { position: absolute; inset: 0; }
+  .el { position: absolute; left: 0; right: 0; will-change: transform, opacity; }
+  .center { text-align: center; }
+  h1 { font-weight: 800; font-size: 92px; line-height: 1.05; letter-spacing: -2.5px; }
+  h2 { font-weight: 800; font-size: 80px; line-height: 1.06; letter-spacing: -2px; text-align: center; padding: 0 60px; }
+  .sub { font-size: 40px; line-height: 1.3; color: #c3c9ef; text-align: center; padding: 0 90px; font-weight: 500; }
+  .grad { background: linear-gradient(90deg, #7c8cff, #b48cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .q { font-size: 70px; font-weight: 800; letter-spacing: -1.5px; line-height: 1.1; text-align: center; padding: 0 70px; }
+  .q .x { color: #ff6b81; }
+  .logo { width: 260px; height: 260px; border-radius: 64px; margin: 0 auto; background: linear-gradient(135deg, #5b7cfa, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 170px; font-weight: 800; box-shadow: 0 30px 120px rgba(110, 100, 255, .65); }
+  .brand { font-size: 150px; font-weight: 800; letter-spacing: -5px; text-align: center; }
+  .pill-row { display: flex; gap: 22px; justify-content: center; flex-wrap: wrap; padding: 0 60px; }
+  .pill { font-size: 34px; font-weight: 700; padding: 18px 30px; border-radius: 999px; background: rgba(255,255,255,.08); border: 2px solid rgba(160,170,255,.35); color: #e6e9ff; }
+  .win { position: absolute; left: 40px; width: 1000px; border-radius: 34px; overflow: hidden; background: #111833; border: 2px solid rgba(150,160,255,.35); box-shadow: 0 40px 140px rgba(60, 70, 220, .45), 0 0 0 10px rgba(255,255,255,.03); }
+  .win .bar { height: 54px; background: #1a2142; display: flex; align-items: center; gap: 14px; padding: 0 26px; }
+  .win .bar i { width: 18px; height: 18px; border-radius: 50%; display: block; }
+  .win .view { position: relative; overflow: hidden; }
+  .win .view img { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  .phone { position: absolute; left: 50%; width: 470px; margin-left: -235px; border-radius: 70px; padding: 18px; background: #05070f; border: 3px solid #3a4170; box-shadow: 0 50px 160px rgba(110, 90, 255, .55); }
+  .phone img { width: 100%; display: block; border-radius: 54px; }
+  .phone .notch { position: absolute; top: 30px; left: 50%; width: 130px; height: 34px; margin-left: -65px; border-radius: 20px; background: #05070f; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; padding: 0 56px; }
+  .tile { background: rgba(255,255,255,.06); border: 2px solid rgba(150,160,255,.25); border-radius: 30px; padding: 34px 18px; text-align: center; }
+  .tile .ic { font-size: 74px; }
+  .tile .t { font-size: 31px; font-weight: 700; margin-top: 14px; line-height: 1.2; }
+  .ring { width: 300px; height: 300px; border-radius: 50%; margin: 0 auto; background: linear-gradient(135deg, #22c55e, #16a34a); display: flex; align-items: center; justify-content: center; font-size: 150px; box-shadow: 0 0 0 0 rgba(34,197,94,.5); }
+  .check { font-size: 44px; font-weight: 600; padding: 0 110px; display: flex; gap: 22px; align-items: center; color: #e6e9ff; }
+  .check b { flex: none; width: 60px; height: 60px; border-radius: 50%; background: rgba(34,197,94,.18); color: #4ade80; display: flex; align-items: center; justify-content: center; font-size: 36px; }
+  .cta { margin: 0 auto; width: 860px; padding: 40px 0; border-radius: 40px; text-align: center; font-size: 64px; font-weight: 800; background: linear-gradient(90deg, #5b7cfa, #8b5cf6); box-shadow: 0 30px 100px rgba(110, 100, 255, .6); }
+  .contact { font-size: 46px; font-weight: 700; text-align: center; color: #fff; }
+  .foot { position: absolute; left: 0; right: 0; bottom: 70px; display: flex; justify-content: center; align-items: center; gap: 18px; font-size: 36px; font-weight: 800; }
+  .foot .mini { width: 64px; height: 64px; border-radius: 18px; background: linear-gradient(135deg, #5b7cfa, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 40px; }
+  .foot span.s { font-weight: 500; color: #9aa3d8; font-size: 30px; }
+  .progress { position: absolute; left: 0; top: 0; height: 8px; background: linear-gradient(90deg, #5b7cfa, #b48cff); }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="blob" id="b1" style="width:700px;height:700px;background:#4f46e5;"></div>
+<div class="blob" id="b2" style="width:600px;height:600px;background:#9333ea;"></div>
+<div class="dots"></div>
+
+<!-- 1. Gancho -->
+<div class="scene" data-s="0" data-e="4.3">
+  <div class="el q" style="top:520px" data-in="0.2" data-fx="up">¿Seguís anotando<br>las ventas en un <span class="x">cuaderno</span>? 📒</div>
+  <div class="el q" style="top:830px" data-in="1.2" data-fx="up">¿No sabés cuánto<br><span class="x">stock</span> te queda? 📦</div>
+  <div class="el q" style="top:1140px" data-in="2.2" data-fx="up">¿Quién te <span class="x">debe</span> plata? 🤔</div>
+</div>
+
+<!-- 2. Logo -->
+<div class="scene" data-s="4.3" data-e="8.3">
+  <div class="el" style="top:470px" data-in="4.4" data-fx="pop"><div class="logo">V</div></div>
+  <div class="el brand" style="top:790px" data-in="4.8" data-fx="up">Vendi<span class="grad">X</span></div>
+  <div class="el sub" style="top:1000px" data-in="5.3" data-fx="up">El sistema de ventas para<br><b style="color:#fff">kioscos y comercios</b></div>
+  <div class="el pill-row" style="top:1200px" data-in="6.0" data-fx="up"><span class="pill">⚡ Simple</span><span class="pill">🚀 Rápido</span><span class="pill">🧩 Completo</span></div>
+</div>
+
+<!-- 3. Terminal -->
+<div class="scene" data-s="8.3" data-e="13.8">
+  <h2 class="el" style="top:150px" data-in="8.4" data-fx="up">Vendé<br><span class="grad">en segundos</span></h2>
+  <div class="el sub" style="top:345px" data-in="8.6" data-fx="up">Escaneá con la pistola, cobrá con F9<br>e imprimí el ticket</div>
+  <div class="win" style="top:540px" data-in="8.7" data-fx="win" data-img="assets/terminal.png" data-h="760" data-pan="0,0,1.55|-600,-200,1.7"></div>
+  <div class="el pill-row" style="top:1420px" data-in="9.4" data-fx="up"><span class="pill">📡 Lector de códigos</span><span class="pill">🧾 Tickets</span><span class="pill">↩️ Devoluciones</span><span class="pill">⭐ Favoritos</span></div>
+</div>
+
+<!-- 4. Panel -->
+<div class="scene" data-s="13.8" data-e="19.3">
+  <h2 class="el" style="top:150px" data-in="13.9" data-fx="up">Tu negocio,<br><span class="grad">de un vistazo</span></h2>
+  <div class="el sub" style="top:345px" data-in="14.1" data-fx="up">Ventas del día, del mes, gráficos<br>y estado de caja al instante</div>
+  <div class="win" style="top:540px" data-in="14.2" data-fx="win" data-img="assets/panel.png" data-h="760" data-pan="-300,-30,1.6|-500,-280,1.7"></div>
+  <div class="el pill-row" style="top:1420px" data-in="14.9" data-fx="up"><span class="pill">💵 Caja diaria</span><span class="pill">📊 Reportes</span><span class="pill">📈 Ticket promedio</span></div>
+</div>
+
+<!-- 5. Productos -->
+<div class="scene" data-s="19.3" data-e="24.8">
+  <h2 class="el" style="top:150px" data-in="19.4" data-fx="up">Stock y precios<br><span class="grad">bajo control</span></h2>
+  <div class="el sub" style="top:345px" data-in="19.6" data-fx="up">Avisos de stock bajo con el teléfono<br>del proveedor para reponer</div>
+  <div class="win" style="top:540px" data-in="19.7" data-fx="win" data-img="assets/productos.png" data-h="760" data-pan="-250,0,1.6|-350,-250,1.65"></div>
+  <div class="el pill-row" style="top:1420px" data-in="20.4" data-fx="up"><span class="pill">📦 Inventario</span><span class="pill">🏷️ Actualizar precios</span><span class="pill">⚠️ Stock bajo</span><span class="pill">🧮 Excel</span></div>
+</div>
+
+<!-- 6. Asistente -->
+<div class="scene" data-s="24.8" data-e="30.3">
+  <h2 class="el" style="top:150px" data-in="24.9" data-fx="up">Un <span class="grad">asistente</span><br>que te ayuda</h2>
+  <div class="el sub" style="top:345px" data-in="25.1" data-fx="up">Preguntale qué falta reponer,<br>quién te debe o cómo van las ventas</div>
+  <div class="win" style="top:540px" data-in="25.2" data-fx="win" data-img="assets/asistente.png" data-h="760" data-pan="-600,-100,1.6|-700,-200,1.7"></div>
+  <div class="el pill-row" style="top:1420px" data-in="25.9" data-fx="up"><span class="pill">✨ Asistente inteligente</span><span class="pill">💳 Cuenta corriente</span><span class="pill">🚚 Proveedores</span></div>
+</div>
+
+<!-- 7. Celular -->
+<div class="scene" data-s="30.3" data-e="35.3">
+  <h2 class="el" style="top:150px" data-in="30.4" data-fx="up">También en tu <span class="grad">celular</span> 📱</h2>
+  <div class="el sub" style="top:270px" data-in="30.6" data-fx="up">Mirá tus ventas desde donde estés<br>con acceso móvil por QR</div>
+  <div class="el" style="top:480px" data-in="30.7" data-fx="phone"><div class="phone"><img src="assets/movil.png"><div class="notch"></div></div></div>
+</div>
+
+<!-- 8. Funciones -->
+<div class="scene" data-s="35.3" data-e="40.6">
+  <h2 class="el" style="top:200px" data-in="35.4" data-fx="up">Todo lo que tu<br>negocio <span class="grad">necesita</span></h2>
+  <div class="el grid" style="top:520px" data-in="35.6" data-fx="none">
+    <div class="tile" data-tile="0"><div class="ic">🖥️</div><div class="t">Punto de venta</div></div>
+    <div class="tile" data-tile="1"><div class="ic">💵</div><div class="t">Apertura y cierre de caja</div></div>
+    <div class="tile" data-tile="2"><div class="ic">📦</div><div class="t">Stock e inventario</div></div>
+    <div class="tile" data-tile="3"><div class="ic">💳</div><div class="t">Fiado / cuenta corriente</div></div>
+    <div class="tile" data-tile="4"><div class="ic">🚚</div><div class="t">Compras, remitos y proveedores</div></div>
+    <div class="tile" data-tile="5"><div class="ic">📊</div><div class="t">Consultas y reportes</div></div>
+    <div class="tile" data-tile="6"><div class="ic">📹</div><div class="t">Cámaras de seguridad</div></div>
+    <div class="tile" data-tile="7"><div class="ic">👥</div><div class="t">Usuarios y permisos</div></div>
+    <div class="tile" data-tile="8"><div class="ic">💾</div><div class="t">Respaldo e importación</div></div>
+  </div>
+</div>
+
+<!-- 9. Soporte + CTA -->
+<div class="scene" data-s="40.6" data-e="99">
+  <div class="el" style="top:370px" data-in="40.7" data-fx="pop"><div class="ring" id="ring">📞</div></div>
+  <h2 class="el" style="top:730px" data-in="41.0" data-fx="up">Soporte <span class="grad">telefónico</span><br>de verdad</h2>
+  <div class="el check" style="top:1000px" data-in="41.6" data-fx="left"><b>✓</b>Atención por teléfono y WhatsApp</div>
+  <div class="el check" style="top:1100px" data-in="42.0" data-fx="left"><b>✓</b>Instalación y capacitación incluidas</div>
+  <div class="el check" style="top:1200px" data-in="42.4" data-fx="left"><b>✓</b>Tus datos guardados en tu PC</div>
+  <div class="el" style="top:1380px" data-in="43.4" data-fx="pop"><div class="cta" id="cta">Pedí tu demo gratis 👉</div></div>
+  <div class="el contact" style="top:1600px" data-in="43.9" data-fx="up" id="contact"></div>
+</div>
+
+<div class="foot" id="foot"><div class="mini">V</div>VendiX <span class="s">· sistema de ventas</span></div>
+<div class="progress" id="prog"></div>
+
+<script>
+const CONTACT = new URLSearchParams(location.search).get('contacto') || '📲 Consultanos por teléfono o WhatsApp';
+document.getElementById('contact').textContent = CONTACT;
+const DURATION = 48;
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, p) => a + (b - a) * p;
+const easeOut = p => 1 - Math.pow(1 - p, 3);
+const easeInOut = p => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+const backOut = p => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2); };
+const prog = (t, a, d) => clamp((t - a) / d, 0, 1);
+
+// Build screenshot windows
+document.querySelectorAll('.win').forEach(w => {
+  const h = +w.dataset.h;
+  w.innerHTML = '<div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div><div class="view" style="height:' + h + 'px"><img src="' + w.dataset.img + '"></div>';
+  const [a, b] = w.dataset.pan.split('|').map(s => s.split(',').map(Number));
+  w._pan = { a, b };
+});
+
+function render(t) {
+  document.querySelectorAll('.scene').forEach(sc => {
+    const s = +sc.dataset.s, e = +sc.dataset.e;
+    if (t < s - 0.01 || t > e + 0.01) { sc.style.display = 'none'; return; }
+    sc.style.display = 'block';
+    const out = prog(t, e - 0.45, 0.45); // salida común de la escena
+    sc.querySelectorAll('[data-in]').forEach(el => {
+      const p = prog(t, +el.dataset.in, el.dataset.fx === 'win' || el.dataset.fx === 'phone' ? 0.9 : 0.6);
+      const fx = el.dataset.fx;
+      let o = easeOut(p), tf = '';
+      if (fx === 'up') tf = `translateY(${lerp(60, 0, easeOut(p))}px)`;
+      else if (fx === 'left') tf = `translateX(${lerp(-80, 0, easeOut(p))}px)`;
+      else if (fx === 'pop') tf = `scale(${lerp(0.4, 1, backOut(p))})`;
+      else if (fx === 'win') tf = `translateY(${lerp(220, 0, easeOut(p))}px) scale(${lerp(.9, 1, easeOut(p))})`;
+      else if (fx === 'phone') tf = `translateY(${lerp(500, 0, easeOut(p)) + Math.sin(t * 1.6) * 8}px) rotate(${lerp(-8, 0, easeOut(p))}deg)`;
+      else if (fx === 'none') o = 1;
+      tf += ` translateY(${lerp(0, -40, easeInOut(out))}px)`;
+      el.style.opacity = o * (1 - out);
+      el.style.transform = tf;
+      if (el._pan) {
+        const s0 = +el.dataset.in + 0.3, dur = e - s0;
+        const q = easeInOut(prog(t, s0, dur));
+        const img = el.querySelector('img');
+        const sc = lerp(el._pan.a[2], el._pan.b[2], q);
+        img.style.width = (1000 * sc) + 'px';
+        img.style.transform = `translate(${lerp(el._pan.a[0], el._pan.b[0], q)}px, ${lerp(el._pan.a[1], el._pan.b[1], q)}px)`;
+      }
+    });
+    sc.querySelectorAll('[data-tile]').forEach(tl => {
+      const p = prog(t, 35.7 + (+tl.dataset.tile) * 0.22, 0.5);
+      tl.style.opacity = easeOut(p);
+      tl.style.transform = `scale(${lerp(0.6, 1, backOut(p))})`;
+    });
+  });
+  // Teléfono sonando
+  const ring = document.getElementById('ring');
+  const r = t > 41.2 ? Math.sin(t * 40) * 12 * Math.max(0, Math.sin((t - 41.2) * 2.2)) : 0;
+  const pulse = ((t - 40.7) % 1.2) / 1.2;
+  ring.style.transform = `rotate(${r}deg)`;
+  ring.style.boxShadow = t > 40.7 ? `0 0 0 ${pulse * 70}px rgba(34,197,94,${0.45 * (1 - pulse)})` : 'none';
+  const cta = document.getElementById('cta');
+  cta.style.transform = t > 44.2 ? `scale(${1 + Math.sin((t - 44.2) * 4) * 0.03})` : '';
+  // Fondo animado
+  document.getElementById('b1').style.transform = `translate(${-150 + Math.sin(t * .35) * 220}px, ${200 + Math.cos(t * .3) * 260}px)`;
+  document.getElementById('b2').style.transform = `translate(${600 + Math.cos(t * .28) * 200}px, ${1150 + Math.sin(t * .33) * 260}px)`;
+  document.getElementById('prog').style.width = (t / DURATION * 100) + '%';
+  const foot = document.getElementById('foot');
+  foot.style.opacity = (t > 8.3 && t < 40.4) ? 1 : 0;
+}
+window.render = render;
+window.DURATION = DURATION;
+render(0);
+</script>
+</body>
+</html>
