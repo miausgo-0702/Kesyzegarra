@@ -1,6 +1,7 @@
 // Renderiza video.html a MP4 (1080x1920, 30 fps).
 // Uso:  node render.js                          -> vendix-promo.mp4
 //       node render.js --contacto "📞 0342 123-4567"
+//       node render.js --html video-voz.html --audio voz_final.wav --out vendix-promo-voz.mp4
 //       node render.js --stills 2,6,10          -> capturas de prueba
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
@@ -14,7 +15,7 @@ const FPS = 30;
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1080, height: 1920 } });
   const contacto = opt('--contacto');
-  const url = 'file://' + path.join(__dirname, 'video.html') + (contacto ? '?contacto=' + encodeURIComponent(contacto) : '');
+  const url = 'file://' + path.join(__dirname, opt('--html') || 'video.html') + (contacto ? '?contacto=' + encodeURIComponent(contacto) : '');
   await page.goto(url);
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(500);
@@ -32,9 +33,9 @@ const FPS = 30;
   const out = opt('--out') || path.join(__dirname, 'vendix-promo.mp4');
   const dur = await page.evaluate(() => window.DURATION);
   const ff = spawn('ffmpeg', ['-y', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', '-',
-    '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-shortest',
+    ...(opt('--audio') ? ['-i', opt('--audio')] : ['-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo']), '-shortest',
     '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-movflags', '+faststart',
-    '-c:a', 'aac', '-b:a', '128k', out], { stdio: ['pipe', 'ignore', 'inherit'] });
+    '-c:a', 'aac', '-b:a', '192k', out], { stdio: ['pipe', 'ignore', 'inherit'] });
   const total = Math.round(dur * FPS);
   for (let f = 0; f < total; f++) {
     await page.evaluate(t => render(t), f / FPS);
