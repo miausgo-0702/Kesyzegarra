@@ -5,26 +5,42 @@
    - cuanto más se consume un trago (unidades en los últimos 4 min), más sube;
    - si nadie lo consume, el precio baja en cada ajuste automático;
    - periódicamente ocurre una CAÍDA GENERAL: todos los precios bajan a la vez.
+
+   Seguridad (demo local, no apta para datos reales):
+   - la clave admin se guarda como SHA-256 con sal e iteraciones;
+   - la sesión admin vive en sessionStorage y expira por inactividad;
+   - tras 5 intentos fallidos el acceso se bloquea 60 s;
+   - los datos de admin nunca se publican hacia la TV ni el servidor.
    ========================================================================== */
 (function (global) {
   'use strict';
 
   var KEY = 'sernova-exchange.v2';
   var ARCHIVE_KEY = 'sernova-exchange-archive.v1';
+  var SESSION_KEY = 'sernova-exchange.admin-session';
+  var LOCK_KEY = 'sernova-exchange.admin-lock';
   var D = global.SernovaData;
 
   var WINDOW_MS = 4 * 60 * 1000;   // ventana de demanda
   var TICK_MS = 20 * 1000;         // ajuste automático de mercado
   var CRASH_MS = 120 * 1000;       // caída general cada 2 minutos
+  var CRASH_PCT = 10;
+  var RALLY_PCT = 7;
   var MAX_HISTORY = 320;
+  var MAX_ARCHIVE = 120;
+  var ADMIN_IDLE_MS = 30 * 60 * 1000;
+  var MAX_ATTEMPTS = 5;
+  var LOCK_MS = 60 * 1000;
+  var HASH_ROUNDS = 1500;
 
   var DEFAULT_USER = 'julianp';
-  var DEFAULT_HASH = hash('070226');
+  var DEFAULT_PASS = '070226';
   var state = null;
 
   function activeDrinks() { return D.DRINKS.filter(function (d) { return d.enabled !== false; }); }
 
-  function hash(text) {
+  /* ------------------------------------------------------------ hashing */
+  function fnv(text) {
     var h = 2166136261;
     for (var i = 0; i < text.length; i++) {
       h ^= text.charCodeAt(i);
@@ -33,6 +49,86 @@
     return (h >>> 0).toString(16);
   }
 
+  var K256 = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+  ];
+
+  function utf8(str) {
+    var out = [];
+    var s = unescape(encodeURIComponent(str));
+    for (var i = 0; i < s.length; i++) out.push(s.charCodeAt(i));
+    return out;
+  }
+
+  function sha256(str) {
+    var bytes = utf8(str);
+    var bitLen = bytes.length * 8;
+    bytes.push(0x80);
+    while (bytes.length % 64 !== 56) bytes.push(0);
+    for (var s = 7; s >= 0; s--) bytes.push(s >= 4 ? 0 : (bitLen >>> (s * 8)) & 0xff);
+    var H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+    var W = new Array(64);
+    for (var off = 0; off < bytes.length; off += 64) {
+      for (var t = 0; t < 16; t++) {
+        W[t] = (bytes[off + t * 4] << 24) | (bytes[off + t * 4 + 1] << 16) | (bytes[off + t * 4 + 2] << 8) | bytes[off + t * 4 + 3];
+      }
+      for (t = 16; t < 64; t++) {
+        var x = W[t - 15], y = W[t - 2];
+        var s0 = ((x >>> 7) | (x << 25)) ^ ((x >>> 18) | (x << 14)) ^ (x >>> 3);
+        var s1 = ((y >>> 17) | (y << 15)) ^ ((y >>> 19) | (y << 13)) ^ (y >>> 10);
+        W[t] = (W[t - 16] + s0 + W[t - 7] + s1) | 0;
+      }
+      var a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
+      for (t = 0; t < 64; t++) {
+        var S1 = ((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7));
+        var ch = (e & f) ^ (~e & g);
+        var t1 = (h + S1 + ch + K256[t] + W[t]) | 0;
+        var S0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
+        var maj = (a & b) ^ (a & c) ^ (b & c);
+        var t2 = (S0 + maj) | 0;
+        h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+      }
+      H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0;
+      H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
+    }
+    return H.map(function (v) { return ('00000000' + (v >>> 0).toString(16)).slice(-8); }).join('');
+  }
+
+  function randomSalt() {
+    var arr = new Uint8Array(12);
+    if (global.crypto && global.crypto.getRandomValues) global.crypto.getRandomValues(arr);
+    else for (var i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256);
+    return Array.prototype.map.call(arr, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+  }
+
+  function derive(password, salt) {
+    var h = salt + ':' + password;
+    for (var i = 0; i < HASH_ROUNDS; i++) h = sha256(h + ':' + salt);
+    return h;
+  }
+
+  function makeHash(password) {
+    var salt = randomSalt();
+    return 's2$' + salt + '$' + derive(String(password), salt);
+  }
+
+  function verifyHash(password, stored) {
+    if (!stored) return false;
+    if (stored.indexOf('s2$') === 0) {
+      var parts = stored.split('$');
+      return derive(String(password), parts[1]) === parts[2];
+    }
+    return fnv(String(password)) === stored;   // formato heredado
+  }
+
+  /* ------------------------------------------------------------ helpers */
   function mulberry32(seed) {
     var a = seed >>> 0;
     return function () {
@@ -47,6 +143,31 @@
   function round10(v) { return Math.round(v / 10) * 10; }
   function uid() { return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8); }
   function now() { return Date.now(); }
+
+  function defaultAdmin() {
+    return {
+      user: DEFAULT_USER, passwordHash: makeHash(DEFAULT_PASS), passwordChanged: false,
+      paused: false, pausedAt: 0, crashMs: CRASH_MS, tickMs: TICK_MS,
+      crashPct: CRASH_PCT, rallyPct: RALLY_PCT, log: []
+    };
+  }
+
+  function normalizeAdmin(a) {
+    a = a || {};
+    if (!a.user) a.user = DEFAULT_USER;
+    var legacyDefault = a.passwordHash === fnv('sernova2026') || a.passwordHash === fnv(DEFAULT_PASS);
+    if (!a.passwordHash || (!a.passwordChanged && legacyDefault)) a.passwordHash = makeHash(DEFAULT_PASS);
+    delete a.loggedIn;
+    if (a.passwordChanged === undefined) a.passwordChanged = false;
+    if (a.paused === undefined) a.paused = false;
+    if (!a.pausedAt) a.pausedAt = 0;
+    if (!a.crashMs) a.crashMs = CRASH_MS;
+    if (!a.tickMs) a.tickMs = TICK_MS;
+    if (!a.crashPct) a.crashPct = CRASH_PCT;
+    if (!a.rallyPct) a.rallyPct = RALLY_PCT;
+    if (!Array.isArray(a.log)) a.log = [];
+    return a;
+  }
 
   function ensureMarket() {
     var ts = now();
@@ -66,32 +187,65 @@
       state = raw ? JSON.parse(raw) : null;
       if (state && (!state.market || !state.entries)) state = null;
       if (state) {
-        if (!state.admin) state.admin = {};
-        var a = state.admin;
-        if (!a.user) a.user = DEFAULT_USER;
-        if (!a.passwordHash || (!a.passwordChanged && a.passwordHash === hash('sernova2026'))) a.passwordHash = DEFAULT_HASH;
-        if (a.loggedIn === undefined) a.loggedIn = false;
-        if (a.passwordChanged === undefined) a.passwordChanged = false;
-        if (a.paused === undefined) a.paused = false;
-        if (!a.crashMs) a.crashMs = CRASH_MS;
-        if (!a.tickMs) a.tickMs = TICK_MS;
-        if (!Array.isArray(a.log)) a.log = [];
+        state.admin = normalizeAdmin(state.admin);
         if (!state.catalog) state.catalog = { basePrices: {}, disabled: [], custom: [] };
         if (state.tvFocusId === undefined) state.tvFocusId = '';
         if (state.tvRotate === undefined) state.tvRotate = true;
+        if (state.tipPct === undefined) state.tipPct = 10;
+        if (!state.sessionId) state.sessionId = uid();
         D.applyCatalog(state.catalog);
         ensureMarket();
-        if (!state.nextCrashAt) state.nextCrashAt = now() + a.crashMs;
-        if (!state.nextMarketAt) state.nextMarketAt = now() + a.tickMs;
+        var ts = now();
+        // Si la terminal estuvo cerrada, no disparar una caída "atrasada" al abrir.
+        if (!state.admin.paused) {
+          if (!state.nextCrashAt || state.nextCrashAt < ts) state.nextCrashAt = ts + state.admin.crashMs;
+          if (!state.nextMarketAt || state.nextMarketAt < ts) state.nextMarketAt = ts + state.admin.tickMs;
+        }
+        persist();
       }
     } catch (e) { state = null; }
     return state;
   }
 
+  /* Guarda localmente; si se llena el almacenamiento recorta historia y archivo. */
+  function persist() {
+    if (!state) return;
+    try { global.localStorage.setItem(KEY, JSON.stringify(state)); }
+    catch (e) {
+      try {
+        Object.keys(state.market).forEach(function (id) {
+          var h = state.market[id].history;
+          if (h.length > 120) h.splice(0, h.length - 120);
+        });
+        saveArchive(getArchive().slice(0, 30));
+        global.localStorage.setItem(KEY, JSON.stringify(state));
+      } catch (e2) { /* modo privado o sin espacio */ }
+    }
+  }
+
+  function publicState() {
+    if (!state) return null;
+    return {
+      version: state.version, sessionId: state.sessionId,
+      table: state.table, guests: state.guests, waiter: state.waiter,
+      startedAt: state.startedAt, updatedAt: state.updatedAt,
+      nextCrashAt: state.nextCrashAt, nextMarketAt: state.nextMarketAt,
+      tvFocusId: state.tvFocusId, tvRotate: state.tvRotate,
+      lastEvent: state.lastEvent || null,
+      catalog: state.catalog,
+      admin: {
+        paused: !!state.admin.paused, pausedAt: state.admin.pausedAt || 0, crashMs: state.admin.crashMs, tickMs: state.admin.tickMs,
+        crashPct: state.admin.crashPct, rallyPct: state.admin.rallyPct
+      },
+      entries: state.entries,
+      market: state.market
+    };
+  }
+
   function save() {
-    try { global.localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* modo privado */ }
+    persist();
     if (state && global.SernovaSync && typeof global.SernovaSync.push === 'function') {
-      global.SernovaSync.push(state);
+      global.SernovaSync.push(publicState());
     }
   }
 
@@ -105,12 +259,16 @@
   }
 
   function saveArchive(list) {
-    try { global.localStorage.setItem(ARCHIVE_KEY, JSON.stringify(list.slice(0, 40))); } catch (e) { /* noop */ }
+    try { global.localStorage.setItem(ARCHIVE_KEY, JSON.stringify(list.slice(0, MAX_ARCHIVE))); }
+    catch (e) {
+      try { global.localStorage.setItem(ARCHIVE_KEY, JSON.stringify(list.slice(0, 30))); } catch (e2) { /* noop */ }
+    }
   }
 
   function archiveSession() {
     if (!state || !state.entries.length) return null;
     var st = stats();
+    var bill = billSummary();
     var record = {
       id: uid(),
       table: state.table,
@@ -120,6 +278,8 @@
       closedAt: now(),
       entries: state.entries.slice(),
       total: st.total,
+      tipPct: bill.tipPct,
+      tip: bill.tip,
       units: st.units,
       operations: st.operations,
       ups: st.ups,
@@ -168,39 +328,53 @@
     return market;
   }
 
-  function createSession(table, guests, waiter) {
-    var ts = now();
-    if (state && state.entries.length) archiveSession();
-    var admin = state && state.admin ? state.admin : {
-      user: DEFAULT_USER, passwordHash: DEFAULT_HASH, passwordChanged: false,
-      loggedIn: false, paused: false, crashMs: CRASH_MS, tickMs: TICK_MS, log: []
-    };
+  function baseState(ts, prev) {
+    var admin = prev && prev.admin ? normalizeAdmin(prev.admin) : defaultAdmin();
     admin.paused = false;
-    if (!admin.user) admin.user = DEFAULT_USER;
-    var catalog = state && state.catalog ? state.catalog : { basePrices: {}, disabled: [], custom: [] };
-    state = {
-      version: 3,
-      catalog: catalog,
-      table: String(table || '').trim() || '1',
-      guests: clamp(parseInt(guests, 10) || 1, 1, 40),
-      waiter: String(waiter || '').trim(),
-      startedAt: ts,
-      updatedAt: ts,
-      theme: state && state.theme ? state.theme : 'dark',
-      selectedId: state && state.selectedId ? state.selectedId : D.DRINKS[0].id,
+    admin.pausedAt = 0;
+    return {
+      version: 4,
+      sessionId: uid(),
+      catalog: prev && prev.catalog ? prev.catalog : { basePrices: {}, disabled: [], custom: [] },
+      table: '', guests: 1, waiter: '',
+      startedAt: ts, updatedAt: ts,
+      theme: prev && prev.theme ? prev.theme : 'dark',
+      selectedId: prev && prev.selectedId ? prev.selectedId : D.DRINKS[0].id,
       mode: 'ambos', range: 'todo', category: 'Todos', tag: 'Todos', sort: 'carta', search: '',
-      tvFocusId: state && state.tvFocusId ? state.tvFocusId : '',
-      tvRotate: state ? state.tvRotate !== false : true,
+      density: prev && prev.density ? prev.density : 'comfort',
+      tvFocusId: prev && prev.tvFocusId ? prev.tvFocusId : '',
+      tvRotate: prev ? prev.tvRotate !== false : true,
+      tipPct: prev && prev.tipPct !== undefined ? prev.tipPct : 10,
       admin: admin,
-      paused: false,
+      lastEvent: null,
       nextMarketAt: ts + admin.tickMs,
       nextCrashAt: ts + admin.crashMs,
       entries: [],
       market: seedMarket(ts)
     };
+  }
+
+  function createSession(table, guests, waiter) {
+    var ts = now();
+    if (state && state.entries.length) archiveSession();
+    var prev = state;
+    state = baseState(ts, prev);
+    state.table = String(table || '').trim().slice(0, 20) || '1';
+    state.guests = clamp(parseInt(guests, 10) || 1, 1, 40);
+    state.waiter = String(waiter || '').trim().slice(0, 30);
     ensureMarket();
     save();
     return state;
+  }
+
+  /* Archiva la mesa y deja la terminal lista para elegir otra. */
+  function endSession() {
+    if (!state) return null;
+    var rec = state.entries.length ? archiveSession() : null;
+    if (rec) adminLog('Mesa cerrada', 'Mesa ' + rec.table + ' · ' + D.money(rec.total + (rec.tip || 0)));
+    state = baseState(now(), state);
+    save();
+    return rec;
   }
 
   function hasSession() { return !!(state && state.table && state.market && state.entries); }
@@ -209,19 +383,22 @@
   function setTheme(theme) {
     if (!state) return;
     state.theme = theme === 'light' ? 'light' : 'dark';
-    save();
+    persist();
   }
 
+  var SYNCED_PREFS = { tvFocusId: 1, tvRotate: 1, tipPct: 1 };
   function setPref(key, value) {
     if (!state) return;
     state[key] = value;
-    state.updatedAt = now();
-    save();
+    if (SYNCED_PREFS[key]) { state.updatedAt = now(); save(); }
+    else persist();
   }
 
   /* Devuelve las unidades consumidas de un trago dentro de la ventana. */
   function demand(id, ts) {
-    var hist = state.market[id].history;
+    var m = state.market[id];
+    if (!m) return { units: 0, operations: 0 };
+    var hist = m.history;
     var units = 0, ops = 0;
     var from = (ts || now()) - WINDOW_MS;
     for (var i = hist.length - 1; i >= 0; i--) {
@@ -248,9 +425,10 @@
     extra = extra || {};
     var paid = m.price;
     var floor = drink.price * (kind === 'crash' ? 0.35 : 0.45);
-    var next = round10(clamp(paid * factor, floor, drink.price * 2.3));
-    if (next === paid && factor !== 1) next = round10(clamp(paid + (factor > 1 ? 10 : -10), floor, drink.price * 2.3));
-    var ts = now();
+    var ceil = drink.price * 2.3;
+    var next = round10(clamp(paid * factor, floor, ceil));
+    if (next === paid && factor !== 1) next = round10(clamp(paid + (factor > 1 ? 10 : -10), floor, ceil));
+    var ts = extra.ts || now();
     return pushTick(id, {
       ts: ts,
       price: next,
@@ -269,16 +447,17 @@
     if (!drink || drink.enabled === false || !state.market[id]) return null;
     qty = clamp(parseInt(qty, 10) || 1, 1, 30);
 
+    var ts = now();
     var paid = state.market[id].price;
-    var dem = demand(id, now()).units;
-    var rng = mulberry32((now() ^ (id.length * 2654435761) ^ (state.entries.length * 40503)) >>> 0);
+    var dem = demand(id, ts).units;
+    var rng = mulberry32((ts ^ (id.length * 2654435761) ^ (state.entries.length * 40503)) >>> 0);
 
-    // Más consumo en la ventana ⇒ mayor presión compradora ⇒ más sube.
-    var pressure = 0.003 + Math.min(dem, 14) * 0.0075;
+    // Más consumo en la ventana (incluyendo esta compra) ⇒ más presión ⇒ más sube.
+    var pressure = 0.003 + Math.min(dem + qty - 1, 14) * 0.0075;
     var reversion = (drink.price - paid) / drink.price * 0.10;
     var noise = (rng() - 0.5) * 0.006;
 
-    var tick = movePrice(id, 1 + pressure + reversion + noise, 'consumo', { qty: qty, drinkId: id });
+    var tick = movePrice(id, 1 + pressure + reversion + noise, 'consumo', { qty: qty, drinkId: id, ts: ts });
     var entry = {
       id: uid(), drinkId: id, name: drink.name, category: drink.category,
       qty: qty, unitPrice: paid, subtotal: paid * qty, ts: tick.ts,
@@ -290,14 +469,25 @@
     return { entry: entry, tick: tick, drink: drink };
   }
 
-  function marketTick() {
-    if (!state || state.admin.paused) return { changed: false, crashed: false, paused: true };
+  function generalMove(kind, pct) {
+    var factor = kind === 'crash' ? 1 - pct / 100 : 1 + pct / 100;
+    var changed = false;
     var ts = now();
+    activeDrinks().forEach(function (d) { if (movePrice(d.id, factor, kind, { ts: ts })) changed = true; });
+    state.lastEvent = { kind: kind, pct: pct, ts: ts };
+    return changed;
+  }
+
+  function marketTick() {
+    if (!state) return { changed: false, crashed: false };
+    if (state.admin.paused) return { changed: false, crashed: false, paused: true };
+    var ts = now();
+    if (ts < state.nextMarketAt && ts < state.nextCrashAt) return { changed: false, crashed: false, idle: true };
     var crashed = ts >= state.nextCrashAt;
     var changed = false;
 
     if (crashed) {
-      activeDrinks().forEach(function (d) { if (movePrice(d.id, 0.90, 'crash')) changed = true; });
+      changed = generalMove('crash', state.admin.crashPct);
       state.nextCrashAt = ts + state.admin.crashMs;
     } else {
       activeDrinks().forEach(function (d) {
@@ -308,45 +498,48 @@
         var delta = (Math.min(dem, 12) - 1.5) * 0.0045 + reversion * 0.12 + (Math.random() - 0.5) * 0.0015;
         if (!dem) delta -= 0.0025;
         if (Math.abs(delta) < 0.0008) return;
-        if (movePrice(d.id, 1 + delta, 'ajuste')) changed = true;
+        if (movePrice(d.id, 1 + delta, 'ajuste', { ts: ts })) changed = true;
       });
     }
     state.nextMarketAt = ts + state.admin.tickMs;
     state.updatedAt = ts;
     save();
-    return { changed: changed, crashed: crashed };
+    return { changed: changed, crashed: crashed, pct: state.admin.crashPct };
   }
 
   function forceCrash() {
-    var changed = false;
-    activeDrinks().forEach(function (d) { if (movePrice(d.id, 0.90, 'crash')) changed = true; });
+    var changed = generalMove('crash', state.admin.crashPct);
     state.nextCrashAt = now() + state.admin.crashMs;
     state.updatedAt = now();
+    adminLog('Caída general forzada', '−' + state.admin.crashPct + '%');
     save();
     return changed;
   }
 
   function forceRally() {
-    var changed = false;
-    activeDrinks().forEach(function (d) { if (movePrice(d.id, 1.07, 'rally')) changed = true; });
+    var changed = generalMove('rally', state.admin.rallyPct);
     state.updatedAt = now();
+    adminLog('Subida general forzada', '+' + state.admin.rallyPct + '%');
     save();
     return changed;
   }
 
   function resetMarket() {
+    var ts = now();
     activeDrinks().forEach(function (d) {
       var m = state.market[d.id];
       if (m.price === d.price) return;
       var paid = m.price;
       pushTick(d.id, {
-        ts: now(), price: d.price, qty: 0,
+        ts: ts, price: d.price, qty: 0,
         dir: d.price > paid ? 'up' : d.price < paid ? 'down' : 'flat',
         synthetic: false, kind: 'admin', drinkId: d.id, paid: paid, demand: 0
       });
     });
-    state.nextCrashAt = now() + state.admin.crashMs;
-    state.nextMarketAt = now() + state.admin.tickMs;
+    state.nextCrashAt = ts + state.admin.crashMs;
+    state.nextMarketAt = ts + state.admin.tickMs;
+    state.updatedAt = ts;
+    adminLog('Precios restablecidos', 'Carta completa al precio base');
     save();
   }
 
@@ -361,6 +554,8 @@
       dir: price > paid ? 'up' : 'down',
       synthetic: false, kind: 'admin', drinkId: id, paid: paid, demand: demand(id).units
     });
+    state.updatedAt = now();
+    adminLog('Precio fijado', drink.name + ' → ' + D.money(price));
     save();
     return true;
   }
@@ -381,14 +576,18 @@
     }
     if (index < 0) return null;
     var entry = state.entries.splice(index, 1)[0];
-    var history = state.market[entry.drinkId].history;
-    for (var j = history.length - 1; j >= 0; j--) {
-      if (history[j].kind === 'consumo' && history[j].ts === entry.ts && history[j].drinkId === entry.drinkId) {
-        history.splice(j, 1);
-        break;
+    var market = state.market[entry.drinkId];
+    if (market) {
+      var history = market.history;
+      for (var j = history.length - 1; j >= 0; j--) {
+        if (history[j].kind === 'consumo' && history[j].ts === entry.ts && history[j].drinkId === entry.drinkId) {
+          history.splice(j, 1);
+          break;
+        }
       }
+      recompute(entry.drinkId);
     }
-    recompute(entry.drinkId);
+    state.updatedAt = now();
     save();
     return entry;
   }
@@ -401,10 +600,11 @@
   function clearLedger() {
     var removed = state.entries.length;
     Object.keys(state.market).forEach(function (id) {
-      state.market[id].history = state.market[id].history.filter(function (h) { return h.synthetic; });
+      state.market[id].history = state.market[id].history.filter(function (h) { return h.kind !== 'consumo'; });
       recompute(id);
     });
     state.entries = [];
+    state.updatedAt = now();
     save();
     return removed;
   }
@@ -433,76 +633,189 @@
     });
     var byCategory = { 'Cocktails Sernova': 0, 'Tragos': 0 };
     state.entries.forEach(function (e) { byCategory[e.category] = (byCategory[e.category] || 0) + e.subtotal; });
+    // Ahorro / sobreprecio frente al precio de carta
+    var atList = 0;
+    state.entries.forEach(function (e) {
+      var d = D.byId(e.drinkId);
+      atList += (d ? d.price : e.unitPrice) * e.qty;
+    });
     return {
       total: total, units: units, ups: ups, downs: downs, flats: flats,
       counts: counts, amounts: amounts, byCategory: byCategory,
-      avg: units ? total / units : 0, operations: state.entries.length
+      avg: units ? total / units : 0, operations: state.entries.length,
+      listTotal: atList, savings: atList - total
     };
+  }
+
+  /* Variación de cada trago frente a su precio de carta. */
+  function movers() {
+    return activeDrinks().map(function (d) {
+      var m = state.market[d.id];
+      return { id: d.id, name: d.name, price: m.price, base: d.price, pct: d.price ? (m.price - d.price) / d.price * 100 : 0 };
+    }).sort(function (a, b) { return b.pct - a.pct; });
+  }
+
+  function billSummary(tipPct) {
+    var st = stats();
+    var pct = tipPct !== undefined ? tipPct : (state.tipPct || 0);
+    var tip = Math.round(st.total * pct / 100 / 10) * 10;
+    var grand = st.total + tip;
+    var guests = Math.max(1, state.guests || 1);
+    return {
+      subtotal: st.total, tipPct: pct, tip: tip, total: grand,
+      guests: guests, perPerson: Math.ceil(grand / guests / 10) * 10,
+      units: st.units, operations: st.operations, savings: st.savings
+    };
+  }
+
+  function groupedEntries() {
+    var map = {};
+    var order = [];
+    state.entries.forEach(function (e) {
+      var key = e.drinkId + '@' + e.unitPrice;
+      if (!map[key]) { map[key] = { name: e.name, unitPrice: e.unitPrice, qty: 0, subtotal: 0 }; order.push(key); }
+      map[key].qty += e.qty;
+      map[key].subtotal += e.subtotal;
+    });
+    return order.map(function (k) { return map[k]; });
   }
 
   /* ---------------------------------------------------------------- admin */
   function adminLog(action, detail) {
     if (!state) return;
     state.admin.log.unshift({ ts: now(), action: action, detail: detail || '' });
-    state.admin.log = state.admin.log.slice(0, 60);
+    state.admin.log = state.admin.log.slice(0, 80);
   }
 
   function ensureSystemState() {
     if (state) return state;
-    var ts = now();
-    state = {
-      version: 3,
-      table: '', guests: 1, waiter: '', startedAt: ts, updatedAt: ts,
-      theme: 'dark', selectedId: D.DRINKS[0].id,
-      mode: 'ambos', range: 'todo', category: 'Todos', tag: 'Todos', sort: 'carta', search: '',
-      tvFocusId: '', tvRotate: true,
-      catalog: { basePrices: {}, disabled: [], custom: [] },
-      admin: {
-        user: DEFAULT_USER, passwordHash: DEFAULT_HASH, passwordChanged: false,
-        loggedIn: false, paused: false, crashMs: CRASH_MS, tickMs: TICK_MS, log: []
-      },
-      paused: false, nextMarketAt: ts + TICK_MS, nextCrashAt: ts + CRASH_MS,
-      entries: [], market: seedMarket(ts)
-    };
+    state = baseState(now(), null);
     save();
     return state;
   }
 
+  function sessionGet() {
+    try { return JSON.parse(global.sessionStorage.getItem(SESSION_KEY) || 'null'); } catch (e) { return null; }
+  }
+  function sessionSet(v) {
+    try {
+      if (v) global.sessionStorage.setItem(SESSION_KEY, JSON.stringify(v));
+      else global.sessionStorage.removeItem(SESSION_KEY);
+    } catch (e) { /* noop */ }
+  }
+
+  function lockInfo() {
+    try {
+      var l = JSON.parse(global.localStorage.getItem(LOCK_KEY) || 'null') || { count: 0, until: 0 };
+      if (l.until && l.until < now()) { l = { count: 0, until: 0 }; }
+      return l;
+    } catch (e) { return { count: 0, until: 0 }; }
+  }
+  function lockSet(l) { try { global.localStorage.setItem(LOCK_KEY, JSON.stringify(l)); } catch (e) { /* noop */ } }
+
+  function lockRemaining() {
+    var l = lockInfo();
+    return l.until > now() ? Math.ceil((l.until - now()) / 1000) : 0;
+  }
+
+  /* Devuelve { ok, locked, remaining, attemptsLeft } */
   function login(user, password) {
     ensureSystemState();
+    var remaining = lockRemaining();
+    if (remaining) return { ok: false, locked: true, remaining: remaining };
     var ok = String(user || '').trim().toLowerCase() === String(state.admin.user).toLowerCase() &&
-      hash(String(password || '')) === state.admin.passwordHash;
-    if (ok) { state.admin.loggedIn = true; adminLog('Ingreso admin', state.admin.user); save(); }
-    return ok;
+      verifyHash(String(password || ''), state.admin.passwordHash);
+    if (ok) {
+      if (state.admin.passwordHash.indexOf('s2$') !== 0) state.admin.passwordHash = makeHash(password);
+      lockSet({ count: 0, until: 0 });
+      sessionSet({ user: state.admin.user, at: now(), last: now() });
+      adminLog('Ingreso admin', state.admin.user);
+      persist();
+      return { ok: true };
+    }
+    var l = lockInfo();
+    l.count++;
+    if (l.count >= MAX_ATTEMPTS) { l.until = now() + LOCK_MS; l.count = 0; }
+    lockSet(l);
+    return { ok: false, locked: !!l.until, remaining: l.until ? Math.ceil(LOCK_MS / 1000) : 0, attemptsLeft: l.until ? 0 : MAX_ATTEMPTS - l.count };
   }
-  function logout() { if (state) { state.admin.loggedIn = false; adminLog('Salida admin', state.admin.user); save(); } }
-  function isAdmin() { return !!(state && state.admin && state.admin.loggedIn); }
 
-  function changePassword(next) {
-    if (!isAdmin() || !next) return false;
-    state.admin.passwordHash = hash(String(next));
+  function logout() {
+    if (state && isAdmin()) { adminLog('Salida admin', state.admin.user); persist(); }
+    sessionSet(null);
+  }
+
+  function isAdmin() {
+    var s = sessionGet();
+    if (!s || !state) return false;
+    if (now() - (s.last || 0) > ADMIN_IDLE_MS) { sessionSet(null); return false; }
+    return true;
+  }
+
+  function touchAdmin() {
+    var s = sessionGet();
+    if (s && now() - (s.last || 0) <= ADMIN_IDLE_MS) { s.last = now(); sessionSet(s); }
+  }
+
+  function changePassword(current, next) {
+    if (!isAdmin() || !next || String(next).length < 4) return { ok: false, error: 'La nueva clave debe tener al menos 4 caracteres.' };
+    if (!verifyHash(String(current || ''), state.admin.passwordHash)) return { ok: false, error: 'La clave actual no es correcta.' };
+    state.admin.passwordHash = makeHash(String(next));
     state.admin.passwordChanged = true;
     adminLog('Cambio de contraseña', 'Usuario ' + state.admin.user);
-    save();
+    persist();
+    return { ok: true };
+  }
+
+  function changeUser(next) {
+    var u = String(next || '').trim().toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 24);
+    if (!isAdmin() || u.length < 3) return false;
+    adminLog('Cambio de usuario', state.admin.user + ' → ' + u);
+    state.admin.user = u;
+    var s = sessionGet(); if (s) { s.user = u; sessionSet(s); }
+    persist();
     return true;
   }
 
   function setPaused(paused) {
     if (!state) return;
+    var ts = now();
+    if (paused && !state.admin.paused) {
+      state.admin.pausedAt = ts;
+    } else if (!paused && state.admin.paused) {
+      // Congelamos la cuenta regresiva durante la pausa.
+      var delta = state.admin.pausedAt ? ts - state.admin.pausedAt : 0;
+      state.nextCrashAt += delta;
+      state.nextMarketAt = ts + state.admin.tickMs;
+      state.admin.pausedAt = 0;
+    }
     state.admin.paused = !!paused;
+    state.updatedAt = ts;
     adminLog(paused ? 'Mercado pausado' : 'Mercado reanudado', '');
     save();
   }
 
-  function setIntervals(crashSec, tickSec) {
+  function crashRemaining() {
+    if (!state) return 0;
+    var ref = state.admin.paused && state.admin.pausedAt ? state.admin.pausedAt : now();
+    return Math.max(0, Math.ceil((state.nextCrashAt - ref) / 1000));
+  }
+
+  function setMarketRules(rules) {
     if (!state) return false;
-    var crash = clamp(parseInt(crashSec, 10) || 120, 30, 900) * 1000;
-    var tick = clamp(parseInt(tickSec, 10) || 20, 5, 300) * 1000;
-    state.admin.crashMs = crash;
-    state.admin.tickMs = tick;
-    state.nextCrashAt = now() + crash;
-    state.nextMarketAt = now() + tick;
-    adminLog('Intervalos del mercado', 'Caída ' + crash / 1000 + ' s · ajuste ' + tick / 1000 + ' s');
+    var a = state.admin;
+    var crash = clamp(parseInt(rules.crashSec, 10) || 120, 30, 1800) * 1000;
+    var tick = clamp(parseInt(rules.tickSec, 10) || 20, 5, 300) * 1000;
+    a.crashMs = crash;
+    a.tickMs = tick;
+    a.crashPct = clamp(parseFloat(rules.crashPct) || CRASH_PCT, 1, 50);
+    a.rallyPct = clamp(parseFloat(rules.rallyPct) || RALLY_PCT, 1, 50);
+    var ts = now();
+    state.nextCrashAt = ts + crash;
+    state.nextMarketAt = ts + tick;
+    if (a.paused) a.pausedAt = ts;
+    state.updatedAt = ts;
+    adminLog('Reglas del mercado', 'Caída −' + a.crashPct + '% cada ' + crash / 1000 + ' s · subida +' + a.rallyPct + '% · ajuste ' + tick / 1000 + ' s');
     save();
     return true;
   }
@@ -512,9 +825,17 @@
     if (String(table || '').trim()) state.table = String(table).trim().slice(0, 20);
     state.guests = clamp(parseInt(guests, 10) || state.guests, 1, 40);
     state.waiter = String(waiter || '').trim().slice(0, 30);
+    state.updatedAt = now();
     adminLog('Datos de mesa', 'Mesa ' + state.table + ' · ' + state.guests + ' comensales');
     save();
     return true;
+  }
+
+  function setGuests(n) {
+    if (!state) return;
+    state.guests = clamp(parseInt(n, 10) || 1, 1, 40);
+    state.updatedAt = now();
+    save();
   }
 
   function setBasePrice(id, price) {
@@ -527,6 +848,7 @@
       if (c) c.price = p;
     } else state.catalog.basePrices[id] = p;
     D.applyCatalog(state.catalog);
+    state.updatedAt = now();
     adminLog('Precio de carta', d.name + ' → ' + D.money(p));
     save();
     return true;
@@ -545,6 +867,7 @@
     }
     D.applyCatalog(state.catalog);
     ensureMarket();
+    state.updatedAt = now();
     adminLog(enabled ? 'Trago activado' : 'Trago desactivado', d.name);
     save();
     return true;
@@ -554,10 +877,12 @@
     if (!state || !data) return null;
     var name = String(data.name || '').trim().toUpperCase().slice(0, 40);
     if (!name) return null;
+    var price = parseInt(data.price, 10);
+    if (!price || price < 1000) return null;
     var drink = {
       id: 'custom-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
       name: name,
-      price: round10(clamp(parseInt(data.price, 10) || 10000, 1000, 500000)),
+      price: round10(clamp(price, 1000, 500000)),
       category: data.category === 'Cocktails Sernova' ? 'Cocktails Sernova' : 'Tragos',
       tags: Array.isArray(data.tags) && data.tags.length ? data.tags.slice(0, 3) : ['Autor'],
       description: String(data.description || 'Trago personalizado creado por el administrador.').slice(0, 140),
@@ -566,9 +891,23 @@
     state.catalog.custom.push(drink);
     D.applyCatalog(state.catalog);
     ensureMarket();
+    state.updatedAt = now();
     adminLog('Trago creado', drink.name + ' · ' + D.money(drink.price));
     save();
     return drink;
+  }
+
+  function deleteCustomDrink(id) {
+    if (!state) return false;
+    var before = state.catalog.custom.length;
+    state.catalog.custom = state.catalog.custom.filter(function (c) { return c.id !== id; });
+    if (state.catalog.custom.length === before) return false;
+    D.applyCatalog(state.catalog);
+    ensureMarket();
+    state.updatedAt = now();
+    adminLog('Trago eliminado', id);
+    save();
+    return true;
   }
 
   function resetCatalog() {
@@ -576,7 +915,8 @@
     state.catalog = { basePrices: {}, disabled: [], custom: [] };
     D.applyCatalog(state.catalog);
     ensureMarket();
-    adminLog('Carta restablecida', '32 tragos originales');
+    state.updatedAt = now();
+    adminLog('Carta restablecida', D.DRINKS.length + ' tragos originales');
     save();
   }
 
@@ -584,6 +924,8 @@
     var rec = getArchive().filter(function (r) { return r.id === id; })[0];
     if (!rec || !state) return false;
     if (state.entries.length) archiveSession();
+    deleteArchive(id);
+    state.sessionId = uid();
     state.table = rec.table;
     state.guests = rec.guests || 1;
     state.waiter = rec.waiter || '';
@@ -601,38 +943,115 @@
     try {
       global.localStorage.removeItem(KEY);
       global.localStorage.removeItem(ARCHIVE_KEY);
+      global.localStorage.removeItem(LOCK_KEY);
+      global.localStorage.removeItem('sernova-exchange.public.v1');
     } catch (e) { /* noop */ }
+    sessionSet(null);
     D.resetCatalog();
     state = null;
   }
+
+  /* ------------------------------------------------------------ reportes */
+  function report(sinceTs) {
+    var since = sinceTs || 0;
+    var tables = getArchive().filter(function (r) { return (r.closedAt || 0) >= since; });
+    var rows = tables.map(function (r) { return { table: r.table, entries: r.entries || [], tip: r.tip || 0, total: r.total || 0, closedAt: r.closedAt, waiter: r.waiter }; });
+    if (state && state.entries.length) rows.unshift({ table: state.table, entries: state.entries, tip: 0, total: stats().total, closedAt: 0, live: true, waiter: state.waiter });
+    var revenue = 0, tips = 0, units = 0, ops = 0;
+    var byDrink = {}, byHour = {}, byWaiter = {};
+    rows.forEach(function (r) {
+      revenue += r.total; tips += r.tip;
+      if (r.waiter) byWaiter[r.waiter] = (byWaiter[r.waiter] || 0) + r.total;
+      r.entries.forEach(function (e) {
+        if (e.ts < since) return;
+        units += e.qty; ops++;
+        var k = byDrink[e.name] || (byDrink[e.name] = { name: e.name, qty: 0, amount: 0 });
+        k.qty += e.qty; k.amount += e.subtotal;
+        var hour = new Date(e.ts).getHours();
+        byHour[hour] = (byHour[hour] || 0) + e.subtotal;
+      });
+    });
+    var top = Object.keys(byDrink).map(function (k) { return byDrink[k]; }).sort(function (a, b) { return b.amount - a.amount; });
+    return {
+      tables: rows.length, revenue: revenue, tips: tips, units: units, operations: ops,
+      avgTicket: rows.length ? revenue / rows.length : 0,
+      top: top, byHour: byHour, byWaiter: byWaiter
+    };
+  }
+
+  function csvCell(v) { return '"' + String(v === undefined || v === null ? '' : v).replace(/"/g, '""') + '"'; }
 
   function exportCsv() {
     var lines = ['fecha;hora;mesa;trago;categoria;cantidad;precio_unitario;subtotal;variacion_pct'];
     state.entries.forEach(function (e) {
       var d = new Date(e.ts);
       lines.push([
-        d.toLocaleDateString('es-AR'), D.clock(e.ts), '"' + state.table + '"',
-        '"' + e.name + '"', '"' + e.category + '"', e.qty, e.unitPrice, e.subtotal,
+        d.toLocaleDateString('es-AR'), D.clock(e.ts), csvCell(state.table),
+        csvCell(e.name), csvCell(e.category), e.qty, e.unitPrice, e.subtotal,
         e.deltaPct.toFixed(2).replace('.', ',')
       ].join(';'));
     });
-    return '\ufeff' + lines.join('\n');
+    return '﻿' + lines.join('\n');
+  }
+
+  function exportArchiveCsv() {
+    var lines = ['cierre;mesa;responsable;comensales;fecha;hora;trago;cantidad;precio_unitario;subtotal'];
+    getArchive().forEach(function (r) {
+      (r.entries || []).forEach(function (e) {
+        var d = new Date(e.ts);
+        lines.push([
+          csvCell(new Date(r.closedAt).toLocaleString('es-AR')), csvCell(r.table), csvCell(r.waiter), r.guests || 1,
+          d.toLocaleDateString('es-AR'), D.clock(e.ts), csvCell(e.name), e.qty, e.unitPrice, e.subtotal
+        ].join(';'));
+      });
+    });
+    return '﻿' + lines.join('\n');
+  }
+
+  function exportBackup() {
+    return JSON.stringify({ app: 'sernova-exchange', version: 4, exportedAt: now(), state: state, archive: getArchive() }, null, 1);
+  }
+
+  function importBackup(text) {
+    var data;
+    try { data = JSON.parse(text); } catch (e) { return { ok: false, error: 'El archivo no es un JSON válido.' }; }
+    if (!data || data.app !== 'sernova-exchange' || !data.state || !data.state.market) return { ok: false, error: 'El archivo no es un respaldo de SERNOVA.' };
+    try {
+      var prevAdmin = state ? state.admin : null;
+      state = data.state;
+      state.admin = normalizeAdmin(state.admin || prevAdmin);
+      if (!state.catalog) state.catalog = { basePrices: {}, disabled: [], custom: [] };
+      D.applyCatalog(state.catalog);
+      ensureMarket();
+      state.nextCrashAt = now() + state.admin.crashMs;
+      state.nextMarketAt = now() + state.admin.tickMs;
+      state.updatedAt = now();
+      saveArchive(Array.isArray(data.archive) ? data.archive : []);
+      adminLog('Respaldo importado', new Date(data.exportedAt || now()).toLocaleString('es-AR'));
+      save();
+      return { ok: true };
+    } catch (e) { return { ok: false, error: 'No se pudo importar el respaldo.' }; }
   }
 
   global.SernovaStore = {
     KEY: KEY, ARCHIVE_KEY: ARCHIVE_KEY, TICK_MS: TICK_MS, CRASH_MS: CRASH_MS, WINDOW_MS: WINDOW_MS,
-    hash: hash, load: load, save: save, hasSession: hasSession, getState: getState,
+    ADMIN_IDLE_MS: ADMIN_IDLE_MS,
+    sha256: sha256, load: load, save: save, persist: persist, publicState: publicState,
+    hasSession: hasSession, getState: getState,
     ensureSystemState: ensureSystemState,
-    createSession: createSession, setTheme: setTheme, setPref: setPref,
+    createSession: createSession, endSession: endSession, setTheme: setTheme, setPref: setPref, setGuests: setGuests,
     demand: demand, purchase: purchase, marketTick: marketTick, forceCrash: forceCrash,
     forceRally: forceRally, resetMarket: resetMarket, adminSetPrice: adminSetPrice,
     removeEntry: removeEntry, undo: undo, clearLedger: clearLedger, lastChange: lastChange,
-    stats: stats, login: login, logout: logout, isAdmin: isAdmin,
-    changePassword: changePassword, setPaused: setPaused, setIntervals: setIntervals,
+    stats: stats, movers: movers, billSummary: billSummary, groupedEntries: groupedEntries,
+    login: login, logout: logout, isAdmin: isAdmin, touchAdmin: touchAdmin, lockRemaining: lockRemaining,
+    changePassword: changePassword, changeUser: changeUser, setPaused: setPaused, crashRemaining: crashRemaining,
+    setMarketRules: setMarketRules,
     setSessionInfo: setSessionInfo, setBasePrice: setBasePrice, setEnabled: setEnabled,
-    addCustomDrink: addCustomDrink, resetCatalog: resetCatalog,
+    addCustomDrink: addCustomDrink, deleteCustomDrink: deleteCustomDrink, resetCatalog: resetCatalog,
     getArchive: getArchive, archiveSession: archiveSession, deleteArchive: deleteArchive,
     clearArchive: clearArchive, restoreArchive: restoreArchive, wipeAll: wipeAll,
-    exportCsv: exportCsv
+    report: report, exportCsv: exportCsv, exportArchiveCsv: exportArchiveCsv,
+    exportBackup: exportBackup, importBackup: importBackup
   };
 })(window);

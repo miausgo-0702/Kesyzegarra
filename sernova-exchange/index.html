@@ -2,80 +2,118 @@
 <html lang="es" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="description" content="Sernova Exchange — terminal de consumo y mercado de bebidas por mesa." />
+  <meta name="theme-color" content="#07080d" />
+  <meta name="color-scheme" content="dark light" />
   <title>SERNOVA EXCHANGE · Terminal de mesa</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" />
   <link rel="stylesheet" href="styles.css" />
+  <script>
+    (function () { try { var s = JSON.parse(localStorage.getItem('sernova-exchange.v2') || 'null'); if (s && s.theme) document.documentElement.dataset.theme = s.theme; } catch (e) {} })();
+  </script>
 </head>
 <body>
+  <a class="skip-link" href="#drink-grid">Saltar a la carta</a>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-logo" viewBox="0 0 48 48"><path d="M8 34h32M12 34V18l12-8 12 8v16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 34V24h12v10M24 10V6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="24" cy="18" r="2.5" fill="currentColor"/></symbol>
+    <symbol id="i-tv" viewBox="0 0 20 20"><rect x="2.5" y="4" width="15" height="10" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 17h6m-3-3v3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 20 20"><path d="M10 2.5 16 5v5c0 4-2.6 6.4-6 7.5-3.4-1.1-6-3.5-6-7.5V5l6-2.5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m7.5 10 1.8 1.8 3.4-3.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 20 20"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 20 20"><circle cx="10" cy="10" r="3.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 2v2m0 12v2M2 10h2m12 0h2M4.3 4.3l1.5 1.5m8.4 8.4 1.5 1.5m0-11.4-1.5 1.5m-8.4 8.4-1.5 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 20 20"><rect x="4" y="8.5" width="12" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8.5V6a3 3 0 0 1 6 0v2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 20 20"><path d="M7 6H3V2m1 4a7 7 0 1 1-1 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-download" viewBox="0 0 20 20"><path d="M10 3v9m0 0 3.5-3.5M10 12 6.5 8.5M4 14v2h12v-2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 20 20"><path d="M4 6h12M8 6V4h4v2m-6 0 .7 10h6.6L14 6M9 9v4m2-4v4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-search" viewBox="0 0 20 20"><circle cx="8.8" cy="8.8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m13 13 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 20 20"><path d="M4 10h12M11 5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-table" viewBox="0 0 20 20"><path d="M3 8h14M5 8V5h10v3M6 8v8m8-8v8M4 16h12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-receipt" viewBox="0 0 20 20"><path d="M5 2.5h10v15l-2.5-1.5L10 17.5 7.5 16 5 17.5v-15Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M7.5 7h5m-5 3h5m-5 3h3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 20 20"><path d="M3 15l4.5-5 3 3L17 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 5h4v4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-keyboard" viewBox="0 0 20 20"><rect x="2" y="5" width="16" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5 8h1m2.5 0h1m2.5 0h1m2.5 0h0M6 12h8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 20 20"><path d="M10 4v12M4 10h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  </svg>
 
   <!-- ══════════════════ PANTALLA DE INICIO / MESA ══════════════════ -->
   <div id="setup" class="setup-overlay">
-    <div class="setup-glow" aria-hidden="true"></div>
-    <div class="setup-card">
-      <div class="setup-brand">
-        <div class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 48 48" fill="none">
-            <path d="M8 34h32M12 34V18l12-8 12 8v16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-            <path d="M18 34V24h12v10M24 10V6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-            <circle cx="24" cy="18" r="2.5" fill="currentColor"/>
-          </svg>
-        </div>
-        <div>
-          <p class="eyebrow">Terminal de mesa</p>
-          <h1 class="setup-title">SERNOVA <span>EXCHANGE</span></h1>
-        </div>
-      </div>
-
-      <p class="setup-lead">Antes de empezar, indicá <strong>en qué mesa estás</strong>. Cada trago que se consume se registra aquí y mueve el precio como en un exchange.</p>
-
-      <div class="setup-section">
-        <div class="setup-section-head">
-          <span class="field-label">MESA</span>
-          <span class="hint" id="table-selected-hint">Sin seleccionar</span>
-        </div>
-        <div class="table-grid" id="table-grid" role="group" aria-label="Elegir mesa"></div>
-        <div class="custom-table-row">
-          <label class="field">
-            <span class="field-label">Otra mesa / nombre</span>
-            <input id="custom-table" type="text" maxlength="18" placeholder="Ej: Barra 3" autocomplete="off" />
-          </label>
-        </div>
-      </div>
-
-      <div class="setup-fields">
-        <div class="field">
-          <span class="field-label">COMENSALES</span>
-          <div class="stepper">
-            <button type="button" class="step-btn" data-setup-step="-1" aria-label="Quitar comensal">−</button>
-            <output id="guests-value">2</output>
-            <button type="button" class="step-btn" data-setup-step="1" aria-label="Agregar comensal">+</button>
+    <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="setup-layout">
+      <section class="setup-hero" aria-hidden="true">
+        <div class="hero-brand">
+          <div class="brand-mark lg"><svg><use href="#i-logo"/></svg></div>
+          <div>
+            <p class="eyebrow">Drinks exchange · en vivo</p>
+            <p class="hero-word">SERNOVA<br><span>EXCHANGE</span></p>
           </div>
         </div>
-        <label class="field">
-          <span class="field-label">RESPONSABLE <em>(opcional)</em></span>
-          <input id="waiter" type="text" maxlength="28" placeholder="Ej: Camarero/a" autocomplete="off" />
-        </label>
+        <p class="hero-lead">Los precios se mueven con la demanda de la noche. Cuanto más se pide, más sube. Cada dos minutos, el mercado cae.</p>
+        <div class="hero-board" id="hero-board"></div>
+        <ul class="hero-points">
+          <li><b>▲</b> Más consumo, más sube</li>
+          <li><b class="down">▼</b> Sin pedidos, baja</li>
+          <li><b class="gold">◆</b> Caídas generales periódicas</li>
+        </ul>
+      </section>
+
+      <div class="setup-card">
+        <div class="setup-brand">
+          <div class="brand-mark"><svg><use href="#i-logo"/></svg></div>
+          <div>
+            <p class="eyebrow">Terminal de mesa</p>
+            <h1 class="setup-title">SERNOVA <span>EXCHANGE</span></h1>
+          </div>
+        </div>
+
+        <p class="setup-lead">Indicá <strong>en qué mesa estás</strong>. Cada trago que se sirve se registra acá y mueve su precio como en un exchange.</p>
+
+        <div class="setup-section">
+          <div class="setup-section-head">
+            <span class="field-label">Mesa</span>
+            <span class="hint" id="table-selected-hint">Sin seleccionar</span>
+          </div>
+          <div class="table-grid" id="table-grid" role="group" aria-label="Elegir mesa"></div>
+          <label class="field custom-table-row">
+            <span class="field-label">Otra mesa / nombre</span>
+            <input id="custom-table" type="text" maxlength="18" placeholder="Ej: Barra 3, VIP 2" autocomplete="off" />
+          </label>
+        </div>
+
+        <div class="setup-fields">
+          <div class="field">
+            <span class="field-label">Comensales</span>
+            <div class="stepper">
+              <button type="button" class="step-btn" data-setup-step="-1" aria-label="Quitar comensal">−</button>
+              <output id="guests-value" aria-live="polite">2</output>
+              <button type="button" class="step-btn" data-setup-step="1" aria-label="Agregar comensal">+</button>
+            </div>
+          </div>
+          <label class="field">
+            <span class="field-label">Responsable <em>(opcional)</em></span>
+            <input id="waiter" type="text" maxlength="28" placeholder="Nombre del camarero/a" autocomplete="off" />
+          </label>
+        </div>
+
+        <div id="saved-hint" class="saved-hint" hidden></div>
+
+        <div class="setup-actions">
+          <button id="btn-continue" class="btn" type="button" hidden>Continuar sesión guardada</button>
+          <button id="btn-open" class="btn primary lg" type="button">
+            <span>Abrir mesa y empezar</span>
+            <svg><use href="#i-arrow"/></svg>
+          </button>
+        </div>
+
+        <div class="setup-secondary">
+          <button id="btn-admin-setup" class="btn ghost sm" type="button"><svg><use href="#i-shield"/></svg> Administrador</button>
+          <button id="btn-tv-setup" class="btn ghost sm" type="button"><svg><use href="#i-tv"/></svg> Pantalla TV</button>
+        </div>
+        <p class="setup-foot">Los datos se guardan en este dispositivo · <kbd>T</kbd> cambia el tema</p>
       </div>
-
-      <div id="saved-hint" class="saved-hint" hidden></div>
-
-      <div class="setup-actions">
-        <button id="btn-continue" class="btn primary" type="button" hidden>
-          <span>Continuar sesión guardada</span>
-        </button>
-        <button id="btn-open" class="btn" type="button">
-          <span>Abrir mesa y empezar</span>
-          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-      </div>
-
-      <button id="btn-admin-setup" class="btn ghost sm setup-admin-btn" type="button">Acceso administrador</button>
-      <button id="btn-tv-setup" class="btn ghost sm setup-tv-btn" type="button">
-        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="2.5" y="4" width="15" height="10" rx="1.6" stroke="currentColor" stroke-width="1.5"/><path d="M7 17h6m-3-3v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        Abrir pantalla de televisores
-      </button>
-      <p class="setup-foot">Los datos se guardan en este dispositivo. Podés cambiar entre tema oscuro y claro cuando quieras.</p>
     </div>
   </div>
 
@@ -84,48 +122,45 @@
 
     <header class="topbar">
       <div class="brand">
-        <div class="brand-mark sm" aria-hidden="true">
-          <svg viewBox="0 0 48 48" fill="none">
-            <path d="M8 34h32M12 34V18l12-8 12 8v16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-            <path d="M18 34V24h12v10M24 10V6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-            <circle cx="24" cy="18" r="2.5" fill="currentColor"/>
-          </svg>
-        </div>
-        <div class="brand-text">
-          <strong>SERNOVA</strong><span>EXCHANGE</span>
-        </div>
+        <div class="brand-mark sm"><svg><use href="#i-logo"/></svg></div>
+        <div class="brand-text"><strong>SERNOVA</strong><span>EXCHANGE</span></div>
       </div>
 
-      <div class="table-pill" title="Mesa activa">
-        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 8h14M5 8V5h10v3M6 8v8m8-8v8M4 16h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        MESA <strong id="table-label">—</strong>
-      </div>
+      <button class="table-pill" id="table-pill" type="button" title="Cambiar de mesa">
+        <svg><use href="#i-table"/></svg>
+        <span>MESA</span> <strong id="table-label">—</strong>
+      </button>
 
       <div class="session-meta" id="session-meta"></div>
-      <span id="admin-badge" class="admin-badge" hidden>ADMIN</span>
+
+      <div class="top-status">
+        <span id="sync-pill" class="sync-pill" title="Estado de la conexión con las pantallas"><i></i><span>Local</span></span>
+        <span id="admin-badge" class="admin-badge" hidden>ADMIN</span>
+      </div>
 
       <div class="top-actions">
         <button id="btn-tv" class="btn ghost sm" type="button" title="Abrir pantalla de televisores">
-          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="2.5" y="4" width="15" height="10" rx="1.6" stroke="currentColor" stroke-width="1.5"/><path d="M7 17h6m-3-3v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-          <span class="tv-label">TV</span>
+          <svg><use href="#i-tv"/></svg><span class="tv-label">TV</span>
         </button>
         <button id="btn-admin" class="btn ghost sm" type="button" title="Panel de administrador">
-          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.5 16 5v5c0 4-2.6 6.4-6 7.5-3.4-1.1-6-3.5-6-7.5V5l6-2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m7.5 10 1.8 1.8 3.4-3.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span class="admin-label">Admin</span>
+          <svg><use href="#i-shield"/></svg><span class="admin-label">Admin</span>
         </button>
         <button id="btn-theme" class="icon-btn" type="button" title="Cambiar tema (T)" aria-label="Cambiar tema">
-          <svg class="icon-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
-          <svg class="icon-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.4" stroke="currentColor" stroke-width="1.6"/><path d="M10 2v2m0 12v2M2 10h2m12 0h2M4.3 4.3l1.5 1.5m8.4 8.4 1.5 1.5m0-11.4-1.5 1.5m-8.4 8.4-1.5 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <svg class="icon-moon"><use href="#i-moon"/></svg>
+          <svg class="icon-sun"><use href="#i-sun"/></svg>
         </button>
-        <button id="btn-new" class="btn ghost sm" type="button">Nueva sesión</button>
+        <button id="btn-help" class="icon-btn hide-sm" type="button" title="Atajos de teclado (?)" aria-label="Atajos de teclado">
+          <svg><use href="#i-keyboard"/></svg>
+        </button>
+        <button id="btn-new" class="btn ghost sm hide-sm" type="button">Nueva sesión</button>
         <button id="btn-lock" class="icon-btn" type="button" title="Cambiar de mesa" aria-label="Cambiar de mesa">
-          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="4" y="8.5" width="12" height="8" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M7 8.5V6a3 3 0 0 1 6 0v2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <svg><use href="#i-lock"/></svg>
         </button>
       </div>
     </header>
 
     <div class="ticker-wrap">
-      <span class="ticker-tag">MERCADO</span>
+      <span class="ticker-tag"><i></i>MERCADO</span>
       <div class="ticker-window">
         <div class="ticker-track" id="ticker-track"></div>
       </div>
@@ -133,28 +168,33 @@
       <span class="ticker-clock" id="ticker-clock"></span>
     </div>
 
-    <div id="market-banner" class="market-banner" hidden></div>
+    <div id="market-banner" class="market-banner" role="status" hidden></div>
 
     <main class="layout">
       <div class="col-main">
 
         <!-- Mercado / gráfico -->
-        <section class="panel market-panel">
+        <section class="panel market-panel" id="market-panel" aria-labelledby="market-name">
           <div class="panel-head market-head">
-            <div>
-              <p class="eyebrow">Mercado en vivo · subidas y bajadas</p>
+            <div class="market-title">
+              <p class="eyebrow">Mercado en vivo</p>
               <h2 id="market-name">—</h2>
               <p class="muted small" id="market-desc"></p>
             </div>
-            <label class="select-wrap">
-              <span class="sr-only">Elegir bebida para el gráfico</span>
-              <select id="market-select"></select>
-            </label>
+            <div class="market-controls">
+              <label class="select-wrap">
+                <span class="sr-only">Elegir bebida para el gráfico</span>
+                <select id="market-select"></select>
+              </label>
+              <button class="btn primary sm" type="button" id="btn-quick-add" title="Registrar 1 unidad del trago del gráfico">
+                <svg><use href="#i-plus"/></svg> Registrar
+              </button>
+            </div>
           </div>
 
           <div class="quote-row">
             <div class="quote-main">
-              <span class="quote-label">ÚLTIMO PRECIO</span>
+              <span class="quote-label">Último precio</span>
               <div class="quote-price" id="quote-price">$ 0</div>
             </div>
             <div class="quote-change" id="quote-change"></div>
@@ -164,62 +204,72 @@
           <div class="chart-toolbar">
             <div class="segmented" id="mode-switch" role="group" aria-label="Vista del gráfico">
               <button type="button" data-mode="ambos" class="active">Precio + consumo</button>
-              <button type="button" data-mode="precio">Solo precio</button>
-              <button type="button" data-mode="consumo">Solo consumo</button>
+              <button type="button" data-mode="precio">Precio</button>
+              <button type="button" data-mode="consumo">Consumo</button>
               <button type="button" data-mode="demanda">Demanda</button>
             </div>
             <div class="segmented compact" id="range-switch" role="group" aria-label="Rango del gráfico">
-              <button type="button" data-range="10">Últimos 10</button>
+              <button type="button" data-range="10">10</button>
+              <button type="button" data-range="30">30</button>
               <button type="button" data-range="sesion">Sesión</button>
               <button type="button" data-range="todo" class="active">Todo</button>
             </div>
           </div>
 
           <div id="chart" class="chart-box"></div>
-          <div class="chart-legend" id="chart-legend">
-            <span><i class="dot up"></i> Subida</span>
-            <span><i class="dot down"></i> Bajada</span>
-            <span><i class="line-key"></i> Precio</span>
-            <span><i class="bar-key"></i> Consumo (unidades)</span>
-          </div>
+          <div class="chart-legend" id="chart-legend"></div>
         </section>
 
         <!-- Carta / registrar consumo -->
-        <section class="panel menu-panel">
+        <section class="panel menu-panel" aria-labelledby="menu-title">
           <div class="panel-head">
             <div>
               <p class="eyebrow">Carta · registrar consumo</p>
-              <h2>Seleccioná el trago servido</h2>
+              <h2 id="menu-title">Seleccioná el trago servido</h2>
             </div>
             <label class="search-wrap">
-              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="8.8" cy="8.8" r="5.2" stroke="currentColor" stroke-width="1.6"/><path d="m13 13 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-              <input id="search" type="search" placeholder="Buscar trago…  (/)" autocomplete="off" />
+              <svg><use href="#i-search"/></svg>
+              <span class="sr-only">Buscar trago</span>
+              <input id="search" type="search" placeholder="Buscar trago…" autocomplete="off" />
+              <kbd>/</kbd>
             </label>
           </div>
 
           <div class="filter-bar">
             <div class="tabs" id="category-tabs" role="tablist"></div>
-            <label class="select-wrap small-select">
-              <span class="sr-only">Ordenar carta</span>
-              <select id="sort-select">
-                <option value="carta">Orden de carta</option>
-                <option value="nombre">Nombre A–Z</option>
-                <option value="precio-asc">Precio ↑</option>
-                <option value="precio-desc">Precio ↓</option>
-                <option value="consumo">Más consumido</option>
-              </select>
-            </label>
+            <div class="filter-right">
+              <div class="segmented compact" id="density-switch" role="group" aria-label="Tamaño de las tarjetas">
+                <button type="button" data-density="comfort" title="Tarjetas">▦</button>
+                <button type="button" data-density="compact" title="Lista compacta">☰</button>
+              </div>
+              <label class="select-wrap small-select">
+                <span class="sr-only">Ordenar carta</span>
+                <select id="sort-select">
+                  <option value="carta">Orden de carta</option>
+                  <option value="nombre">Nombre A–Z</option>
+                  <option value="precio-asc">Precio ↑</option>
+                  <option value="precio-desc">Precio ↓</option>
+                  <option value="consumo">Más consumido</option>
+                  <option value="oportunidad">Mejor oportunidad</option>
+                  <option value="subas">Mayores subas</option>
+                </select>
+              </label>
+            </div>
           </div>
           <div class="tag-chips" id="tag-chips"></div>
 
           <div class="drink-grid" id="drink-grid"></div>
-          <div id="empty-menu" class="empty-state" hidden>No se encontraron tragos con esos filtros.</div>
+          <div id="empty-menu" class="empty-state" hidden>
+            <strong>Sin resultados</strong>
+            <span>No se encontraron tragos con esos filtros.</span>
+            <button type="button" class="btn sm" data-action="reset-filters">Limpiar filtros</button>
+          </div>
         </section>
       </div>
 
       <aside class="col-side">
 
-        <section class="panel summary-panel">
+        <section class="panel summary-panel" id="summary-panel">
           <div class="panel-head tight">
             <div>
               <p class="eyebrow">Resumen de mesa</p>
@@ -228,36 +278,44 @@
             <span class="live-badge"><i></i> EN VIVO</span>
           </div>
           <div class="total-block">
-            <span class="quote-label">TOTAL CONSUMIDO</span>
+            <span class="quote-label">Total consumido</span>
             <div class="total-value" id="total-value">$ 0</div>
             <span class="muted small" id="total-caption">Sin consumos registrados</span>
+            <div class="total-split" id="total-split"></div>
           </div>
           <div class="kpi-grid" id="kpi-grid"></div>
           <div class="share-block">
             <div class="share-head"><span>Por categoría</span><span id="share-legend"></span></div>
             <div class="share-bar" id="share-bar"></div>
           </div>
+          <button class="btn primary block" type="button" data-action="bill" id="btn-bill">
+            <svg><use href="#i-receipt"/></svg> Ver cuenta / cerrar mesa
+          </button>
         </section>
 
-        <section class="panel ledger-panel">
+        <section class="panel ledger-panel" id="ledger-panel">
           <div class="panel-head tight">
             <div>
               <p class="eyebrow">Ticket de mesa</p>
               <h2>Consumos <span id="ledger-count" class="count-badge">0</span></h2>
             </div>
             <div class="head-actions">
-              <button class="icon-btn xs" id="btn-undo" data-action="undo" type="button" title="Deshacer último" aria-label="Deshacer último consumo">
-                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7 6H3V2m1 4a7 7 0 1 1-1 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </button>
-              <button class="icon-btn xs" id="btn-export" data-action="export" type="button" title="Exportar CSV" aria-label="Exportar consumos a CSV">
-                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 3v9m0 0 3.5-3.5M10 12 6.5 8.5M4 14v2h12v-2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </button>
-              <button class="icon-btn xs danger" id="btn-clear" data-action="clear" type="button" title="Vaciar ticket" aria-label="Vaciar ticket">
-                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 6h12M8 6V4h4v2m-6 0 .7 10h6.6L14 6M9 9v4m2-4v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </button>
+              <button class="icon-btn xs" id="btn-undo" data-action="undo" type="button" title="Deshacer último (Ctrl+Z)" aria-label="Deshacer último consumo"><svg><use href="#i-undo"/></svg></button>
+              <button class="icon-btn xs" id="btn-export" data-action="export" type="button" title="Exportar CSV" aria-label="Exportar consumos a CSV"><svg><use href="#i-download"/></svg></button>
+              <button class="icon-btn xs danger" id="btn-clear" data-action="clear" type="button" title="Vaciar ticket" aria-label="Vaciar ticket"><svg><use href="#i-trash"/></svg></button>
             </div>
           </div>
           <div id="ledger-list" class="ledger-list"></div>
+        </section>
+
+        <section class="panel movers-panel">
+          <div class="panel-head tight">
+            <div>
+              <p class="eyebrow">Frente al precio de carta</p>
+              <h2>Movimientos</h2>
+            </div>
+          </div>
+          <div id="movers-list" class="movers-list"></div>
         </section>
 
         <section class="panel ranking-panel">
@@ -272,11 +330,19 @@
 
       </aside>
     </main>
+
+    <div class="mobile-bar" id="mobile-bar">
+      <div><span>Total mesa</span><strong id="mobile-total">$ 0</strong></div>
+      <button class="btn sm" type="button" data-action="go-ticket">Ticket <b id="mobile-count">0</b></button>
+      <button class="btn primary sm" type="button" data-action="bill">Cuenta</button>
+    </div>
   </div>
 
+  <div id="crash-flash" class="crash-flash" aria-hidden="true"></div>
   <div id="toasts" class="toasts" aria-live="polite"></div>
   <div id="modal-root"></div>
   <div id="admin-root"></div>
+  <div id="print-root" class="print-root" aria-hidden="true"></div>
 
   <script src="js/data.js"></script>
   <script src="js/sync.js"></script>

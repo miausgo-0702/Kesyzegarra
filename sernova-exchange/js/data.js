@@ -5,14 +5,14 @@
 (function (global) {
   'use strict';
 
-  var ILLEGIBLE = 'Descripción ilegible en la carta original.';
+  var SIGNATURE = 'Cóctel de autor de la casa Sernova.';
 
   var DEFAULT_DRINKS = [
     // ───────────────────────── Cocktails Sernova
-    { id: 'sernova-loly-fresh', name: 'SERNOVA LOLY FRESH', price: 11400, category: 'Cocktails Sernova', tags: ['Sernova', 'Autor'], description: ILLEGIBLE },
-    { id: 'sernova-fest',        name: 'SERNOVA FEST',        price: 11400, category: 'Cocktails Sernova', tags: ['Sernova', 'Autor'], description: ILLEGIBLE },
-    { id: 'sernova-gum',         name: 'SERNOVA GUM',         price: 11400, category: 'Cocktails Sernova', tags: ['Sernova', 'Autor'], description: ILLEGIBLE },
-    { id: 'sernova-candy-glow',  name: 'SERNOVA CANDY GLOW',  price: 11400, category: 'Cocktails Sernova', tags: ['Sernova', 'Autor'], description: ILLEGIBLE },
+    { id: 'sernova-loly-fresh', name: 'SERNOVA LOLY FRESH', price: 11400, category: 'Cocktails Sernova', tags: ['Sernova', 'Autor'], description: SIGNATURE },
+    { id: 'sernova-fest',        name: 'SERNOVA FEST',        price: 11400, category: 'Cocktails Sernova', tags: ['Sernova', 'Autor'], description: SIGNATURE },
+    { id: 'sernova-gum',         name: 'SERNOVA GUM',         price: 11400, category: 'Cocktails Sernova', tags: ['Sernova', 'Autor'], description: SIGNATURE },
+    { id: 'sernova-candy-glow',  name: 'SERNOVA CANDY GLOW',  price: 11400, category: 'Cocktails Sernova', tags: ['Sernova', 'Autor'], description: SIGNATURE },
 
     // ───────────────────────── Tragos
     { id: 'branca-cola',          name: 'BRANCA & COLA',            price: 10000, category: 'Tragos', tags: ['Fernet', 'Clásico'], description: 'Fernet Branca con cola.' },
@@ -72,10 +72,11 @@
   resetCatalog();
 
   var CATEGORIES = ['Todos', 'Cocktails Sernova', 'Tragos'];
-  var TAGS = ['Todos', 'Sernova', 'Julep', 'Clásico', 'Tropical', 'Vermouth', 'Caipira', 'Gin', 'Spritz', 'Fernet', 'Whisky', 'Café', 'Amaro'];
+  var TAGS = ['Todos', 'Sernova', 'Autor', 'Julep', 'Clásico', 'Tropical', 'Vermouth', 'Caipira', 'Gin', 'Spritz', 'Fernet', 'Whisky', 'Café', 'Amaro'];
 
   function money(value) {
-    return '$ ' + Math.round(value).toLocaleString('es-AR', { maximumFractionDigits: 0 });
+    var v = Math.round(value || 0);
+    return (v < 0 ? '−$ ' : '$ ') + Math.abs(v).toLocaleString('es-AR', { maximumFractionDigits: 0 });
   }
 
   function moneyShort(value) {
@@ -90,6 +91,12 @@
 
   function clock(ts) {
     return new Date(ts).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
+  function esc(text) {
+    return String(text === undefined || text === null ? '' : text)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   function byId(id) {
@@ -109,6 +116,7 @@
     moneyShort: moneyShort,
     pct: pct,
     clock: clock,
+    esc: esc,
     byId: byId
   };
 })(window);
