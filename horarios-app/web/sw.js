@@ -1,5 +1,5 @@
 // Service worker: permite abrir la app sin conexión (PC / iPhone instalados desde el navegador).
-const CACHE = "mh-v6";
+const CACHE = "mh-v7";
 const ARCHIVOS = ["./", "index.html", "styles.css", "app.js", "logic.js", "backend.js", "data.js", "config.js",
   "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png", "img/logo.svg", "img/la-esquina.png", "img/la-esquina-blanco.png", "img/belgrano.png", "img/belgrano-blanco.png",
   "vendor/firebase-app-compat.js", "vendor/firebase-auth-compat.js", "vendor/firebase-firestore-compat.js"];

@@ -175,58 +175,106 @@
   let navItems = [];
   function armarNav() {
     navItems = ["inicio", "calendario", "equipo"].concat(st.user.tipo === "admin" ? ["admin"] : []);
-    $("nav").innerHTML = `<div class="nav-glow"></div><div class="nav-bar"></div>
+    $("nav").innerHTML = `<div class="nav-glow" id="navGlow"></div>
+      <svg class="nav-svg" id="navSvg" aria-hidden="true"><path id="navPath"/></svg>
       <div class="bead" id="bead"><div class="bead-in" id="beadIn"></div></div>` +
       navItems.map(v => `<button data-v="${v}" aria-label="${NOMBRES[v]}">${ICON[v]}<span>${NOMBRES[v]}</span></button>`).join("");
     $("side").innerHTML = `<img class="logo" src="img/logo.svg" alt=""><div class="side-ind" id="sideInd"></div>` +
       navItems.map(v => `<button data-v="${v}" title="${NOMBRES[v]}">${ICON[v]}</button>`).join("");
     document.querySelectorAll("[data-v]").forEach(b => b.onclick = () => irA(b.dataset.v));
     st.vistaAnt = null;
-    arrastreGota();
+    Gota.iniciar();
   }
   function irA(v) {
     if (v === st.vista) return;
     st.vista = v; render(); window.scrollTo({ top: 0 });
   }
-  // Mueve la gota (y el hueco de la barra) a la pestaña activa
   function moverGota(animar) {
-    const nav = $("nav"), b = nav.querySelector(`button[data-v="${st.vista}"]`);
+    const b = $("nav").querySelector(`button[data-v="${st.vista}"]`);
     if (!b) return;
-    const x = b.offsetLeft + b.offsetWidth / 2;
-    nav.classList.toggle("sin-anim", !animar);
-    nav.style.setProperty("--x", x + "px");
-    nav.style.setProperty("--bead", COLOR[st.vista]);
-    nav.style.setProperty("--bead-ink", st.vista === "equipo" ? "#fff" : "#1d2100");
-    $("side").style.setProperty("--bead-ink", st.vista === "equipo" ? "#fff" : "#1d2100");
+    Gota.ir(b.offsetLeft + b.offsetWidth / 2, !animar);
+    const nav = $("nav"), ink = st.vista === "equipo" ? "#fff" : "#1d2100";
+    nav.style.setProperty("--bead", COLOR[st.vista]); nav.style.setProperty("--bead-ink", ink);
+    $("side").style.setProperty("--bead-ink", ink);
     $("beadIn").innerHTML = ICON[st.vista];
-    if (animar) { const g = $("bead"); g.classList.remove("salto"); void g.offsetWidth; g.classList.add("salto"); }
     const si = $("sideInd"), sb = $("side").querySelector(`button[data-v="${st.vista}"]`);
-    if (si && sb) { si.style.transform = `translateY(${sb.offsetTop}px)`; si.style.background = COLOR[st.vista]; }
+    if (si && sb) { si.style.transform = `translate3d(0,${sb.offsetTop}px,0)`; si.style.background = COLOR[st.vista]; }
   }
-  // Se puede arrastrar la gota a lo largo de la barra
-  function arrastreGota() {
-    const nav = $("nav"), g = $("bead");
-    let activo = false;
-    const xDe = e => Math.max(28, Math.min(nav.clientWidth - 28, e.clientX - nav.getBoundingClientRect().left));
-    g.onpointerdown = e => { activo = true; g.setPointerCapture(e.pointerId); nav.classList.add("arrastrando"); };
-    g.onpointermove = e => {
-      if (!activo) return;
-      const x = xDe(e); nav.style.setProperty("--x", x + "px");
-      const b = cercano(x); if (b) nav.style.setProperty("--bead", COLOR[b.dataset.v]);
-    };
-    const soltar = e => {
-      if (!activo) return; activo = false; nav.classList.remove("arrastrando");
-      const b = cercano(xDe(e));
-      if (b && b.dataset.v !== st.vista) irA(b.dataset.v); else moverGota(true);
-    };
-    g.onpointerup = soltar; g.onpointercancel = soltar;
-    function cercano(x) {
+
+  /* Gota con física de resorte: la posición se integra cuadro a cuadro (60/120 fps),
+     la gota se estira con la velocidad y el hueco de la barra es una curva que se
+     ensancha y se hunde mientras se mueve, como un líquido. */
+  const Gota = (() => {
+    const RED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const K = 230, C = 21;            // rigidez y amortiguación del resorte
+    let x = 0, v = 0, meta = 0, ult = 0, raf = 0, arr = false, W = 0, H = 64;
+    let nav, path, bead, beadIn, glow;
+    function dibujar() {
+      const vel = Math.min(Math.abs(v), 2600);
+      const est = vel / 2600;                                    // 0..1 según velocidad
+      // hueco: ancho y profundidad crecen con la velocidad
+      const r = 24, ancho = 41 + est * 24, prof = 33 + est * 7, hombro = 12 + est * 7;
+      const xa = Math.max(r + 2, Math.min(W - r - 2, x));
+      // cerca de los bordes la curva se angosta para no pisar las esquinas redondeadas
+      const fi = Math.min(1, (xa - r) / (ancho + hombro)), fd = Math.min(1, (W - r - xa) / (ancho + hombro));
+      const L = xa - ancho * fi, R = xa + ancho * fd, hi = hombro * fi, hd = hombro * fd;
+      path.setAttribute("d",
+        `M${r},0 L${L - hi},0 C${L},0 ${L + 6 * fi},${prof} ${xa},${prof} C${R - 6 * fd},${prof} ${R},0 ${R + hd},0 ` +
+        `L${W - r},0 Q${W},0 ${W},${r} L${W},${H - r} Q${W},${H} ${W - r},${H} L${r},${H} Q0,${H} 0,${H - r} L0,${r} Q0,0 ${r},0 Z`);
+      // gota: se eleva y se estira en la dirección del movimiento
+      const sx = 1 + est * 0.28, sy = 1 - est * 0.16, alto = -est * 10 - (arr ? 6 : 0);
+      bead.style.transform = `translate3d(${x - 27}px,${alto}px,0)`;
+      beadIn.style.transform = `scale(${sx},${sy}) rotate(${Math.max(-8, Math.min(8, v / 160))}deg)`;
+      glow.style.transform = `translate3d(${x - 90}px,0,0)`;
+    }
+    function paso(t) {
+      const dt = Math.min(0.032, (t - (ult || t)) / 1000) || 0.016; ult = t;
+      if (!arr) {
+        // integración semi-implícita en sub-pasos para que sea estable y suave
+        for (let i = 0; i < 4; i++) { const h = dt / 4; v += (K * (meta - x) - C * v) * h; x += v * h; }
+      }
+      dibujar();
+      if (arr || Math.abs(meta - x) > 0.2 || Math.abs(v) > 2) raf = requestAnimationFrame(paso);
+      else { x = meta; v = 0; dibujar(); raf = 0; ult = 0; }
+    }
+    const correr = () => { if (!raf) { ult = 0; raf = requestAnimationFrame(paso); } };
+    function medir() { W = nav.clientWidth; H = nav.clientHeight; $("navSvg").setAttribute("viewBox", `0 0 ${W} ${H}`); }
+    function cercano(px) {
       let mejor = null, d = 1e9;
-      nav.querySelectorAll("button[data-v]").forEach(b => { const c = b.offsetLeft + b.offsetWidth / 2; if (Math.abs(c - x) < d) { d = Math.abs(c - x); mejor = b; } });
+      nav.querySelectorAll("button[data-v]").forEach(b => { const c = b.offsetLeft + b.offsetWidth / 2; if (Math.abs(c - px) < d) { d = Math.abs(c - px); mejor = b; } });
       return mejor;
     }
-  }
-  window.addEventListener("resize", () => { if (st.user) moverGota(false); });
+    function iniciar() {
+      nav = $("nav"); path = $("navPath"); bead = $("bead"); beadIn = $("beadIn"); glow = $("navGlow");
+      medir();
+      let px0 = 0, x0 = 0, vx = 0, tAnt = 0, xAnt = 0;
+      bead.onpointerdown = e => {
+        arr = true; nav.classList.add("arrastrando"); bead.setPointerCapture(e.pointerId);
+        px0 = e.clientX; x0 = x; xAnt = x; tAnt = performance.now(); correr();
+      };
+      bead.onpointermove = e => {
+        if (!arr) return;
+        const nx = Math.max(28, Math.min(W - 28, x0 + e.clientX - px0)), t = performance.now();
+        vx = (nx - xAnt) / Math.max(0.008, (t - tAnt) / 1000); xAnt = nx; tAnt = t;
+        v = v * 0.5 + vx * 0.5; x = nx;
+        const b = cercano(x); if (b) nav.style.setProperty("--bead", COLOR[b.dataset.v]);
+      };
+      const soltar = () => {
+        if (!arr) return; arr = false; nav.classList.remove("arrastrando");
+        // se proyecta la inercia del gesto para elegir la pestaña
+        const b = cercano(x + v * 0.12);
+        if (b && b.dataset.v !== st.vista) irA(b.dataset.v); else moverGota(true);
+      };
+      bead.onpointerup = soltar; bead.onpointercancel = soltar;
+    }
+    function ir(px, sinAnim) {
+      medir(); meta = px;
+      if (sinAnim || RED || !ult && x === 0) { x = px; v = 0; dibujar(); return; }
+      correr();
+    }
+    return { iniciar, ir, medir: () => { if (nav) { medir(); dibujar(); } } };
+  })();
+  window.addEventListener("resize", () => { if (st.user) { Gota.medir(); moverGota(false); } });
 
   /* ============================== DATOS DE LA PERSONA ============================== */
   function personaActual() { return st.user.tipo === "admin" ? st.ver : st.user.persona; }
@@ -754,6 +802,15 @@
       try { await B.guardarDatos(D2); toast("Grupos invertidos"); } catch (er) { toast(er.message); }
     };
   }
+
+  /* ============================== APERTURA ============================== */
+  (function apertura() {
+    const sp = $("splash"); if (!sp) return;
+    const quitar = () => { if (sp.parentNode) sp.remove(); };
+    sp.addEventListener("click", () => sp.classList.add("saltar"));
+    sp.addEventListener("animationend", e => { if (e.target === sp) quitar(); });
+    setTimeout(quitar, 4000); // por si el navegador no dispara el evento
+  })();
 
   /* ============================== INICIO ============================== */
   B.init().catch(e => { console.error(e); mostrarLogin("No se pudo conectar: " + e.message); });
