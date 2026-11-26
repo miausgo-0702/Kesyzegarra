@@ -92,7 +92,7 @@ function persistSoon() {
 function sanitize(value) {
   if (value && value.admin) {
     const a = value.admin;
-    value.admin = { paused: !!a.paused, pausedAt: a.pausedAt || 0, crashMs: a.crashMs, tickMs: a.tickMs, crashPct: a.crashPct, rallyPct: a.rallyPct };
+    value.admin = { paused: !!a.paused, pausedAt: a.pausedAt || 0, crashMs: a.crashMs, tickMs: a.tickMs, crashPct: a.crashPct, rallyPct: a.rallyPct, crashDurationMs: a.crashDurationMs };
   }
   return value;
 }

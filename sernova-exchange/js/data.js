@@ -59,6 +59,7 @@
     DRINKS.forEach(function (d) {
       if (overrides.basePrices && overrides.basePrices[d.id]) d.price = overrides.basePrices[d.id];
       if (overrides.disabled && overrides.disabled.indexOf(d.id) >= 0) d.enabled = false;
+      if (overrides.costs && overrides.costs[d.id]) d.cost = overrides.costs[d.id];
     });
     (overrides.custom || []).forEach(function (c) {
       DRINKS.push(Object.assign({}, c, { enabled: c.enabled !== false, custom: true }));

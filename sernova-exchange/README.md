@@ -37,9 +37,9 @@ También funciona abriendo `index.html` directamente (sin TVs en red).
 
 - **Más consumo ⇒ más sube**: la presión compradora crece con las unidades vendidas en los últimos 4 minutos.
 - **Sin consumo ⇒ baja** en cada ajuste automático (cada 20 s por defecto).
-- **Caída general** periódica (−10 % cada 2 min por defecto), con cuenta regresiva y aviso.
+- **Caída a precio de costo**: cada 2 min (por defecto) toda la carta pasa a su **precio de costo durante 1 minuto** y después cada trago vuelve al precio que tenía. Durante ese minuto el precio no sube por consumo. El costo de cada trago se carga en *Admin → Carta y precios* (vacío = 40 % del precio de carta, configurable).
 - **Subida general** manual desde el admin (+7 % por defecto).
-- Todo es configurable en **Admin → Mercado → Reglas del mercado**. Al **pausar**, también se congela la cuenta regresiva.
+- Cada cuánto cae, cuánto dura el precio de costo y el costo por defecto se configuran en **Admin → Mercado → Reglas del mercado**. Desde ahí también se puede forzar o terminar el precio de costo. Al **pausar**, también se congela la cuenta regresiva.
 
 ## Pantalla de televisores
 

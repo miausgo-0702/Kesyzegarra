@@ -128,19 +128,27 @@
   function showEvent(ev) {
     var box = $('tv-event');
     var crash = ev.kind === 'crash';
+    var secs = Math.round((ev.durationMs || 60000) / 1000);
     $('tv-countbig').hidden = true;
     box.className = 'tv-event ' + (crash ? 'crash' : 'rally');
     box.hidden = false;
     $('tv-event-arrow').textContent = crash ? '▼' : '▲';
-    $('tv-event-title').textContent = crash ? 'CAÍDA GENERAL' : 'SUBIDA GENERAL';
+    $('tv-event-title').textContent = crash ? '¡PRECIO DE COSTO!' : ev.kind === 'recover' ? 'FIN DEL PRECIO DE COSTO' : 'SUBIDA GENERAL';
     $('tv-event-detail').textContent = crash
-      ? 'Todos los precios bajaron ' + (ev.pct || 10) + '% · ¡aprovechá ahora!'
-      : 'Todos los precios subieron ' + (ev.pct || 7) + '%';
+      ? 'Toda la carta al costo durante ' + (secs >= 60 && secs % 60 === 0 ? (secs / 60) + (secs === 60 ? ' minuto' : ' minutos') : secs + ' segundos') + ' · ¡pedí ahora!'
+      : ev.kind === 'recover' ? 'Los precios volvieron a la normalidad' : 'Todos los precios subieron ' + (ev.pct || 7) + '%';
     clearTimeout(eventTimer);
     eventTimer = setTimeout(function () {
       box.classList.add('out');
       setTimeout(function () { box.hidden = true; }, 600);
-    }, 5200);
+    }, ev.kind === 'recover' ? 3000 : 5200);
+  }
+
+  function costLeft() {
+    if (!current || !current.crash || !current.crash.active) return 0;
+    var a = current.admin || {};
+    var ref = a.paused && a.pausedAt ? a.pausedAt : nowTs();
+    return Math.max(0, Math.ceil((current.crash.until - ref) / 1000));
   }
 
   /* ------------------------------------------------------------- render */
@@ -168,13 +176,20 @@
   function renderHeader() {
     $('tv-table').textContent = current.table || '—';
     var a = current.admin || {};
-    var remaining = crashRemaining();
-    var total = Math.max(1, (a.crashMs || 120000) / 1000);
+    var atCost = !!(current.crash && current.crash.active);
+    var left = costLeft();
+    var remaining = atCost ? left : crashRemaining();
+    var total = Math.max(1, (atCost ? (a.crashDurationMs || 60000) : (a.crashMs || 120000)) / 1000);
     var box = $('tv-countdown-box');
     $('tv-countdown').textContent = a.paused ? 'PAUSA' : String(Math.floor(remaining / 60)).padStart(2, '0') + ':' + String(remaining % 60).padStart(2, '0');
-    $('tv-countdown-label').textContent = a.paused ? 'MERCADO' : 'CAÍDA −' + (a.crashPct || 10) + '%';
+    $('tv-countdown-label').textContent = a.paused ? 'MERCADO' : atCost ? 'PRECIO DE COSTO' : 'CAÍDA A COSTO EN';
     $('tv-ring').style.strokeDashoffset = (119.4 * (1 - remaining / total)).toFixed(1);
-    box.className = 'tv-countdown' + (a.paused ? ' paused' : remaining <= 10 ? ' urgent' : '');
+    box.className = 'tv-countdown' + (a.paused ? ' paused' : atCost ? ' atcost' : remaining <= 10 ? ' urgent' : '');
+    var strip = $('tv-cost-strip');
+    strip.hidden = !atCost;
+    if (atCost) $('tv-cost-left').textContent = String(Math.floor(left / 60)).padStart(2, '0') + ':' + String(left % 60).padStart(2, '0');
+    document.body.classList.toggle('at-cost', atCost);
+    if (atCost) remaining = 999;
     var big = $('tv-countbig');
     var showBig = !a.paused && remaining > 0 && remaining <= 5 && current.table && $('tv-event').hidden;
     if (showBig) {
@@ -293,11 +308,11 @@
     var seen = {}, rows = [];
     moves.forEach(function (mvv) {
       if (rows.length >= 7) return;
-      if (mvv.h.kind === 'crash' || mvv.h.kind === 'rally') {
+      if (mvv.h.kind === 'crash' || mvv.h.kind === 'rally' || mvv.h.kind === 'recover') {
         var k = mvv.h.kind + mvv.ts;
         if (seen[k]) return;
         seen[k] = true;
-        rows.push({ ts: mvv.ts, label: mvv.h.kind === 'crash' ? 'CAÍDA' : 'SUBIDA', kind: mvv.h.kind, name: 'Toda la carta', dir: mvv.h.dir, price: null });
+        rows.push({ ts: mvv.ts, label: mvv.h.kind === 'crash' ? 'A COSTO' : mvv.h.kind === 'recover' ? 'VUELVE' : 'SUBIDA', kind: mvv.h.kind, name: 'Toda la carta', dir: mvv.h.dir, price: null });
         return;
       }
       rows.push({ ts: mvv.ts, label: { consumo: 'PEDIDO', ajuste: 'AJUSTE', admin: 'ADMIN' }[mvv.h.kind] || 'MERCADO', kind: mvv.h.kind, name: nameOf(mvv.id), dir: mvv.h.dir, price: mvv.h.price });

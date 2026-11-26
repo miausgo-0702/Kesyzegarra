@@ -329,3 +329,24 @@ body:not(.idle) .tv-fullscreen { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
 }
+
+/* Precio de costo */
+.tv-cost-strip {
+  flex: none; display: flex; align-items: center; justify-content: center; gap: calc(var(--u) * 1.2);
+  padding: calc(var(--u) * .7) calc(var(--u) * 1.4); border-radius: calc(var(--u) * .8);
+  background: linear-gradient(90deg, #b8233b, var(--red), #b8233b); background-size: 200% 100%;
+  color: #fff; animation: shimmer 2.4s linear infinite;
+  box-shadow: 0 0 calc(var(--u) * 3) rgba(255, 93, 115, .35);
+}
+.tv-cost-strip strong { font-family: var(--display); font-size: calc(var(--u) * 1.9); letter-spacing: .04em; }
+.tv-cost-strip span { font-size: calc(var(--u) * 1.15); opacity: .9; }
+.tv-cost-strip b { font-family: var(--mono); font-size: calc(var(--u) * 2.1); animation: blink 1s steps(2) infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+@keyframes blink { 50% { opacity: .45; } }
+.tv-countdown.atcost { border-color: var(--red); background: var(--red); }
+.tv-countdown.atcost span, .tv-countdown.atcost strong { color: #fff; }
+.tv-countdown.atcost .ring { stroke: #fff; }
+.tv-countdown.atcost .ring-bg { stroke: rgba(255,255,255,.25); }
+body.at-cost .tv-price, body.at-cost .tv-board-item b { color: var(--red) !important; }
+body.at-cost .tv-bg i:nth-child(1) { background: var(--red); opacity: .3; }
+.tv-move-row small.k-recover { background: var(--gold-soft); color: var(--gold); }

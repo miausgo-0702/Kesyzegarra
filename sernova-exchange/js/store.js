@@ -25,6 +25,8 @@
   var TICK_MS = 20 * 1000;         // ajuste automático de mercado
   var CRASH_MS = 120 * 1000;       // caída general cada 2 minutos
   var CRASH_PCT = 10;
+  var CRASH_DURATION_MS = 60 * 1000;   // tiempo a precio de costo
+  var COST_PCT = 40;                   // costo por defecto: % del precio de carta
   var RALLY_PCT = 7;
   var MAX_HISTORY = 320;
   var MAX_ARCHIVE = 120;
@@ -152,7 +154,7 @@
     return {
       userHash: DEFAULT_USER_HASH, passwordHash: DEFAULT_PASS_HASH, passwordChanged: false,
       paused: false, pausedAt: 0, crashMs: CRASH_MS, tickMs: TICK_MS,
-      crashPct: CRASH_PCT, rallyPct: RALLY_PCT, log: []
+      crashPct: CRASH_PCT, rallyPct: RALLY_PCT, crashDurationMs: CRASH_DURATION_MS, costPct: COST_PCT, log: []
     };
   }
 
@@ -169,6 +171,9 @@
     if (!a.crashMs) a.crashMs = CRASH_MS;
     if (!a.tickMs) a.tickMs = TICK_MS;
     if (!a.crashPct) a.crashPct = CRASH_PCT;
+    if (!a.crashDurationMs) a.crashDurationMs = CRASH_DURATION_MS;
+    if (!a.costPct) a.costPct = COST_PCT;
+    if (a.crashMs < a.crashDurationMs + 30000) a.crashMs = a.crashDurationMs + 30000;
     if (!a.rallyPct) a.rallyPct = RALLY_PCT;
     if (!Array.isArray(a.log)) a.log = [];
     return a;
@@ -193,7 +198,8 @@
       if (state && (!state.market || !state.entries)) state = null;
       if (state) {
         state.admin = normalizeAdmin(state.admin);
-        if (!state.catalog) state.catalog = { basePrices: {}, disabled: [], custom: [] };
+        if (!state.catalog) state.catalog = { basePrices: {}, disabled: [], custom: [], costs: {} };
+        if (!state.catalog.costs) state.catalog.costs = {};
         if (state.tvFocusId === undefined) state.tvFocusId = '';
         if (state.tvRotate === undefined) state.tvRotate = true;
         if (state.tipPct === undefined) state.tipPct = 10;
@@ -237,10 +243,12 @@
       nextCrashAt: state.nextCrashAt, nextMarketAt: state.nextMarketAt,
       tvFocusId: state.tvFocusId, tvRotate: state.tvRotate,
       lastEvent: state.lastEvent || null,
+      crash: state.crash && state.crash.active ? { active: true, startedAt: state.crash.startedAt, until: state.crash.until } : null,
       catalog: state.catalog,
       admin: {
         paused: !!state.admin.paused, pausedAt: state.admin.pausedAt || 0, crashMs: state.admin.crashMs, tickMs: state.admin.tickMs,
-        crashPct: state.admin.crashPct, rallyPct: state.admin.rallyPct
+        crashPct: state.admin.crashPct, rallyPct: state.admin.rallyPct,
+        crashDurationMs: state.admin.crashDurationMs
       },
       entries: state.entries,
       market: state.market
@@ -340,7 +348,7 @@
     return {
       version: 4,
       sessionId: uid(),
-      catalog: prev && prev.catalog ? prev.catalog : { basePrices: {}, disabled: [], custom: [] },
+      catalog: prev && prev.catalog ? prev.catalog : { basePrices: {}, disabled: [], custom: [], costs: {} },
       table: '', guests: 1, waiter: '',
       startedAt: ts, updatedAt: ts,
       theme: prev && prev.theme ? prev.theme : 'dark',
@@ -462,16 +470,92 @@
     var reversion = (drink.price - paid) / drink.price * 0.10;
     var noise = (rng() - 0.5) * 0.006;
 
-    var tick = movePrice(id, 1 + pressure + reversion + noise, 'consumo', { qty: qty, drinkId: id, ts: ts });
+    var tick;
+    if (crashActive()) {
+      // Durante la caída el precio queda fijo en costo; la demanda igual se registra.
+      tick = pushTick(id, { ts: ts, price: paid, qty: qty, dir: 'flat', synthetic: false, kind: 'consumo', drinkId: id, paid: paid, demand: dem + qty, atCost: true });
+    } else {
+      tick = movePrice(id, 1 + pressure + reversion + noise, 'consumo', { qty: qty, drinkId: id, ts: ts });
+    }
     var entry = {
       id: uid(), drinkId: id, name: drink.name, category: drink.category,
       qty: qty, unitPrice: paid, subtotal: paid * qty, ts: tick.ts,
+      unitCost: costOf(drink), atCost: !!tick.atCost,
       deltaPct: paid ? (tick.price - paid) / paid * 100 : 0
     };
     state.entries.push(entry);
     state.updatedAt = tick.ts;
     save();
     return { entry: entry, tick: tick, drink: drink };
+  }
+
+  /* ------------------------------------------------ caída a precio de costo */
+  function costOf(d) {
+    if (!d) return 0;
+    if (d.cost) return d.cost;
+    var pct = state && state.admin ? state.admin.costPct : COST_PCT;
+    return round10(d.price * pct / 100);
+  }
+
+  function crashActive() { return !!(state && state.crash && state.crash.active); }
+
+  function crashLeft() {
+    if (!crashActive()) return 0;
+    var ref = state.admin.paused && state.admin.pausedAt ? state.admin.pausedAt : now();
+    return Math.max(0, Math.ceil((state.crash.until - ref) / 1000));
+  }
+
+  /* Todos los tragos activos pasan a su precio de costo durante crashDurationMs. */
+  function startCrash(ts) {
+    ts = ts || now();
+    if (crashActive()) endCrash(ts);
+    var prev = {};
+    activeDrinks().forEach(function (d) {
+      var m = state.market[d.id];
+      if (!m) return;
+      prev[d.id] = m.price;
+      var cost = Math.max(10, costOf(d));
+      pushTick(d.id, {
+        ts: ts, price: cost, qty: 0,
+        dir: cost < m.price ? 'down' : cost > m.price ? 'up' : 'flat',
+        synthetic: false, kind: 'crash', drinkId: d.id, paid: m.price, demand: demand(d.id, ts).units
+      });
+    });
+    var dur = state.admin.crashDurationMs;
+    state.crash = { active: true, startedAt: ts, until: ts + dur, prev: prev };
+    state.lastEvent = { kind: 'crash', ts: ts, until: ts + dur, durationMs: dur };
+    state.nextCrashAt = ts + state.admin.crashMs;
+    state.nextMarketAt = ts + dur + state.admin.tickMs;
+    state.updatedAt = ts;
+  }
+
+  /* Vuelven los precios que había antes de la caída. */
+  function endCrash(ts) {
+    if (!crashActive()) return false;
+    ts = ts || now();
+    var prev = state.crash.prev || {};
+    Object.keys(prev).forEach(function (id) {
+      var m = state.market[id];
+      if (!m || !D.byId(id)) return;
+      var back = prev[id];
+      pushTick(id, {
+        ts: ts, price: back, qty: 0,
+        dir: back > m.price ? 'up' : back < m.price ? 'down' : 'flat',
+        synthetic: false, kind: 'recover', drinkId: id, paid: m.price, demand: demand(id, ts).units
+      });
+    });
+    state.crash = null;
+    state.lastEvent = { kind: 'recover', ts: ts };
+    state.nextMarketAt = ts + state.admin.tickMs;
+    state.updatedAt = ts;
+    return true;
+  }
+
+  function stopCrash() {
+    if (!endCrash()) return false;
+    adminLog('Precio de costo terminado', 'Manual');
+    save();
+    return true;
   }
 
   function generalMove(kind, pct) {
@@ -487,13 +571,20 @@
     if (!state) return { changed: false, crashed: false };
     if (state.admin.paused) return { changed: false, crashed: false, paused: true };
     var ts = now();
+    if (crashActive()) {
+      if (ts < state.crash.until) return { changed: false, crashed: false, idle: true, atCost: true };
+      endCrash(ts);
+      save();
+      return { changed: true, crashed: false, recovered: true };
+    }
     if (ts < state.nextMarketAt && ts < state.nextCrashAt) return { changed: false, crashed: false, idle: true };
     var crashed = ts >= state.nextCrashAt;
     var changed = false;
 
     if (crashed) {
-      changed = generalMove('crash', state.admin.crashPct);
-      state.nextCrashAt = ts + state.admin.crashMs;
+      startCrash(ts);
+      save();
+      return { changed: true, crashed: true, durationMs: state.admin.crashDurationMs };
     } else {
       activeDrinks().forEach(function (d) {
         var paid = state.market[d.id].price;
@@ -509,19 +600,18 @@
     state.nextMarketAt = ts + state.admin.tickMs;
     state.updatedAt = ts;
     save();
-    return { changed: changed, crashed: crashed, pct: state.admin.crashPct };
+    return { changed: changed, crashed: crashed };
   }
 
   function forceCrash() {
-    var changed = generalMove('crash', state.admin.crashPct);
-    state.nextCrashAt = now() + state.admin.crashMs;
-    state.updatedAt = now();
-    adminLog('Caída general forzada', '−' + state.admin.crashPct + '%');
+    startCrash(now());
+    adminLog('Caída a precio de costo forzada', Math.round(state.admin.crashDurationMs / 1000) + ' s');
     save();
-    return changed;
+    return true;
   }
 
   function forceRally() {
+    endCrash();
     var changed = generalMove('rally', state.admin.rallyPct);
     state.updatedAt = now();
     adminLog('Subida general forzada', '+' + state.admin.rallyPct + '%');
@@ -531,6 +621,7 @@
 
   function resetMarket() {
     var ts = now();
+    if (crashActive()) state.crash = null;
     activeDrinks().forEach(function (d) {
       var m = state.market[d.id];
       if (m.price === d.price) return;
@@ -790,6 +881,7 @@
       // Congelamos la cuenta regresiva durante la pausa.
       var delta = state.admin.pausedAt ? ts - state.admin.pausedAt : 0;
       state.nextCrashAt += delta;
+      if (crashActive()) state.crash.until += delta;
       state.nextMarketAt = ts + state.admin.tickMs;
       state.admin.pausedAt = 0;
     }
@@ -808,18 +900,21 @@
   function setMarketRules(rules) {
     if (!state) return false;
     var a = state.admin;
-    var crash = clamp(parseInt(rules.crashSec, 10) || 120, 30, 1800) * 1000;
+    a.crashDurationMs = clamp(parseInt(rules.durationSec, 10) || 60, 10, 600) * 1000;
+    a.costPct = clamp(parseFloat(rules.costPct) || COST_PCT, 5, 100);
+    var crash = clamp(parseInt(rules.crashSec, 10) || 120, 30, 3600) * 1000;
+    crash = Math.max(crash, a.crashDurationMs + 30000);
     var tick = clamp(parseInt(rules.tickSec, 10) || 20, 5, 300) * 1000;
     a.crashMs = crash;
     a.tickMs = tick;
-    a.crashPct = clamp(parseFloat(rules.crashPct) || CRASH_PCT, 1, 50);
     a.rallyPct = clamp(parseFloat(rules.rallyPct) || RALLY_PCT, 1, 50);
     var ts = now();
-    state.nextCrashAt = ts + crash;
+    if (crashActive()) state.crash.until = Math.min(state.crash.until, state.crash.startedAt + a.crashDurationMs);
+    state.nextCrashAt = (crashActive() ? state.crash.startedAt : ts) + crash;
     state.nextMarketAt = ts + tick;
     if (a.paused) a.pausedAt = ts;
     state.updatedAt = ts;
-    adminLog('Reglas del mercado', 'Caída −' + a.crashPct + '% cada ' + crash / 1000 + ' s · subida +' + a.rallyPct + '% · ajuste ' + tick / 1000 + ' s');
+    adminLog('Reglas del mercado', 'Precio de costo ' + a.crashDurationMs / 1000 + ' s cada ' + crash / 1000 + ' s (costo por defecto ' + a.costPct + '%) · subida +' + a.rallyPct + '% · ajuste ' + tick / 1000 + ' s');
     save();
     return true;
   }
@@ -858,6 +953,25 @@
     return true;
   }
 
+  function setCost(id, cost) {
+    var d = D.byId(id);
+    if (!d || !state) return false;
+    var c = parseInt(cost, 10);
+    if (!c || c < 10) {               // vacío = usar % por defecto
+      if (d.custom) { var x = state.catalog.custom.filter(function (y) { return y.id === id; })[0]; if (x) delete x.cost; }
+      else delete state.catalog.costs[id];
+    } else {
+      c = round10(clamp(c, 10, d.price));
+      if (d.custom) { var z = state.catalog.custom.filter(function (y) { return y.id === id; })[0]; if (z) z.cost = c; }
+      else state.catalog.costs[id] = c;
+    }
+    D.applyCatalog(state.catalog);
+    state.updatedAt = now();
+    adminLog('Costo', d.name + ' → ' + D.money(costOf(D.byId(id))));
+    save();
+    return true;
+  }
+
   function setEnabled(id, enabled) {
     var d = D.byId(id);
     if (!d) return false;
@@ -892,6 +1006,8 @@
       description: String(data.description || 'Trago personalizado creado por el administrador.').slice(0, 140),
       enabled: true
     };
+    var dc = parseInt(data.cost, 10);
+    if (dc && dc >= 10) drink.cost = round10(Math.min(dc, drink.price));
     state.catalog.custom.push(drink);
     D.applyCatalog(state.catalog);
     ensureMarket();
@@ -916,7 +1032,7 @@
 
   function resetCatalog() {
     if (!state) return;
-    state.catalog = { basePrices: {}, disabled: [], custom: [] };
+    state.catalog = { basePrices: {}, disabled: [], custom: [], costs: {} };
     D.applyCatalog(state.catalog);
     ensureMarket();
     state.updatedAt = now();
@@ -961,7 +1077,7 @@
     var tables = getArchive().filter(function (r) { return (r.closedAt || 0) >= since; });
     var rows = tables.map(function (r) { return { table: r.table, entries: r.entries || [], tip: r.tip || 0, total: r.total || 0, closedAt: r.closedAt, waiter: r.waiter }; });
     if (state && state.entries.length) rows.unshift({ table: state.table, entries: state.entries, tip: 0, total: stats().total, closedAt: 0, live: true, waiter: state.waiter });
-    var revenue = 0, tips = 0, units = 0, ops = 0;
+    var revenue = 0, tips = 0, units = 0, ops = 0, cost = 0, atCostUnits = 0;
     var byDrink = {}, byHour = {}, byWaiter = {};
     rows.forEach(function (r) {
       revenue += r.total; tips += r.tip;
@@ -969,6 +1085,8 @@
       r.entries.forEach(function (e) {
         if (e.ts < since) return;
         units += e.qty; ops++;
+        cost += (e.unitCost || costOf(D.byId(e.drinkId)) || 0) * e.qty;
+        if (e.atCost) atCostUnits += e.qty;
         var k = byDrink[e.name] || (byDrink[e.name] = { name: e.name, qty: 0, amount: 0 });
         k.qty += e.qty; k.amount += e.subtotal;
         var hour = new Date(e.ts).getHours();
@@ -979,6 +1097,7 @@
     return {
       tables: rows.length, revenue: revenue, tips: tips, units: units, operations: ops,
       avgTicket: rows.length ? revenue / rows.length : 0,
+      cost: cost, margin: revenue - cost, atCostUnits: atCostUnits,
       top: top, byHour: byHour, byWaiter: byWaiter
     };
   }
@@ -1024,7 +1143,7 @@
       var prevAdmin = state ? state.admin : null;
       state = data.state;
       state.admin = normalizeAdmin(state.admin || prevAdmin);
-      if (!state.catalog) state.catalog = { basePrices: {}, disabled: [], custom: [] };
+      if (!state.catalog) state.catalog = { basePrices: {}, disabled: [], custom: [], costs: {} };
       D.applyCatalog(state.catalog);
       ensureMarket();
       state.nextCrashAt = now() + state.admin.crashMs;
@@ -1040,7 +1159,8 @@
   global.SernovaStore = {
     KEY: KEY, ARCHIVE_KEY: ARCHIVE_KEY, TICK_MS: TICK_MS, CRASH_MS: CRASH_MS, WINDOW_MS: WINDOW_MS,
     ADMIN_IDLE_MS: ADMIN_IDLE_MS,
-    sha256: sha256, load: load, save: save, persist: persist, publicState: publicState,
+    sha256: sha256, costOf: costOf, crashActive: crashActive, crashLeft: crashLeft, stopCrash: stopCrash, setCost: setCost,
+    load: load, save: save, persist: persist, publicState: publicState,
     hasSession: hasSession, getState: getState,
     ensureSystemState: ensureSystemState,
     createSession: createSession, endSession: endSession, setTheme: setTheme, setPref: setPref, setGuests: setGuests,

@@ -1085,3 +1085,15 @@ body.tv-open { overflow: hidden; }
 
 body.tv-open .toasts, body.tv-open .market-banner, body.tv-open .crash-flash { display: none !important; }
 .admin-panel:has(.admin-login) { height: auto; }
+
+/* Precio de costo */
+.ticker-countdown.atcost { background: var(--red); color: #fff; }
+.ticker-countdown.atcost b { color: #fff; animation: blink 1s steps(2) infinite; }
+.market-banner.atcost { background: linear-gradient(90deg, #b8233b, var(--red), #b8233b); background-size: 200% 100%; animation: banner-in .45s var(--ease), shimmer 2.4s linear infinite; }
+.market-banner.atcost b { font-family: var(--mono); font-size: 15px; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+.cost-badge { font-size: 9px; font-weight: 800; letter-spacing: .12em; border-radius: 6px; padding: 3px 6px; color: #fff; background: var(--red); }
+body.at-cost .drink-card { border-color: color-mix(in srgb, var(--red) 40%, var(--border)); }
+body.at-cost .card-price { color: var(--red); }
+.modal-note.cost { color: var(--red) !important; font-weight: 600; }
+.table-input.default-cost::placeholder { color: var(--muted); font-style: italic; }

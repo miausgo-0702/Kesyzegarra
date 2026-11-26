@@ -223,15 +223,32 @@
     var s = state();
     var secs = S.crashRemaining();
     var cd = els['crash-countdown'];
+    var atCost = S.crashActive();
+    var left = S.crashLeft();
     if (s.admin.paused) {
       cd.innerHTML = '<b>MERCADO EN PAUSA</b>';
       cd.className = 'ticker-countdown paused';
+    } else if (atCost) {
+      cd.innerHTML = '<span>PRECIO DE COSTO · TERMINA EN</span> <b>' + fmtCountdown(left) + '</b>';
+      cd.className = 'ticker-countdown atcost';
     } else {
-      cd.innerHTML = '<span>CAÍDA −' + s.admin.crashPct + '% EN</span> <b>' + fmtCountdown(secs) + '</b>';
+      cd.innerHTML = '<span>CAÍDA A COSTO EN</span> <b>' + fmtCountdown(secs) + '</b>';
       cd.className = 'ticker-countdown' + (secs <= 10 ? ' urgent' : '');
     }
+    // Franja fija mientras dura el precio de costo
+    var b = els['market-banner'];
+    if (atCost) {
+      clearTimeout(bannerTimer);
+      b.hidden = false;
+      b.className = 'market-banner atcost';
+      b.innerHTML = '<strong>▼ PRECIO DE COSTO</strong><span>Toda la carta al costo · termina en <b>' + fmtCountdown(left) + '</b></span>';
+    } else if (b.classList.contains('atcost')) {
+      b.hidden = true;
+      b.className = 'market-banner';
+    }
+    document.body.classList.toggle('at-cost', atCost);
     var ac = $('admin-countdown');
-    if (ac) ac.textContent = fmtCountdown(secs);
+    if (ac) ac.textContent = atCost ? 'COSTO ' + fmtCountdown(left) : fmtCountdown(secs);
   }
 
   /* ------------------------------------------------------------ ticker */
@@ -239,7 +256,7 @@
     var s = state();
     var items = D.available().map(function (d) {
       var ch = S.lastChange(d.id);
-      var kindTag = ch.kind === 'crash' ? '<em>CAÍDA</em>' : ch.kind === 'rally' ? '<em class="gold">SUBIDA</em>' : '';
+      var kindTag = ch.kind === 'crash' ? '<em>A COSTO</em>' : ch.kind === 'rally' ? '<em class="gold">SUBIDA</em>' : '';
       return '<span class="ticker-item"><b>' + esc(d.name) + '</b>' +
         '<span class="tp">' + D.money(s.market[d.id].price) + '</span>' +
         '<span class="' + dirCls(ch.dir) + '">' + arrow(ch.dir) + ' ' + D.pct(ch.pct) + '</span>' + kindTag + '</span>';
@@ -272,7 +289,7 @@
     var items = mode === 'demanda'
       ? [['line', 'var(--gold)', 'Demanda (4 min)'], ['bar', 'var(--gold)', 'Unidades por evento']]
       : [['line', 'var(--green)', 'Precio (verde si sube en la sesión)'], ['dash', 'var(--gold)', 'Media móvil 5'],
-         ['dot', 'var(--gold)', 'Precio de carta'], ['bar', 'var(--green)', 'Consumo'], ['bar', 'var(--blue)', 'Ajuste auto'], ['bar', 'var(--red)', 'Caída general']];
+         ['dot', 'var(--gold)', 'Precio de carta'], ['bar', 'var(--green)', 'Consumo'], ['bar', 'var(--blue)', 'Ajuste auto'], ['bar', 'var(--red)', 'Precio de costo'], ['bar', 'var(--gold)', 'Vuelta de precios']];
     els['chart-legend'].innerHTML = items.map(function (it) {
       return '<span><i class="lk lk-' + it[0] + '" style="--c:' + it[1] + '"></i>' + it[2] + '</span>';
     }).join('');
@@ -300,7 +317,7 @@
     if (prev !== undefined && prev !== m.price) flash(qp, m.price > prev ? 'up' : 'down');
     prevPrices['__q' + drink.id] = m.price;
 
-    var kindNote = ch.kind === 'crash' ? 'Caída general' : ch.kind === 'rally' ? 'Subida general' : ch.kind === 'admin' ? 'Ajuste admin' : ch.kind === 'ajuste' ? 'Ajuste automático' : ch.kind === 'consumo' ? 'Por consumo' : 'Apertura';
+    var kindNote = S.crashActive() ? 'Precio de costo' : ch.kind === 'recover' ? 'Fin del precio de costo' : ch.kind === 'crash' ? 'Caída a costo' : ch.kind === 'rally' ? 'Subida general' : ch.kind === 'admin' ? 'Ajuste admin' : ch.kind === 'ajuste' ? 'Ajuste automático' : ch.kind === 'consumo' ? 'Por consumo' : 'Apertura';
     els['quote-change'].innerHTML =
       '<span class="change-pill ' + dirCls(ch.dir) + '">' + arrow(ch.dir) + ' ' + D.pct(ch.pct) + '</span>' +
       '<small>' + kindNote + ' · <span class="' + dirCls(vsList > 0 ? 'up' : vsList < 0 ? 'down' : 'flat') + '">' + D.pct(vsList) + '</span> vs. carta</small>';
@@ -394,7 +411,7 @@
       var units = counts[d.id] || 0;
       var vs = (m.price - d.price) / d.price * 100;
       var dem = S.demand(d.id).units;
-      var badge = vs <= -8 ? '<span class="deal-badge">OPORTUNIDAD</span>' : dem >= 4 ? '<span class="hot-badge">EN ALZA</span>' : '';
+      var badge = S.crashActive() ? '<span class="cost-badge">A COSTO</span>' : vs <= -8 ? '<span class="deal-badge">OPORTUNIDAD</span>' : dem >= 4 ? '<span class="hot-badge">EN ALZA</span>' : '';
       var prev = prevPrices[d.id];
       var changed = prev !== undefined && prev !== m.price ? (m.price > prev ? ' tick-up' : ' tick-down') : '';
       prevPrices[d.id] = m.price;
@@ -569,7 +586,7 @@
     void fl.offsetWidth;
     fl.className = 'crash-flash on ' + (kind === 'rally' ? 'rally' : 'crash');
     vibrate(kind === 'rally' ? 60 : [80, 60, 80]);
-    bannerTimer = setTimeout(function () { b.hidden = true; }, 6500);
+    bannerTimer = setTimeout(function () { if (!b.classList.contains('atcost')) b.hidden = true; }, 6500);
   }
 
   /* ------------------------------------------------------------ diálogos */
@@ -658,7 +675,9 @@
       '<div class="qty-quick">' + [2, 3, 4, 6, 10].map(function (q) {
         return '<button type="button" class="chip" data-action="modal-set" data-qty="' + q + '">×' + q + '</button>';
       }).join('') + '</div>' +
-      '<p class="modal-note">Se cobra a <b>' + D.money(m.price) + '</b> por unidad; el precio sube después de registrar.</p>' +
+      (S.crashActive()
+        ? '<p class="modal-note cost">Precio de costo: se cobra <b>' + D.money(m.price) + '</b> por unidad durante ' + S.crashLeft() + ' s más.</p>'
+        : '<p class="modal-note">Se cobra a <b>' + D.money(m.price) + '</b> por unidad; el precio sube después de registrar.</p>') +
       '<div class="modal-actions">' +
         '<button type="button" class="btn ghost" data-action="modal-close">Cancelar</button>' +
         '<button type="button" class="btn primary" data-action="modal-add">Registrar <span id="modal-total">' + D.money(m.price) + '</span></button>' +
@@ -821,15 +840,17 @@
     var avg = mv.length ? mv.reduce(function (acc, x) { return acc + x.pct; }, 0) / mv.length : 0;
     return '<div class="admin-stats">' +
         '<div><span>Estado</span><b class="' + (paused ? 'down' : 'up') + '">' + (paused ? 'PAUSADO' : 'ACTIVO') + '</b></div>' +
-        '<div><span>Próxima caída</span><b id="admin-countdown">--:--</b></div>' +
+        '<div><span>' + (S.crashActive() ? 'Precio de costo' : 'Próxima caída') + '</span><b id="admin-countdown" class="' + (S.crashActive() ? 'down' : '') + '">--:--</b></div>' +
         '<div><span>Índice vs. carta</span><b class="' + (avg >= 0 ? 'up' : 'down') + '">' + D.pct(avg) + '</b></div>' +
         '<div><span>Tragos activos</span><b>' + count + '</b></div>' +
       '</div>' +
       '<div class="admin-grid">' +
       card('Ajustes automáticos', '<p>Cada ' + Math.round(a.tickMs / 1000) + ' s los precios se ajustan según la demanda. En pausa también se congela la cuenta regresiva.</p>' +
         '<button class="btn ' + (paused ? 'primary' : '') + '" data-admin-action="pause">' + (paused ? 'Reanudar mercado' : 'Pausar mercado') + '</button>') +
-      card('Caída general', '<p>Los ' + count + ' precios activos bajan un ' + a.crashPct + '% a la vez.</p>' +
-        '<button class="btn danger" data-admin-action="crash">Forzar caída −' + a.crashPct + '%</button>') +
+      card('Caída a precio de costo', '<p>Los ' + count + ' tragos activos pasan a su <b>precio de costo</b> durante ' + Math.round(a.crashDurationMs / 1000) + ' s y luego vuelven al precio que tenían. Sucede sola cada ' + Math.round(a.crashMs / 1000) + ' s.</p>' +
+        (S.crashActive()
+          ? '<button class="btn" data-admin-action="stop-crash">Terminar precio de costo ahora</button>'
+          : '<button class="btn danger" data-admin-action="crash">Forzar caída a costo</button>')) +
       card('Subida general', '<p>Todos los precios activos suben un ' + a.rallyPct + '% de una vez.</p>' +
         '<button class="btn gold" data-admin-action="rally">Forzar subida +' + a.rallyPct + '%</button>') +
       card('Restablecer precios', '<p>Devuelve la carta a sus precios base sin borrar consumos.</p>' +
@@ -838,8 +859,9 @@
         '<button class="btn danger" data-admin-action="close-table"' + (s.entries.length ? '' : ' disabled') + '>Cerrar y archivar</button>') +
       card('Reglas del mercado',
         '<div class="form-grid">' +
-          '<label><span>Caída cada (s)</span><input id="admin-crash-sec" type="number" min="30" max="1800" value="' + Math.round(a.crashMs / 1000) + '" /></label>' +
-          '<label><span>Caída (%)</span><input id="admin-crash-pct" type="number" min="1" max="50" step="0.5" value="' + a.crashPct + '" /></label>' +
+          '<label><span>Caída cada (s)</span><input id="admin-crash-sec" type="number" min="30" max="3600" value="' + Math.round(a.crashMs / 1000) + '" /></label>' +
+          '<label><span>Duración a costo (s)</span><input id="admin-duration-sec" type="number" min="10" max="600" value="' + Math.round(a.crashDurationMs / 1000) + '" /></label>' +
+          '<label><span>Costo por defecto (% de carta)</span><input id="admin-cost-pct" type="number" min="5" max="100" value="' + a.costPct + '" /></label>' +
           '<label><span>Ajuste cada (s)</span><input id="admin-tick-sec" type="number" min="5" max="300" value="' + Math.round(a.tickMs / 1000) + '" /></label>' +
           '<label><span>Subida (%)</span><input id="admin-rally-pct" type="number" min="1" max="50" step="0.5" value="' + a.rallyPct + '" /></label>' +
         '</div><button class="btn primary" data-admin-action="set-rules">Aplicar reglas</button>') +
@@ -858,6 +880,7 @@
       var off = d.enabled === false;
       return '<tr class="' + (off ? 'off' : '') + '"><td>' + esc(d.name) + (d.custom ? ' <span class="tag-custom">propio</span>' : '') + '</td>' +
         '<td><input type="number" class="table-input" value="' + d.price + '" data-base-id="' + esc(d.id) + '" aria-label="Precio base de ' + esc(d.name) + '" /></td>' +
+        '<td><input type="number" class="table-input' + (d.cost ? '' : ' default-cost') + '" value="' + (d.cost || '') + '" placeholder="' + S.costOf(d) + '" data-cost-id="' + esc(d.id) + '" aria-label="Costo de ' + esc(d.name) + '" title="' + (d.cost ? 'Costo cargado' : 'Vacío = ' + s.admin.costPct + '% del precio de carta') + '" /></td>' +
         '<td>' + D.money(price) + '</td>' +
         '<td class="' + (diff > 0 ? 'up' : diff < 0 ? 'down' : '') + '">' + D.pct(diff) + '</td>' +
         '<td class="actions"><button class="btn xs" data-admin-action="set-base" data-id="' + esc(d.id) + '">Guardar</button>' +
@@ -877,13 +900,14 @@
         '<div class="form-grid"><input id="new-drink-price" type="number" min="1000" step="100" placeholder="Precio ($)" />' +
         '<select id="new-drink-category"><option>Tragos</option><option>Cocktails Sernova</option></select></div>' +
         '<select id="new-drink-tag">' + D.TAGS.filter(function (t) { return t !== 'Todos'; }).map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('') + '</select>' +
+        '<input id="new-drink-cost" type="number" min="10" step="100" placeholder="Costo ($, opcional)" />' +
         '<input id="new-drink-desc" type="text" maxlength="140" placeholder="Descripción (opcional)" />' +
         '<button class="btn primary" data-admin-action="add-drink">Crear trago</button>') +
       '</div>' +
       card('Carta completa <small>' + D.DRINKS.length + ' tragos · ' + D.available().length + ' activos</small>',
-        '<p>Editá el precio base, ajustá el actual o desactivá tragos (no aparecen en la carta ni en la TV).</p>' +
+        '<p>Editá el precio base y el <b>costo</b> (el precio al que cae cada trago en la caída; vacío = ' + s.admin.costPct + '% del precio de carta), ajustá el actual o desactivá tragos.</p>' +
         '<input type="search" id="admin-filter" class="admin-filter" placeholder="Filtrar tragos…" />' +
-        '<div class="admin-table-scroll"><table class="admin-table"><thead><tr><th>Trago</th><th>Base</th><th>Actual</th><th>Dif.</th><th>Acciones</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+        '<div class="admin-table-scroll"><table class="admin-table"><thead><tr><th>Trago</th><th>Base</th><th>Costo</th><th>Actual</th><th>Dif.</th><th>Acciones</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
         '<button class="btn danger" data-admin-action="reset-catalog">Restablecer carta original</button>');
   }
 
@@ -930,6 +954,8 @@
         '<div><span>Facturación</span><b>' + D.money(r.revenue) + '</b></div>' +
         '<div><span>Mesas</span><b>' + r.tables + '</b></div>' +
         '<div><span>Ticket medio</span><b>' + D.money(r.avgTicket) + '</b></div>' +
+        '<div><span>Margen estimado</span><b class="' + (r.margin >= 0 ? 'up' : 'down') + '">' + D.money(r.margin) + '</b></div>' +
+        '<div><span>Vendidos a costo</span><b>' + r.atCostUnits + ' u.</b></div>' +
         '<div><span>Unidades</span><b>' + r.units + '</b></div>' +
         '<div><span>Propinas</span><b>' + D.money(r.tips) + '</b></div>' +
       '</div>' +
@@ -1158,9 +1184,13 @@
         break;
       case 'crash':
         if (S.forceCrash()) {
-          showBanner('crash', 'Todos los precios bajaron ' + s.admin.crashPct + '%');
-          toast('Caída general ejecutada', D.available().length + ' tragos bajaron de precio.', 'down');
+          showBanner('crash', 'Toda la carta a precio de costo por ' + Math.round(s.admin.crashDurationMs / 1000) + ' s');
+          toast('Caída a precio de costo', D.available().length + ' tragos al costo durante ' + Math.round(s.admin.crashDurationMs / 1000) + ' s.', 'down');
         }
+        afterAdminChange();
+        break;
+      case 'stop-crash':
+        if (S.stopCrash()) toast('Precio de costo terminado', 'Los tragos volvieron a su precio anterior.', 'info');
         afterAdminChange();
         break;
       case 'rally':
@@ -1181,10 +1211,11 @@
       case 'set-rules':
         S.setMarketRules({
           crashSec: $('admin-crash-sec').value, tickSec: $('admin-tick-sec').value,
-          crashPct: $('admin-crash-pct').value, rallyPct: $('admin-rally-pct').value
+          durationSec: $('admin-duration-sec').value, costPct: $('admin-cost-pct').value,
+          rallyPct: $('admin-rally-pct').value
         });
         afterAdminChange();
-        toast('Reglas aplicadas', 'Caída −' + state().admin.crashPct + '% cada ' + Math.round(state().admin.crashMs / 1000) + ' s · ajuste cada ' + Math.round(state().admin.tickMs / 1000) + ' s.', 'info');
+        toast('Reglas aplicadas', 'Precio de costo ' + Math.round(state().admin.crashDurationMs / 1000) + ' s cada ' + Math.round(state().admin.crashMs / 1000) + ' s · ajuste cada ' + Math.round(state().admin.tickMs / 1000) + ' s.', 'info');
         break;
       case 'apply-price': {
         var sel = $('admin-price-select'), val = $('admin-price-value');
@@ -1203,9 +1234,12 @@
       case 'set-base': {
         var bid = target.dataset.id;
         var input = els['admin-root'].querySelector('[data-base-id="' + bid + '"]');
+        var costIn = els['admin-root'].querySelector('[data-cost-id="' + bid + '"]');
+        var costVal = costIn ? costIn.value : '';
         if (S.setBasePrice(bid, input ? input.value : 0)) {
+          S.setCost(bid, costVal);
           afterAdminChange();
-          toast('Precio base guardado', D.byId(bid).name + ' → ' + D.money(D.byId(bid).price), 'info');
+          toast('Trago guardado', D.byId(bid).name + ' · carta ' + D.money(D.byId(bid).price) + ' · costo ' + D.money(S.costOf(D.byId(bid))), 'info');
         } else toast('Precio base inválido', 'Usá un número entre 1.000 y 500.000.', 'down');
         break;
       }
@@ -1221,7 +1255,8 @@
           name: $('new-drink-name').value, price: $('new-drink-price').value,
           category: $('new-drink-category').value,
           tags: [$('new-drink-tag').value],
-          description: $('new-drink-desc').value
+          description: $('new-drink-desc').value,
+          cost: $('new-drink-cost').value
         });
         if (created) {
           afterAdminChange();
@@ -1474,9 +1509,10 @@
       var result = S.marketTick();
       if (result.paused || result.idle) return;
       if (result.crashed) {
-        showBanner('crash', 'Todos los precios bajaron ' + result.pct + '%');
-        toast('Caída general del mercado', 'Todos los tragos bajaron de precio.', 'down');
+        showBanner('crash', 'Toda la carta a precio de costo por ' + Math.round(result.durationMs / 1000) + ' s');
+        toast('¡Caída a precio de costo!', 'Todos los tragos al costo durante ' + Math.round(result.durationMs / 1000) + ' s.', 'down');
       }
+      if (result.recovered) toast('Terminó el precio de costo', 'Los tragos volvieron a su precio anterior.', 'info');
       renderMarketSide();
       if (els['admin-root'].innerHTML && (adminTab === 'carta' || adminTab === 'mercado') &&
           !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) renderAdmin();

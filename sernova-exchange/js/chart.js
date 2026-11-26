@@ -17,7 +17,7 @@
 
   var KIND_LABEL = {
     apertura: 'Apertura', consumo: 'Consumo', ajuste: 'Ajuste automático',
-    crash: 'CAÍDA GENERAL', rally: 'Subida general', admin: 'Ajuste admin'
+    crash: 'Caída a precio de costo', recover: 'Fin del precio de costo', rally: 'Subida general', admin: 'Ajuste admin'
   };
 
   function esc(text) {
@@ -149,7 +149,7 @@
       svg.push('<line x1="' + f(xAt(i)) + '" y1="' + PT + '" x2="' + f(xAt(i)) + '" y2="' + (PT + PH) + '" stroke="var(--' + (crash ? 'red' : 'gold') + ')" stroke-opacity="0.6" stroke-dasharray="3 3"/>');
       if (!narrow || i === data.length - 1) {
         var nearEnd = xAt(i) > W - PR - fs * 5;
-        svg.push('<text x="' + f(nearEnd ? xAt(i) - 5 : xAt(i) + 5) + '" text-anchor="' + (nearEnd ? 'end' : 'start') + '" y="' + (PT + fs) + '" fill="var(--' + (crash ? 'red' : 'gold') + ')" font-size="' + (fs - 1) + '" font-weight="800" letter-spacing=".06em">' + (crash ? 'CAÍDA' : 'SUBIDA') + '</text>');
+        svg.push('<text x="' + f(nearEnd ? xAt(i) - 5 : xAt(i) + 5) + '" text-anchor="' + (nearEnd ? 'end' : 'start') + '" y="' + (PT + fs) + '" fill="var(--' + (crash ? 'red' : 'gold') + ')" font-size="' + (fs - 1) + '" font-weight="800" letter-spacing=".06em">' + (crash ? 'COSTO' : 'SUBIDA') + '</text>');
       }
     });
 
@@ -186,7 +186,7 @@
         var color, opacity;
         if (isDemand) { color = 'var(--gold)'; opacity = 0.5; }
         else if (h.kind === 'crash') { color = 'var(--red)'; opacity = 0.9; }
-        else if (h.kind === 'rally') { color = 'var(--gold)'; opacity = 0.85; }
+        else if (h.kind === 'rally' || h.kind === 'recover') { color = 'var(--gold)'; opacity = 0.85; }
         else if (h.kind === 'admin') { color = 'var(--gold)'; opacity = 0.6; }
         else if (h.kind === 'ajuste') { color = 'var(--blue)'; opacity = 0.4; }
         else { color = h.dir === 'down' ? 'var(--red)' : 'var(--green)'; opacity = h.synthetic ? 0.22 : 0.75; }
