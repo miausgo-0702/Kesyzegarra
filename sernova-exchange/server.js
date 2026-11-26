@@ -29,6 +29,17 @@ const DATA_FILE = path.join(DATA_DIR, 'state.json');
 const KEY_FILE = path.join(DATA_DIR, 'publish-key.txt');
 const MAX_BODY = 6 * 1024 * 1024;
 const STARTED = Date.now();
+const CLUB_FILE = path.join(DATA_DIR, 'club.json');
+const PHOTO_DIR = path.join(DATA_DIR, 'photos');
+
+// Núcleo del club (misma lógica que el modo local del navegador) y carta.
+global.window = global;
+require('./js/data.js');
+const D = global.SernovaData;
+const ClubCore = require('./js/club-core.js');
+let club = ClubCore.normalize(null);
+let clubTimer = null;
+let clubBroadcastTimer = null;
 
 const clients = new Set();
 let current = null;
@@ -95,6 +106,83 @@ function sanitize(value) {
     value.admin = { paused: !!a.paused, pausedAt: a.pausedAt || 0, crashMs: a.crashMs, tickMs: a.tickMs, crashPct: a.crashPct, rallyPct: a.rallyPct, crashDurationMs: a.crashDurationMs };
   }
   return value;
+}
+
+/* ----------------------------------------------------------------- club */
+function loadClub() {
+  try { club = ClubCore.normalize(JSON.parse(fs.readFileSync(CLUB_FILE, 'utf8'))); }
+  catch (e) { club = ClubCore.normalize(null); }
+}
+
+function saveClubSoon() {
+  clearTimeout(clubTimer);
+  clubTimer = setTimeout(saveClubNow, 300);
+}
+function saveClubNow() {
+  clubTimer = null;
+  try {
+    ensureDataDir();
+    const tmp = CLUB_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(club));
+    fs.renameSync(tmp, CLUB_FILE);
+  } catch (e) { console.error('No se pudo guardar el club:', e.message); }
+}
+
+function clubBroadcastSoon() {
+  if (clubBroadcastTimer) return;
+  clubBroadcastTimer = setTimeout(() => {
+    clubBroadcastTimer = null;
+    const msg = 'event: club\ndata: ' + JSON.stringify({ updatedAt: club.updatedAt }) + '\n\n';
+    clients.forEach(res => { try { res.write(msg); } catch (e) { clients.delete(res); } });
+  }, 150);
+}
+
+function savePhoto(id, dataUrl) {
+  try {
+    fs.mkdirSync(PHOTO_DIR, { recursive: true });
+    const b64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+    fs.writeFileSync(path.join(PHOTO_DIR, id + '.jpg'), Buffer.from(b64, 'base64'));
+    return '/api/club/photo/' + id + '?v=' + Date.now().toString(36);
+  } catch (e) { return null; }
+}
+function deletePhoto(id) {
+  try {
+    if (id === '*') { fs.rmSync(PHOTO_DIR, { recursive: true, force: true }); return; }
+    if (/^p[a-z0-9]+$/.test(id)) fs.unlinkSync(path.join(PHOTO_DIR, id + '.jpg'));
+  } catch (e) { /* noop */ }
+}
+
+const READ_OPS = new Set(['public', 'me', 'staff.data']);
+function handleClub(req, res, body) {
+  let msg;
+  try { msg = JSON.parse(body); } catch (e) { sendJson(req, res, 400, { ok: false, error: 'JSON inválido' }); return; }
+  const op = String(msg.op || '');
+  D.applyCatalog(current && current.catalog ? current.catalog : null);
+  const before = club.updatedAt;
+  const result = ClubCore.handle(club, op, msg.payload || {}, {
+    now: Date.now(),
+    sha256: t => crypto.createHash('sha256').update(t).digest('hex'),
+    rand: n => crypto.randomBytes(Math.ceil(n / 2)).toString('hex').slice(0, n),
+    auth: { id: req.headers['x-club-id'], token: req.headers['x-club-token'], staff: req.headers['x-staff-token'] },
+    market: current && current.market ? current.market : null,
+    atCost: !!(current && current.crash && current.crash.active),
+    drinkInfo: id => { const d = D.byId(id); return d ? { name: d.name, enabled: d.enabled !== false } : null; },
+    savePhoto, deletePhoto, maxPhotos: 300, maxPhotoChars: 900000
+  });
+  if (!READ_OPS.has(op) || club.updatedAt !== before) { saveClubSoon(); }
+  if (result.ok && (!READ_OPS.has(op) || club.updatedAt !== before)) clubBroadcastSoon();
+  sendJson(req, res, result.ok ? 200 : (result.code || 400), result);
+}
+
+function readBody(req, res, max, cb) {
+  const chunks = [];
+  let size = 0, aborted = false;
+  req.on('data', chunk => {
+    size += chunk.length;
+    if (size > max) { aborted = true; sendJson(req, res, 413, { ok: false, error: 'Demasiado grande' }); req.destroy(); return; }
+    chunks.push(chunk);
+  });
+  req.on('end', () => { if (!aborted) cb(Buffer.concat(chunks).toString('utf8')); });
 }
 
 /* ------------------------------------------------------------------ SSE */
@@ -242,6 +330,26 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (pathname === '/api/club' && req.method === 'POST') {
+    readBody(req, res, 1.5 * 1024 * 1024, body => handleClub(req, res, body));
+    return;
+  }
+
+  const photoMatch = /^\/api\/club\/photo\/(p[a-z0-9]+)$/.exec(pathname);
+  if (photoMatch && req.method === 'GET') {
+    fs.readFile(path.join(PHOTO_DIR, photoMatch[1] + '.jpg'), (err, data) => {
+      if (err) { send(req, res, 404, 'text/plain; charset=utf-8', 'No encontrado'); return; }
+      res.writeHead(200, securityHeaders({ 'Content-Type': 'image/jpeg', 'Content-Length': data.length, 'Cache-Control': 'public, max-age=86400' }));
+      res.end(data);
+    });
+    return;
+  }
+
+  if (pathname === '/api/info') {
+    sendJson(req, res, 200, { ok: true, port: PORT, lan: lanAddresses() });
+    return;
+  }
+
   if (pathname === '/api/health') {
     sendJson(req, res, 200, {
       ok: true, clients: clients.size, hasState: !!current,
@@ -268,13 +376,18 @@ function lanAddresses() {
 }
 
 loadState();
+loadClub();
 server.listen(PORT, '0.0.0.0', () => {
   const line = '─'.repeat(58);
   console.log('\n  SERNOVA EXCHANGE');
   console.log('  ' + line);
   console.log('  Terminal      http://localhost:' + PORT + '/');
   console.log('  Pantalla TV   http://localhost:' + PORT + '/tv.html');
-  lanAddresses().forEach(ip => console.log('  En la red     http://' + ip + ':' + PORT + '/tv.html'));
+  console.log('  Staff         http://localhost:' + PORT + '/staff.html');
+  lanAddresses().forEach(ip => {
+    console.log('  Clientes      http://' + ip + ':' + PORT + '/cliente.html');
+    console.log('  TV en la red  http://' + ip + ':' + PORT + '/tv.html');
+  });
   console.log('  ' + line);
   console.log(OPEN
     ? '  Publicación abierta (SERNOVA_OPEN=1): cualquier equipo de la red puede publicar.'
@@ -284,6 +397,7 @@ server.listen(PORT, '0.0.0.0', () => {
 
 function shutdown() {
   clients.forEach(res => { try { res.end(); } catch (e) { /* noop */ } });
+  if (clubTimer) { clearTimeout(clubTimer); saveClubNow(); }
   if (writeTimer) {
     clearTimeout(writeTimer);
     try { ensureDataDir(); fs.writeFileSync(DATA_FILE, currentJson); } catch (e) { /* noop */ }

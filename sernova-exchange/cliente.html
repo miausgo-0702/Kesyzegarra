@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="SERNOVA CLUB — pedí tragos con tu saldo, sacá fotos y votá." />
+  <meta name="theme-color" content="#07080d" />
+  <title>SERNOVA CLUB · Clientes</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="club.css" />
+</head>
+<body class="club-page">
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+  <!-- Ingreso -->
+  <main id="join" class="club-join" hidden>
+    <div class="join-card">
+      <div class="brand-mark lg"><svg viewBox="0 0 48 48" fill="none"><path d="M8 34h32M12 34V18l12-8 12 8v16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 34V24h12v10M24 10V6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="24" cy="18" r="2.5" fill="currentColor"/></svg></div>
+      <p class="eyebrow">Bienvenido a</p>
+      <h1 class="join-title">SERNOVA <span>CLUB</span></h1>
+      <p class="join-lead">Cargá saldo, pedí tragos al precio del mercado, sacá fotos para la pantalla y votá la mejor: <b>la foto ganadora se lleva un descuento</b>.</p>
+      <form id="join-form" class="join-form" autocomplete="off">
+        <label class="field"><span class="field-label">Tu nombre</span><input id="join-name" type="text" maxlength="28" placeholder="Ej: Sofi" required /></label>
+        <label class="field"><span class="field-label">Tu mesa</span><input id="join-table" type="text" maxlength="14" placeholder="Ej: 7" inputmode="text" required /></label>
+        <button class="btn primary lg block" type="submit">Entrar</button>
+      </form>
+      <p class="join-foot">Tu saldo queda guardado en este celular. No cierres sesión si tenés saldo.</p>
+    </div>
+  </main>
+
+  <!-- App cliente -->
+  <div id="club" class="club-shell" hidden>
+    <header class="club-top">
+      <div class="club-who">
+        <div class="avatar" id="me-avatar">?</div>
+        <div><strong id="me-name">—</strong><span>Mesa <b id="me-table">—</b></span></div>
+      </div>
+      <button class="balance-chip" id="me-balance-chip" type="button" data-go="saldo"><span>Saldo</span><b id="me-balance">$ 0</b></button>
+    </header>
+
+    <div id="announce" class="announce" hidden></div>
+    <div id="cost-strip" class="cost-strip" hidden></div>
+
+    <section class="club-view" id="view-carta">
+      <div class="view-head">
+        <h2>Carta en vivo</h2>
+        <p class="muted small" id="carta-sub">Los precios se mueven con la demanda.</p>
+      </div>
+      <div id="discount-card" class="discount-card" hidden></div>
+      <label class="search-wrap club-search">
+        <svg viewBox="0 0 20 20" fill="none"><circle cx="8.8" cy="8.8" r="5.2" stroke="currentColor" stroke-width="1.6"/><path d="m13 13 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <input id="c-search" type="search" placeholder="Buscar trago…" autocomplete="off" />
+      </label>
+      <div id="c-drinks" class="c-drinks"></div>
+    </section>
+
+    <section class="club-view" id="view-saldo" hidden>
+      <div class="wallet-card">
+        <span>Tu saldo</span>
+        <strong id="w-balance">$ 0</strong>
+        <em id="w-drinks">≈ 0 tragos</em>
+        <div class="wallet-meta"><span>Cargado <b id="w-loaded">$ 0</b></span><span>Gastado <b id="w-spent">$ 0</b></span></div>
+      </div>
+
+      <div class="panel club-panel">
+        <h3>Cargar saldo</h3>
+        <p class="muted small">Elegí el monto y cómo pagás. El staff confirma la carga y el saldo aparece al instante.</p>
+        <div class="amount-chips" id="amount-chips"></div>
+        <input id="load-amount" type="number" min="1000" step="500" placeholder="Otro monto ($)" />
+        <div class="segmented method" id="load-method">
+          <button type="button" data-method="efectivo" class="active">Efectivo</button>
+          <button type="button" data-method="transferencia">Transferencia</button>
+          <button type="button" data-method="tarjeta">Tarjeta</button>
+        </div>
+        <p class="alias-note" id="alias-note" hidden></p>
+        <button class="btn primary block" type="button" id="btn-load">Pedir carga</button>
+      </div>
+
+      <div id="pending-loads"></div>
+
+      <div class="panel club-panel">
+        <h3>Movimientos</h3>
+        <div id="moves" class="moves"></div>
+      </div>
+      <button class="btn ghost block" type="button" id="btn-profile">Cambiar nombre o mesa</button>
+    </section>
+
+    <section class="club-view" id="view-fotos" hidden>
+      <div id="contest-card" class="contest-card"></div>
+      <div class="panel club-panel photo-upload">
+        <h3>Sacá una foto para la pantalla</h3>
+        <p class="muted small">Aparece en los televisores del bar. El equipo puede quitar fotos que no correspondan.</p>
+        <label class="btn primary block file-btn">
+          <svg viewBox="0 0 20 20" fill="none"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h1.8l1.2-2h5l1.2 2h1.8A1.5 1.5 0 0 1 17 7.5v7A1.5 1.5 0 0 1 15.5 16h-11A1.5 1.5 0 0 1 3 14.5v-7Z" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/></svg>
+          Sacar o elegir foto
+          <input type="file" id="photo-input" accept="image/*" capture="environment" />
+        </label>
+        <div id="photo-preview" class="photo-preview" hidden>
+          <img id="photo-img" alt="Vista previa de la foto" />
+          <input id="photo-caption" type="text" maxlength="80" placeholder="Escribí algo (opcional)" />
+          <div class="btn-row">
+            <button class="btn ghost" type="button" id="photo-cancel">Cancelar</button>
+            <button class="btn primary" type="button" id="photo-send">Publicar</button>
+          </div>
+        </div>
+      </div>
+      <div class="view-head"><h2>Fotos de la noche</h2><p class="muted small" id="gallery-sub"></p></div>
+      <div id="gallery" class="gallery"></div>
+    </section>
+
+    <nav class="club-nav" aria-label="Secciones">
+      <button type="button" data-go="carta" class="active"><svg viewBox="0 0 20 20" fill="none"><path d="M3 15l4.5-5 3 3L17 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Carta</button>
+      <button type="button" data-go="saldo"><svg viewBox="0 0 20 20" fill="none"><rect x="2.5" y="5" width="15" height="11" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M2.5 8.5h15M13 12.5h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Saldo</button>
+      <button type="button" data-go="fotos"><svg viewBox="0 0 20 20" fill="none"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h1.8l1.2-2h5l1.2 2h1.8A1.5 1.5 0 0 1 17 7.5v7A1.5 1.5 0 0 1 15.5 16h-11A1.5 1.5 0 0 1 3 14.5v-7Z" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/></svg>Fotos y votos</button>
+    </nav>
+  </div>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <div id="modal-root"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/sync.js"></script>
+  <script src="js/chart.js"></script>
+  <script src="js/club-core.js"></script>
+  <script src="js/club-api.js"></script>
+  <script src="js/club-ui.js"></script>
+  <script src="js/cliente.js"></script>
+</body>
+</html>

@@ -392,6 +392,121 @@
     idleTimer = setTimeout(function () { document.body.classList.add('idle'); }, 3500);
   }
 
+  /* --------------------------------------------------------------- club */
+  var Club = window.SernovaClub;
+  var club = null;
+  var photoIdx = 0;
+  var seenPhotos = null;
+  var lastContestId = null;
+  var spotTimer = null;
+  var joinUrl = 'cliente.html';
+
+  function loadClub() {
+    if (!Club) return;
+    Club.call('public').then(function (r) {
+      if (!r || !r.ok) return;
+      var first = club === null;
+      club = r.data;
+      detectClub(first);
+      renderClub();
+    });
+  }
+
+  function detectClub(first) {
+    var ids = (club.photos || []).map(function (p) { return p.id; });
+    var lc = club.lastContest;
+    if (first || seenPhotos === null) {
+      seenPhotos = ids;
+      lastContestId = lc ? lc.id : null;
+      return;
+    }
+    var fresh = (club.photos || []).filter(function (p) { return seenPhotos.indexOf(p.id) < 0; });
+    seenPhotos = ids;
+    if (lc && lc.id !== lastContestId) {
+      lastContestId = lc.id;
+      if (lc.winner) { spotlight('¡GANÓ LA VOTACIÓN!', lc.winner.src, lc.winner.name + ' · Mesa ' + lc.winner.table, lc.winner.votes + (lc.winner.votes === 1 ? ' voto' : ' votos') + ' · se lleva ' + lc.discountPct + '% OFF'); return; }
+    }
+    if (fresh.length) {
+      var p = fresh[0];
+      spotlight('NUEVA FOTO', p.src, p.name + ' · Mesa ' + p.table, p.caption || '');
+      photoIdx = 0;
+    }
+  }
+
+  function spotlight(title, src, line1, line2) {
+    if (!$('tv-event').hidden) return;
+    var box = $('tv-spot');
+    $('tv-spot-title').textContent = title;
+    $('tv-spot-img').src = src;
+    $('tv-spot-cap').innerHTML = esc(line1) + (line2 ? '<span>' + esc(line2) + '</span>' : '');
+    box.className = 'tv-spot';
+    box.hidden = false;
+    clearTimeout(spotTimer);
+    spotTimer = setTimeout(function () {
+      box.classList.add('out');
+      setTimeout(function () { box.hidden = true; }, 600);
+    }, 6500);
+  }
+
+  function renderClub() {
+    if (!club) return;
+    var a = club.announcement;
+    $('tv-announce').hidden = !a;
+    if (a) $('tv-announce-text').textContent = a.text;
+
+    var photos = club.photos || [];
+    var card = $('tv-photo-card');
+    var aside = document.querySelector('.tv-aside');
+    card.hidden = !photos.length;
+    aside.classList.toggle('has-photos', photos.length > 0);
+    if (!photos.length) return;
+    var featured = photos.filter(function (p) { return p.featured; })[0];
+    var p = featured || photos[photoIdx % photos.length];
+    var img = $('tv-photo-img');
+    if (img.dataset.id !== p.id) {
+      img.dataset.id = p.id;
+      img.src = p.src;
+      img.style.animation = 'none'; void img.offsetWidth; img.style.animation = '';
+    }
+    var contest = club.contest;
+    $('tv-photo-cap').innerHTML = (contest ? '<em>' + p.votes + (p.votes === 1 ? ' voto' : ' votos') + '</em>' : '') + '<b>' + esc(p.name) + '</b> · Mesa ' + esc(p.table) + (p.caption ? '<span>' + esc(p.caption) + '</span>' : '');
+    $('tv-vote-tag').hidden = !contest;
+    $('tv-photo-label').textContent = contest
+      ? 'Votá la mejor foto · ' + contest.discountPct + '% OFF · ' + mmss(contest.endsAt - Date.now())
+      : (featured ? 'Foto destacada' : 'Fotos de la noche · ' + photos.length);
+    $('tv-photo-board').innerHTML = contest ? (club.leaderboard || []).slice(0, 3).map(function (x) {
+      return '<div class="tv-pb"><img src="' + esc(x.src) + '" alt="" /><span>' + esc(x.name) + '</span><b>' + x.votes + '</b></div>';
+    }).join('') : '';
+    $('tv-join').innerHTML = 'Cargá saldo, pedí y subí tu foto: <b>' + esc(joinUrl) + '</b>';
+  }
+
+  function mmss(ms) {
+    var s = Math.max(0, Math.ceil(ms / 1000));
+    return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  }
+
+  function startClub() {
+    if (!Club) return;
+    Club.ready().then(function (mode) {
+      if (mode === 'server') {
+        fetch('/api/info', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+          if (j && j.lan && j.lan[0]) joinUrl = j.lan[0] + ':' + j.port + '/cliente.html';
+          else joinUrl = location.host + '/cliente.html';
+          renderClub();
+        }).catch(function () { /* noop */ });
+      }
+      loadClub();
+    });
+    Club.onChange(function (src) { if (src !== 'market') loadClub(); });
+    setInterval(loadClub, 12000);
+    setInterval(function () {
+      if (!club || !club.photos || !club.photos.length) return;
+      photoIdx++;
+      renderClub();
+    }, 8000);
+    setInterval(function () { if (club && club.contest) renderClub(); }, 1000);
+  }
+
   function init() {
     $('tv-fullscreen').addEventListener('click', toggleFullscreen);
     document.addEventListener('keydown', function (ev) {
@@ -419,6 +534,7 @@
     window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { chartKey = ''; render(); }, 200); });
     renderClock();
     Sync.subscribe(applyState);
+    startClub();
     void wakeLock;
   }
 

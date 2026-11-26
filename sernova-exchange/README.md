@@ -48,6 +48,27 @@ También funciona abriendo `index.html` directamente (sin TVs en red).
 - Corrige la diferencia de reloj con el servidor, mantiene la pantalla encendida (Wake Lock), oculta el cursor y muestra *SIN SEÑAL* si se corta la conexión.
 - Teclas: `F` o doble clic = pantalla completa; `←` `→` = cambiar trago.
 
+## SERNOVA CLUB: clientes, saldo digital, fotos y votación
+
+Con el servidor andando, los clientes entran desde su celular a `http://IP-del-bar:8765/cliente.html` (la dirección aparece en la consola del servidor y en la TV).
+
+**Clientes** (`cliente.html`)
+- Ponen su **nombre y mesa** y quedan registrados en ese celular.
+- **Saldo digital para tragos**: eligen un monto y cómo pagan (efectivo, transferencia o tarjeta). La app les muestra un **código**; el staff lo confirma al recibir el pago y el saldo aparece al instante. También ven cuántos tragos les alcanzan.
+- **Piden tragos** de la carta en vivo pagando con el saldo (al precio del mercado en ese momento, incluido el precio de costo). El pedido llega al panel de staff y mueve el precio en la terminal.
+- **Fotos**: las sacan con la cámara del celular y aparecen en los televisores.
+- **Votación**: cuando está abierta, cada cliente tiene 1 voto (no puede votar su propia foto). La foto más votada gana un **descuento** que se aplica solo en los próximos pedidos de su dueño.
+
+**Staff** (`staff.html`) — el usuario y la clave los entrega el responsable del local (se guardan solo como hash).
+- **Administración**: resumen de la noche, **mesas** (cuánto gastó cada una y cada cliente), clientes (cargar o descontar saldo, dar descuentos), cargas por confirmar, pedidos por entregar o devolver, fotos, votación, anuncios y ajustes (alias para transferencias, premio por defecto, cambiar contraseña, CSV y cierre de la noche).
+- **Community manager**: fotos (mostrar, ocultar, destacar en la TV, borrar), votación (abrir con duración y premio, cerrar y premiar), anuncios en pantalla y cambio de su contraseña.
+
+**Pantalla TV**: anuncio de la CM, foto destacada o en rotación, ranking de la votación en vivo, aviso a pantalla completa de cada foto nueva y de la ganadora, y la dirección para sumarse.
+
+Sin servidor (por ejemplo, en la página publicada) todo funciona en un solo navegador, guardado en ese navegador: sirve para probar, no para usar con varios celulares.
+
+> El saldo es un registro interno del bar: el cobro real lo hace el staff. Para cobrar online automáticamente haría falta integrar un medio de pago (por ejemplo, Mercado Pago) con la cuenta del local.
+
 ## Administrador
 
 Botón **Admin** (o tecla `A`). El usuario y la clave iniciales los entrega el responsable del local; cambialos en *Acceso*. Las credenciales no aparecen en la pantalla ni en el código (se guardan solo como hash).
@@ -74,7 +95,12 @@ Botón **Admin** (o tecla `A`). El usuario y la clave iniciales los entrega el r
 
 - `index.html` / `styles.css` — terminal (tema oscuro/claro, responsive con barra inferior en móvil, impresión de ticket).
 - `tv.html` / `tv.css` — pantalla de televisores (escala de 768p a 4K).
-- `server.js` — servidor estático + API de sincronización (`/api/state`, `/api/stream`, `/api/key`, `/api/health`).
+- `cliente.html` / `js/cliente.js` — portal de clientes (celular).
+- `staff.html` / `js/staff.js` — panel de staff (administración y community manager).
+- `club.css` — estilos del club.
+- `js/club-core.js` — lógica del club (saldo, pedidos, fotos, votación, staff), compartida por servidor y navegador.
+- `js/club-api.js` / `js/club-ui.js` — conexión con el servidor o modo local, y utilidades de interfaz.
+- `server.js` — servidor estático + API (`/api/state`, `/api/stream`, `/api/club`, `/api/key`, `/api/info`, `/api/health`). Guarda el club en `data/club.json` y las fotos en `data/photos/`.
 - `js/data.js` — carta, categorías, etiquetas y formatos.
 - `js/sync.js` — publicación con debounce, clave y estado de conexión; suscripción SSE/polling/local.
 - `js/store.js` — persistencia, motor de demanda, eventos, seguridad admin, cuenta, reportes y respaldo.

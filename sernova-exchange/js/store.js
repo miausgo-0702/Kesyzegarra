@@ -558,6 +558,42 @@
     return true;
   }
 
+  /* Pedido hecho por un cliente desde su celular: mueve el precio igual que
+     un consumo pero no entra en el ticket de la mesa de esta terminal. */
+  function externalPurchase(order) {
+    if (!state || !order) return null;
+    if (!Array.isArray(state.clubApplied)) state.clubApplied = [];
+    if (state.clubApplied.indexOf(order.id) >= 0) return null;
+    state.clubApplied.push(order.id);
+    if (state.clubApplied.length > 400) state.clubApplied.splice(0, state.clubApplied.length - 400);
+    var drink = D.byId(order.drinkId);
+    var m = state.market[order.drinkId];
+    if (!drink || !m) { persist(); return null; }
+    var ts = now();
+    var qty = clamp(parseInt(order.qty, 10) || 1, 1, 30);
+    var dem = demand(order.drinkId, ts).units;
+    var tick;
+    if (crashActive()) {
+      tick = pushTick(order.drinkId, { ts: ts, price: m.price, qty: qty, dir: 'flat', synthetic: false, kind: 'consumo', drinkId: order.drinkId, paid: m.price, demand: dem + qty, club: true, table: order.table });
+    } else {
+      var pressure = 0.003 + Math.min(dem + qty - 1, 14) * 0.0075;
+      var reversion = (drink.price - m.price) / drink.price * 0.10;
+      tick = movePrice(order.drinkId, 1 + pressure + reversion, 'consumo', { qty: qty, drinkId: order.drinkId, ts: ts });
+      tick.club = true; tick.table = order.table;
+    }
+    state.updatedAt = ts;
+    save();
+    return tick;
+  }
+
+  /* Marca como aplicados los pedidos existentes al abrir una sesión. */
+  function markClubApplied(ids) {
+    if (!state) return;
+    state.clubApplied = (state.clubApplied || []).concat(ids).slice(-400);
+    persist();
+  }
+  function clubApplied() { return state && state.clubApplied ? state.clubApplied : []; }
+
   function generalMove(kind, pct) {
     var factor = kind === 'crash' ? 1 - pct / 100 : 1 + pct / 100;
     var changed = false;
@@ -1160,6 +1196,7 @@
     KEY: KEY, ARCHIVE_KEY: ARCHIVE_KEY, TICK_MS: TICK_MS, CRASH_MS: CRASH_MS, WINDOW_MS: WINDOW_MS,
     ADMIN_IDLE_MS: ADMIN_IDLE_MS,
     sha256: sha256, costOf: costOf, crashActive: crashActive, crashLeft: crashLeft, stopCrash: stopCrash, setCost: setCost,
+    externalPurchase: externalPurchase, markClubApplied: markClubApplied, clubApplied: clubApplied,
     load: load, save: save, persist: persist, publicState: publicState,
     hasSession: hasSession, getState: getState,
     ensureSystemState: ensureSystemState,

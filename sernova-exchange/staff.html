@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="SERNOVA CLUB — panel de staff: administración y community manager." />
+  <meta name="theme-color" content="#07080d" />
+  <title>SERNOVA CLUB · Staff</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="club.css" />
+</head>
+<body class="club-page staff-page">
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+  <main id="login" class="club-join" hidden>
+    <form id="login-form" class="join-card" autocomplete="on">
+      <div class="login-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="4" y="8.5" width="12" height="8" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M7 8.5V6a3 3 0 0 1 6 0v2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+      <p class="eyebrow gold">Acceso de staff</p>
+      <h1 class="join-title">SERNOVA <span>CLUB</span></h1>
+      <p class="join-lead">Administración (mesas, saldos, cargas y pedidos) y community manager (fotos, votación y anuncios).</p>
+      <label class="field"><span class="field-label">Usuario</span><input id="st-user" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required /></label>
+      <label class="field"><span class="field-label">Contraseña</span><input id="st-pass" type="password" autocomplete="current-password" required /></label>
+      <button class="btn primary lg block" type="submit">Entrar</button>
+      <a class="join-foot link" href="index.html">← Volver a la terminal</a>
+    </form>
+  </main>
+
+  <div id="staff" class="staff-shell" hidden>
+    <header class="staff-top">
+      <div class="brand">
+        <div class="brand-mark sm"><svg viewBox="0 0 48 48" fill="none"><path d="M8 34h32M12 34V18l12-8 12 8v16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 34V24h12v10M24 10V6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="24" cy="18" r="2.5" fill="currentColor"/></svg></div>
+        <div class="brand-text"><strong>SERNOVA</strong><span>CLUB · STAFF</span></div>
+      </div>
+      <span class="role-badge" id="role-badge">—</span>
+      <span class="mode-note" id="mode-note"></span>
+      <div class="top-actions">
+        <a class="btn ghost sm" href="index.html">Terminal</a>
+        <a class="btn ghost sm hide-sm" href="cliente.html">Portal clientes</a>
+        <button class="btn ghost sm" type="button" id="btn-logout">Salir</button>
+      </div>
+    </header>
+    <nav class="staff-tabs" id="staff-tabs" role="tablist"></nav>
+    <main class="staff-body" id="staff-body"></main>
+  </div>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <div id="modal-root"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/sync.js"></script>
+  <script src="js/club-core.js"></script>
+  <script src="js/club-api.js"></script>
+  <script src="js/club-ui.js"></script>
+  <script src="js/staff.js"></script>
+</body>
+</html>

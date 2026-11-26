@@ -1520,6 +1520,36 @@
     }, 1000);
   }
 
+  /* ------------------------------------------------- pedidos del club */
+  // Los pedidos que hacen los clientes desde el celular mueven el mercado.
+  function startClubWatch() {
+    var Club = window.SernovaClub;
+    if (!Club) return;
+    var busyClub = false;
+    function check() {
+      if (busyClub || !S.hasSession() || els.app.hidden) return;
+      busyClub = true;
+      Club.call('public').then(function (r) {
+        busyClub = false;
+        if (!r || !r.ok) return;
+        var s = state();
+        var applied = S.clubApplied();
+        var from = Math.max(s.startedAt, Date.now() - 10 * 60 * 1000);
+        var fresh = (r.data.recentOrders || []).filter(function (o) {
+          return o.status !== 'cancelado' && o.ts >= from && applied.indexOf(o.id) < 0;
+        }).reverse();
+        if (!fresh.length) return;
+        fresh.forEach(function (o) {
+          if (S.externalPurchase(o)) toast('Pedido del club · Mesa ' + o.table, o.qty + '× ' + o.drinkName + ' (pagado con saldo)', 'up');
+        });
+        renderMarketSide();
+      }, function () { busyClub = false; });
+    }
+    Club.onChange(function (src) { if (src !== 'market') setTimeout(check, 100); });
+    setInterval(check, 4000);
+    setTimeout(check, 800);
+  }
+
   /* --------------------------------------------------------------- wire */
   function wire() {
     document.addEventListener('click', onAction);
@@ -1686,6 +1716,7 @@
     renderClock();
     setInterval(renderClock, 15000);
     startMarketLoop();
+    startClubWatch();
     openSetup();
   }
 

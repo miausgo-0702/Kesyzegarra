@@ -42,6 +42,8 @@
       <strong>▼ PRECIO DE COSTO</strong><span>Toda la carta al costo · termina en</span><b id="tv-cost-left">01:00</b>
     </div>
 
+    <div class="tv-announce" id="tv-announce" hidden><b>📣</b><span id="tv-announce-text"></span></div>
+
     <div class="tv-ticker">
       <span class="tv-ticker-tag"><i></i>MERCADO</span>
       <div class="tv-ticker-window"><div class="tv-ticker-track" id="tv-ticker"></div></div>
@@ -76,6 +78,12 @@
           <p class="tv-total-sub" id="tv-total-sub">Sin consumos registrados</p>
           <div class="tv-mini-kpis" id="tv-mini-kpis"></div>
         </section>
+        <section class="tv-card tv-photo-card" id="tv-photo-card" hidden>
+          <div class="tv-photo-head"><p class="tv-eyebrow" id="tv-photo-label">Fotos de la noche</p><span class="tv-vote-tag" id="tv-vote-tag" hidden>VOTACIÓN ABIERTA</span></div>
+          <div class="tv-photo-frame"><img id="tv-photo-img" alt="" /><div class="tv-photo-cap" id="tv-photo-cap"></div></div>
+          <div class="tv-photo-board" id="tv-photo-board"></div>
+          <p class="tv-join" id="tv-join"></p>
+        </section>
         <section class="tv-card tv-movers-card">
           <p class="tv-eyebrow">Frente a la carta</p>
           <div id="tv-movers" class="tv-movers"></div>
@@ -104,6 +112,14 @@
 
   <div class="tv-countbig" id="tv-countbig" aria-hidden="true" hidden><span>CAÍDA EN</span><b id="tv-countbig-n">5</b></div>
 
+  <div class="tv-spot" id="tv-spot" hidden>
+    <div class="tv-spot-inner">
+      <p class="tv-spot-title" id="tv-spot-title">NUEVA FOTO</p>
+      <img id="tv-spot-img" alt="" />
+      <p class="tv-spot-cap" id="tv-spot-cap"></p>
+    </div>
+  </div>
+
   <div class="tv-event" id="tv-event" role="status" hidden>
     <div class="tv-event-inner">
       <span class="tv-event-arrow" id="tv-event-arrow">▼</span>
@@ -123,6 +139,8 @@
   <script src="js/data.js"></script>
   <script src="js/sync.js"></script>
   <script src="js/chart.js"></script>
+  <script src="js/club-core.js"></script>
+  <script src="js/club-api.js"></script>
   <script src="js/tv.js"></script>
 </body>
 </html>
