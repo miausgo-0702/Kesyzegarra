@@ -995,7 +995,7 @@
       card('Sincronización', '<p>Estado: <b class="sync-' + esc(st.state) + '">' + esc({ local: 'solo local', idle: 'conectando', online: 'en línea', offline: 'sin servidor', auth: 'falta clave', error: 'error' }[st.state] || st.state) + '</b>' +
         (st.error ? ' · ' + esc(st.error) : '') + '</p>' +
         '<p>' + (Sync.isLocalHost ? 'Esta terminal corre en la computadora del servidor: la clave se carga sola.' : 'Para publicar desde este equipo, ingresá la clave que muestra el servidor al iniciar.') + '</p>' +
-        '<input id="sync-key" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Clave de publicación" value="' + esc(Sync.getKey()) + '" />' +
+        '<input id="sync-key" type="text" maxlength="120" autocomplete="off" spellcheck="false" placeholder="Clave de publicación" value="' + esc(Sync.getKey()) + '" />' +
         '<button class="btn" data-admin-action="save-key">Guardar clave y reintentar</button>') +
       card('Respaldo', '<p>Descargá o restaurá todos los datos: sesión, archivo de mesas y carta.</p>' +
         '<button class="btn" data-admin-action="backup">Descargar respaldo (.json)</button>' +
@@ -1702,6 +1702,8 @@
     window.addEventListener('afterprint', function () { document.body.classList.remove('printing'); els['print-root'].innerHTML = ''; });
 
     Sync.onStatus(renderSync);
+    els['sync-pill'].style.cursor = 'pointer';
+    els['sync-pill'].addEventListener('click', function () { openAdmin('sistema'); });
     window.addEventListener('message', function (ev) {
       if (ev.data && ev.data.sernova === 'close-tv') closeTv();
     });

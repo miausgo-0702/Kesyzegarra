@@ -11,6 +11,32 @@ Terminal de consumo para bar: registra los tragos servidos por mesa y mueve su p
 
 También funciona abriendo `index.html` directamente (sin TVs en red).
 
+## Publicarla en internet (siempre en línea)
+
+La forma recomendada es **Render** (render.com), que toma el código directo de GitHub:
+
+1. Creá una cuenta en render.com e ingresá con GitHub.
+2. **New → Blueprint** y elegí este repositorio (rama donde esté el proyecto). Render lee `render.yaml` y crea todo solo: servidor Node, HTTPS, chequeo de salud, reinicio automático y un **disco persistente** para saldos, pedidos y fotos.
+3. Confirmá el plan **Starter** (pago, ~USD 7/mes + disco). El plan gratis se apaga tras 15 min sin uso y borra los datos al reiniciar: no sirve para el bar.
+4. Cuando termine, Render te da la dirección (por ejemplo `https://sernova-exchange.onrender.com`):
+   - Terminal: `/` · TV: `/tv.html` · Clientes: `/cliente.html` · Staff: `/staff.html`
+5. En Render → *Environment* copiá el valor de **SERNOVA_PUBLISH_KEY** y pegalo en la terminal: **Admin → Sistema → Sincronización** (o tocá el indicador «Falta clave»). Solo la terminal con esa clave puede mover el mercado.
+6. Opcional: conectá un dominio propio (por ejemplo `club.sernova.com`) en *Settings → Custom Domains*.
+
+Cada vez que se sube un cambio a GitHub, Render lo publica solo.
+
+**Otros servicios:** el `Dockerfile` funciona en Railway, Fly.io, un VPS, etc. Montá un volumen persistente en `/data` y definí `SERNOVA_PUBLISH_KEY`.
+
+**Qué lo mantiene en pie:** reinicio automático del hosting si algo falla, chequeo de salud en `/api/health`, errores inesperados registrados sin tirar el servidor, tiempos de espera para conexiones colgadas, límite de pantallas conectadas, límites por dirección IP (registros, fotos, pedidos, intentos de acceso) y copias de seguridad del club cada hora (las últimas 48, en `backups/` dentro del disco).
+
+| Variable | Uso |
+| --- | --- |
+| `SERNOVA_PUBLIC=1` | Modo nube: siempre pide la clave a la terminal |
+| `SERNOVA_PUBLISH_KEY` | Clave de la terminal |
+| `SERNOVA_DATA_DIR` | Carpeta de datos (disco persistente) |
+| `PORT` / `SERNOVA_PORT` | Puerto |
+| `SERNOVA_TRUST_PROXY=1` | Usa la IP real detrás del proxy del hosting |
+
 ## Uso diario
 
 - **+ Registrar** suma 1 unidad; **Cantidad** abre el detalle (atajos ×2, ×3, ×4, ×6, ×10, flechas y Enter).

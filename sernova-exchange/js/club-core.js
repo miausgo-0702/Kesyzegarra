@@ -263,15 +263,20 @@
     }
 
     if (op === 'staff.login') {
+      // Bloqueo por dirección: un extraño no puede dejar afuera al staff real.
+      if (!db.locks || typeof db.locks !== 'object') db.locks = {};
+      var lk = ctx.ip || 'local';
+      Object.keys(db.locks).forEach(function (k) { if (db.locks[k].until && db.locks[k].until < now && !db.locks[k].count) delete db.locks[k]; });
+      db.lock = db.locks[lk] || (db.locks[lk] = { count: 0, until: 0 });
       if (db.lock.until > now) return fail('Demasiados intentos. Esperá ' + Math.ceil((db.lock.until - now) / 1000) + ' s.', 429);
       var h = staffHash(ctx.sha256, payload.user, payload.pass);
       var role = h === staffHashFor(db, 'admin') ? 'admin' : h === staffHashFor(db, 'cm') ? 'cm' : null;
       if (!role) {
         db.lock.count = (db.lock.count || 0) + 1;
-        if (db.lock.count >= MAX_FAILS) { db.lock = { count: 0, until: now + LOCK_MS }; }
+        if (db.lock.count >= MAX_FAILS) { db.lock.count = 0; db.lock.until = now + LOCK_MS; }
         return fail('Usuario o contraseña incorrectos.', 401);
       }
-      db.lock = { count: 0, until: 0 };
+      delete db.locks[lk];
       var st = ctx.rand(32);
       Object.keys(db.sessions).forEach(function (k) { if (db.sessions[k].exp < now) delete db.sessions[k]; });
       db.sessions[st] = { role: role, exp: now + SESSION_MS };

@@ -1,0 +1,27 @@
+# Despliegue en Render (https://render.com) con un clic: New → Blueprint → este repositorio.
+services:
+  - type: web
+    name: sernova-exchange
+    runtime: node
+    rootDir: sernova-exchange
+    plan: starter            # plan pago: siempre encendido y con disco persistente
+    region: oregon
+    buildCommand: node --version
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: SERNOVA_PUBLIC
+        value: "1"
+      - key: SERNOVA_TRUST_PROXY
+        value: "1"
+      - key: SERNOVA_DATA_DIR
+        value: /var/data
+      - key: SERNOVA_PUBLISH_KEY
+        generateValue: true  # clave de la terminal: copiala desde Environment en Render
+    disk:
+      name: sernova-data
+      mountPath: /var/data
+      sizeGB: 1

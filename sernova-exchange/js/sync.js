@@ -35,7 +35,7 @@
   function storageSet(k, v) { try { global.localStorage.setItem(k, v); } catch (e) { /* noop */ } }
 
   function getKey() { return storageGet(KEY_STORE) || ''; }
-  function setKey(k) { storageSet(KEY_STORE, String(k || '').trim().toUpperCase()); lastStamp = ''; }
+  function setKey(k) { storageSet(KEY_STORE, String(k || '').trim()); lastStamp = ''; }
 
   function setStatus(next) {
     var changed = next.state !== status.state || next.error !== status.error || next.clients !== status.clients;

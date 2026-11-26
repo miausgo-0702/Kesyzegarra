@@ -21,10 +21,14 @@ const path = require('path');
 const zlib = require('zlib');
 const crypto = require('crypto');
 
-const PORT = Number(process.env.SERNOVA_PORT) || 8765;
+const PORT = Number(process.env.SERNOVA_PORT) || Number(process.env.PORT) || 8765;
 const OPEN = process.env.SERNOVA_OPEN === '1';
+// En la nube (SERNOVA_PUBLIC=1) no se confía en "localhost": siempre se pide la clave.
+const PUBLIC_MODE = process.env.SERNOVA_PUBLIC === '1';
+const TRUST_PROXY = process.env.SERNOVA_TRUST_PROXY === '1' || PUBLIC_MODE;
 const ROOT = __dirname;
-const DATA_DIR = path.join(ROOT, 'data');
+const DATA_DIR = process.env.SERNOVA_DATA_DIR ? path.resolve(process.env.SERNOVA_DATA_DIR) : path.join(ROOT, 'data');
+const MAX_SSE = Number(process.env.SERNOVA_MAX_SSE) || 1000;
 const DATA_FILE = path.join(DATA_DIR, 'state.json');
 const KEY_FILE = path.join(DATA_DIR, 'publish-key.txt');
 const MAX_BODY = 6 * 1024 * 1024;
@@ -67,6 +71,8 @@ function ensureDataDir() { fs.mkdirSync(DATA_DIR, { recursive: true }); }
 
 function loadKey() {
   ensureDataDir();
+  const envKey = String(process.env.SERNOVA_PUBLISH_KEY || '').trim();
+  if (envKey.length >= 6) return envKey;
   try {
     const k = fs.readFileSync(KEY_FILE, 'utf8').trim();
     if (/^[A-Z0-9]{6,}$/.test(k)) return k;
@@ -157,6 +163,11 @@ function handleClub(req, res, body) {
   let msg;
   try { msg = JSON.parse(body); } catch (e) { sendJson(req, res, 400, { ok: false, error: 'JSON inválido' }); return; }
   const op = String(msg.op || '');
+  const ip = clientIp(req);
+  if (rateLimited(ip, 'club', 240, 60 * 1000) || (CLUB_LIMITS[op] && rateLimited(ip, op, CLUB_LIMITS[op][0], CLUB_LIMITS[op][1]))) {
+    sendJson(req, res, 429, { ok: false, error: 'Demasiados pedidos seguidos. Esperá un momento y probá de nuevo.', code: 429 });
+    return;
+  }
   D.applyCatalog(current && current.catalog ? current.catalog : null);
   const before = club.updatedAt;
   const result = ClubCore.handle(club, op, msg.payload || {}, {
@@ -164,6 +175,7 @@ function handleClub(req, res, body) {
     sha256: t => crypto.createHash('sha256').update(t).digest('hex'),
     rand: n => crypto.randomBytes(Math.ceil(n / 2)).toString('hex').slice(0, n),
     auth: { id: req.headers['x-club-id'], token: req.headers['x-club-token'], staff: req.headers['x-staff-token'] },
+    ip: ip,
     market: current && current.market ? current.market : null,
     atCost: !!(current && current.crash && current.crash.active),
     drinkInfo: id => { const d = D.byId(id); return d ? { name: d.name, enabled: d.enabled !== false } : null; },
@@ -197,9 +209,41 @@ function broadcastSoon() {
 
 /* ---------------------------------------------------------------- helpers */
 function isLoopback(req) {
+  if (PUBLIC_MODE) return false;
   const ip = req.socket.remoteAddress || '';
   return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
 }
+
+function clientIp(req) {
+  if (TRUST_PROXY) {
+    const fwd = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+    if (fwd) return fwd;
+  }
+  return req.socket.remoteAddress || 'desconocida';
+}
+
+/* Límite de pedidos por IP (ventana deslizante simple). */
+const buckets = new Map();
+function rateLimited(ip, kind, max, windowMs) {
+  const key = kind + '|' + ip;
+  const now = Date.now();
+  let b = buckets.get(key);
+  if (!b || now - b.start > windowMs) { b = { start: now, n: 0 }; buckets.set(key, b); }
+  b.n++;
+  return b.n > max;
+}
+setInterval(() => {
+  const now = Date.now();
+  buckets.forEach((b, k) => { if (now - b.start > 15 * 60 * 1000) buckets.delete(k); });
+}, 60 * 1000).unref();
+
+const CLUB_LIMITS = {
+  join: [8, 10 * 60 * 1000],
+  'photo.upload': [12, 10 * 60 * 1000],
+  'staff.login': [12, 15 * 60 * 1000],
+  'load.request': [10, 10 * 60 * 1000],
+  order: [40, 10 * 60 * 1000]
+};
 
 function securityHeaders(extra) {
   return Object.assign({
@@ -266,6 +310,14 @@ function serveStatic(req, res, pathname) {
 
 /* ---------------------------------------------------------------- server */
 const server = http.createServer((req, res) => {
+  try { route(req, res); }
+  catch (e) {
+    console.error('Error atendiendo ' + req.url + ':', e && e.stack || e);
+    try { if (!res.headersSent) sendJson(req, res, 500, { ok: false, error: 'Error interno' }); else res.end(); } catch (e2) { /* noop */ }
+  }
+});
+
+function route(req, res) {
   const url = new URL(req.url, 'http://localhost');
   const pathname = url.pathname;
 
@@ -316,6 +368,7 @@ const server = http.createServer((req, res) => {
   }
 
   if (pathname === '/api/stream') {
+    if (clients.size >= MAX_SSE) { sendJson(req, res, 503, { ok: false, error: 'Demasiadas pantallas conectadas' }); return; }
     res.writeHead(200, securityHeaders({
       'Content-Type': 'text/event-stream; charset=utf-8',
       'Cache-Control': 'no-cache, no-transform',
@@ -346,7 +399,7 @@ const server = http.createServer((req, res) => {
   }
 
   if (pathname === '/api/info') {
-    sendJson(req, res, 200, { ok: true, port: PORT, lan: lanAddresses() });
+    sendJson(req, res, 200, { ok: true, port: PORT, lan: PUBLIC_MODE ? [] : lanAddresses(), public: PUBLIC_MODE });
     return;
   }
 
@@ -354,7 +407,8 @@ const server = http.createServer((req, res) => {
     sendJson(req, res, 200, {
       ok: true, clients: clients.size, hasState: !!current,
       updatedAt: current ? current.updatedAt : null,
-      uptime: Math.round((Date.now() - STARTED) / 1000), open: OPEN
+      uptime: Math.round((Date.now() - STARTED) / 1000), open: OPEN,
+      memoryMb: Math.round(process.memoryUsage().rss / 1048576)
     });
     return;
   }
@@ -365,7 +419,29 @@ const server = http.createServer((req, res) => {
   }
 
   serveStatic(req, res, pathname);
-});
+}
+
+// Tiempos de espera para que conexiones lentas o colgadas no saturen el servidor.
+server.headersTimeout = 20000;
+server.requestTimeout = 30000;
+server.keepAliveTimeout = 65000;
+
+/* Copias de seguridad del club cada hora (se guardan las últimas 48). */
+function backupClub() {
+  try {
+    const dir = path.join(DATA_DIR, 'backups');
+    fs.mkdirSync(dir, { recursive: true });
+    const stamp = new Date().toISOString().slice(0, 13).replace(/[-T:]/g, '');
+    fs.writeFileSync(path.join(dir, 'club-' + stamp + '.json'), JSON.stringify(club));
+    const files = fs.readdirSync(dir).filter(f => /^club-\d+\.json$/.test(f)).sort();
+    files.slice(0, Math.max(0, files.length - 48)).forEach(f => fs.unlinkSync(path.join(dir, f)));
+  } catch (e) { console.error('No se pudo crear la copia de seguridad:', e.message); }
+}
+setInterval(backupClub, 60 * 60 * 1000).unref();
+
+// Un error inesperado se registra pero no tira abajo el servidor.
+process.on('uncaughtException', e => console.error('Error no controlado:', e && e.stack || e));
+process.on('unhandledRejection', e => console.error('Promesa rechazada:', e && e.stack || e));
 
 function lanAddresses() {
   const out = [];
@@ -389,9 +465,11 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log('  TV en la red  http://' + ip + ':' + PORT + '/tv.html');
   });
   console.log('  ' + line);
-  console.log(OPEN
+  if (PUBLIC_MODE) console.log('  Modo nube: la terminal necesita la clave de publicación (variable SERNOVA_PUBLISH_KEY).');
+  else console.log(OPEN
     ? '  Publicación abierta (SERNOVA_OPEN=1): cualquier equipo de la red puede publicar.'
     : '  Clave para terminales en otros equipos:  ' + PUBLISH_KEY + '\n  (Admin → Sistema → Sincronización)');
+  console.log('  Datos en ' + DATA_DIR);
   console.log('  Ctrl+C para detener.\n');
 });
 
