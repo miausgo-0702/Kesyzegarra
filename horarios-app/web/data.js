@@ -83,6 +83,7 @@ window.GRUPO_FIJO = { "Pacheco Julian": "B" };
 
 window.FINDE = {
   B: {
+    base: "2026-11-14", // sábado de esta planilla
     ref: "14 y 15 de noviembre",
     obs: "Juan Renzo debe estar atenta por si se necesita refuerzo en caja.",
     sab: [
@@ -127,6 +128,7 @@ window.FINDE = {
     ],
   },
   A: {
+    base: "2026-11-21",
     ref: "21 y 22 de noviembre",
     obs: "Montes Sabrina y Silva Virginia estar atentas por si se necesita refuerzo en caja.",
     sab: [

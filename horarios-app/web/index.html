@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mis Horarios</title>
+<meta name="description" content="Horarios rotativos, fines de semana y feriados del equipo.">
+<meta name="theme-color" content="#0f3b31">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mis Horarios">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ================= INGRESO ================= -->
+<section id="login" class="oculto">
+  <div class="glass" id="glass">
+    <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+    <h1 id="lgTitulo">Mis Horarios</h1>
+    <p class="sub" id="lgSub">Ingresá con tu DNI y tu PIN de 4 números</p>
+
+    <!-- empleado: ingresar -->
+    <form id="fIngresar" autocomplete="off">
+      <label for="inDni">DNI</label>
+      <input class="gin" id="inDni" inputmode="numeric" maxlength="9" placeholder="Ej: 35123456">
+      <label>PIN</label>
+      <div class="pin" id="inPin"></div>
+      <button class="gbtn" type="submit" id="bIngresar">Verificar</button>
+    </form>
+
+    <!-- empleado: registrarse -->
+    <form id="fRegistro" class="oculto" autocomplete="off">
+      <label for="rgDni">DNI</label>
+      <input class="gin" id="rgDni" inputmode="numeric" maxlength="9" placeholder="Solo números">
+      <label for="rgSector">Sector</label>
+      <select class="gin" id="rgSector"></select>
+      <label for="rgPersona">¿Quién sos?</label>
+      <select class="gin" id="rgPersona"></select>
+      <label>Creá tu PIN</label>
+      <div class="pin" id="rgPin"></div>
+      <label>Repetí el PIN</label>
+      <div class="pin" id="rgPin2"></div>
+      <button class="gbtn" type="submit" id="bRegistrar">Crear cuenta</button>
+    </form>
+
+    <!-- administrador -->
+    <form id="fAdmin" class="oculto" autocomplete="off">
+      <label for="adUser">Usuario</label>
+      <input class="gin" id="adUser" autocapitalize="off" autocorrect="off" placeholder="Usuario">
+      <label for="adPass">Clave</label>
+      <input class="gin" id="adPass" type="password" placeholder="Clave">
+      <button class="gbtn" type="submit" id="bAdmin">Ingresar</button>
+    </form>
+
+    <div class="gmsg" id="lgMsg" role="alert"></div>
+    <div class="glinks">
+      <button class="chip on" data-modo="ingresar" type="button">Ingresar</button>
+      <button class="chip" data-modo="registro" type="button">Registrarme</button>
+      <button class="chip" data-modo="admin" type="button">Administrador</button>
+    </div>
+  </div>
+  <div class="modo" id="lgModo"></div>
+</section>
+
+<!-- ================= APP ================= -->
+<section id="app" class="oculto">
+  <aside class="side" id="side">
+    <div class="logo">MH</div>
+  </aside>
+  <div class="main">
+    <header class="top">
+      <div class="avatar" id="avatar">?</div>
+      <div class="grow">
+        <div class="t1" id="saludo">Hola</div>
+        <div class="t2" id="quien">—</div>
+      </div>
+      <button class="iconbtn" id="bSalir" title="Salir" aria-label="Salir">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+      </button>
+    </header>
+    <div class="wrap">
+      <div id="verComo" class="card oculto" style="margin-bottom:14px">
+        <div class="row">
+          <div class="f"><label class="muted" for="selVer">Ver el horario de</label><select class="in" id="selVer"></select></div>
+        </div>
+      </div>
+      <div id="sinPersona" class="card oculto" style="margin-bottom:14px"></div>
+      <div id="v-inicio" class="vista"></div>
+      <div id="v-calendario" class="vista oculto"></div>
+      <div id="v-equipo" class="vista oculto"></div>
+      <div id="v-admin" class="vista oculto"></div>
+    </div>
+  </div>
+  <nav class="nav" id="nav"></nav>
+</section>
+<div class="toast" id="toast"></div>
+
+<script src="vendor/firebase-app-compat.js"></script>
+<script src="vendor/firebase-auth-compat.js"></script>
+<script src="vendor/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
+<script src="admins.local.js" onerror="void 0"></script>
+<script src="data.js"></script>
+<script src="logic.js"></script>
+<script src="backend.js"></script>
+<script src="app.js"></script>
+<script>
+  if ("serviceWorker" in navigator && location.protocol === "https:" && !/appassets\.androidplatform\.net/.test(location.host))
+    navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>

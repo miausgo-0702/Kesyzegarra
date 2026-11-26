@@ -1,10 +1,10 @@
 // Pruebas de la lógica: node horarios-app/test/logic.test.js
 const fs = require("fs"), path = require("path"), vm = require("vm"), assert = require("assert");
-const dir = path.join(__dirname, "../app/src/main/assets");
+const dir = path.join(__dirname, "../web");
 const ctx = { window: {} }; ctx.globalThis = ctx.window; vm.createContext(ctx.window);
 ctx.window.window = ctx.window;
 for (const f of ["data.js", "logic.js"]) vm.runInContext(fs.readFileSync(path.join(dir, f), "utf8"), ctx.window);
-const W = ctx.window, L = W.L, D = L.parseYMD;
+const W = ctx.window, L = W.L, D = L.parseYMD, D_ = L.parseYMD;
 let ok = 0; const t = (name, fn) => { fn(); ok++; };
 const sec = n => W.SECTORES.find(s => s.nombre === n);
 const idx = (s, n) => s.personas.findIndex(p => p.n === n);
@@ -106,5 +106,49 @@ t("marcado a mano tiene prioridad", () => {
   const r = est("Ventas","Pacheco Julian","2026-11-28", { manual: { t: true, h: "15 a 23" } });
   assert.strictEqual(r.h, "15 a 23");
   assert(!est("Ventas","Pacheco Julian","2026-11-25", { manual: { t: false } }).trabaja);
+});
+t("cálculo de horas", () => {
+  assert.strictEqual(L.minutos("7 a 15"), 480);
+  assert.strictEqual(L.minutos("7:30 a 12 · 17:30 a 21"), 270 + 210);
+  assert.strictEqual(L.minutos("23 a 07"), 480);          // cruza medianoche
+  assert.strictEqual(L.minutos("16:30 a 00:30"), 480);
+  assert.strictEqual(L.minutos("Horario a confirmar"), null);
+});
+t("planilla de finde nueva cargada por un administrador", () => {
+  const orig = L.getData(), D = L.getData();
+  // el admin carga la planilla del Grupo B del 28/11 tal cual sale: la rotación arranca de ahí
+  D.FINDE.B.base = "2026-11-28";
+  D.FINDE.B.sab = [["Ventas","Juan Renzo","8 a 16"],["Ventas","Mitre Florencia","16 a 00"]];
+  L.setData(D);
+  assert.strictEqual(est("Ventas","Juan Renzo","2026-11-28").h, "8 a 16");
+  assert.strictEqual(est("Ventas","Juan Renzo","2026-12-12").h, "16 a 00");
+  assert.strictEqual(est("Ventas","Mitre Florencia","2026-12-12").h, "8 a 16");
+  // el Grupo A no se toca
+  assert.strictEqual(est("Ventas","Suarez Nahiara","2026-11-21").h, "14 a 23");
+  L.setData(orig);
+  assert.strictEqual(est("Ventas","Juan Renzo","2026-11-28").h, "14 a 22");
+});
+t("planilla semanal nueva", () => {
+  const orig = L.getData(), D = L.getData();
+  D.BASE_LUNES = "2026-11-30"; L.setData(D);
+  assert.strictEqual(est("Ventas","Pacheco Julian","2026-12-01").h, "15:30 a 23:30");
+  L.setData(orig);
+});
+t("ajuste manual de grupo y feriado por persona", () => {
+  const orig = L.getData(), D = L.getData();
+  D.GRUPO_FIJO = { "Rojas Yohana": "A" }; D.TRABAJO_FERIADO_BASE = { "Rojas Yohana": true }; L.setData(D);
+  assert(est("Ventas","Rojas Yohana","2026-12-05").trabaja);
+  assert(!est("Ventas","Rojas Yohana","2026-11-28").trabaja);
+  assert(!est("Ventas","Rojas Yohana","2026-12-08").trabaja);
+  assert(est("Ventas","Rojas Yohana","2026-12-25").trabaja);
+  L.setData(orig);
+});
+t("puentes y correcciones de feriados", () => {
+  const orig = L.getData(), D = L.getData();
+  D.PUENTES = { 2027: ["2027-03-22"] }; D.FERIADOS_QUITAR = ["2027-11-20"]; D.FERIADOS_EXTRA = { "2027-05-24": "Prueba" }; L.setData(D);
+  assert.strictEqual(L.feriado(D_("2027-03-22")).tipo, "puente");
+  assert.strictEqual(L.feriado(D_("2027-11-20")), null);
+  assert.strictEqual(L.feriado(D_("2027-05-24")).nombre, "Prueba");
+  L.setData(orig);
 });
 console.log("OK:", ok, "pruebas");

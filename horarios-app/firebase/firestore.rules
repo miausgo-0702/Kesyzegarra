@@ -1,0 +1,44 @@
+rules_version = '2';
+// Reglas de seguridad de Mis Horarios (pegar en Firestore > Reglas).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function logueado() { return request.auth != null; }
+    function admin() {
+      return logueado() && request.auth.token.email in
+        ['lezana@admin.mishorarios.app', 'julianpz@admin.mishorarios.app'];
+    }
+    function empleado() { return logueado() && exists(/databases/$(database)/documents/empleados/$(request.auth.uid)); }
+
+    // Planillas de horarios: las ven todos los usuarios, las editan los administradores.
+    match /config/{doc} {
+      allow read: if logueado();
+      allow write: if admin();
+    }
+    // Empleados registrados: cada uno ve el suyo; los administradores ven todos.
+    match /empleados/{uid} {
+      allow read: if admin() || (logueado() && request.auth.uid == uid);
+      allow create: if logueado() && !admin() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['dni', 'persona', 'creado'])
+        && request.resource.data.dni is string && request.resource.data.persona is string
+        && request.auth.token.email == request.resource.data.dni + '@empleados.mishorarios.app';
+      allow update: if admin();
+      allow delete: if admin();
+    }
+    // Una persona de la planilla = una sola cuenta.
+    match /personas/{p} {
+      allow get: if logueado();
+      allow list: if admin() || empleado();
+      allow create: if logueado() && !admin() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if admin();
+    }
+    // Cambios de turno / francos y avisos: los cargan los administradores.
+    match /cambios/{id} {
+      allow read: if admin() || empleado();
+      allow write: if admin();
+    }
+    match /avisos/{id} {
+      allow read: if admin() || empleado();
+      allow write: if admin();
+    }
+  }
+}

@@ -3,6 +3,29 @@
   const DAY = 864e5;
   const L = {};
 
+  // Reemplaza los datos (planillas) en uso, p. ej. cuando un administrador los edita.
+  L.setData = d => { Object.keys(d).forEach(k => { G[k] = d[k]; }); Object.keys(cache).forEach(k => delete cache[k]); };
+  L.getData = () => JSON.parse(JSON.stringify({
+    BASE_LUNES: G.BASE_LUNES, SECTORES: G.SECTORES, FINDE_BASE_SABADO: G.FINDE_BASE_SABADO, FINDE_BASE_GRUPO: G.FINDE_BASE_GRUPO,
+    GRUPO_FIJO: G.GRUPO_FIJO, FINDE: G.FINDE, FERIADO_PLANILLA: G.FERIADO_PLANILLA, FERIADO_BASE: G.FERIADO_BASE,
+    TRABAJO_FERIADO_BASE: G.TRABAJO_FERIADO_BASE, PUENTES: G.PUENTES, FERIADOS_EXTRA: G.FERIADOS_EXTRA, FERIADOS_QUITAR: G.FERIADOS_QUITAR }));
+
+  /* ---------- horas ---------- */
+  // "7:30 a 12 · 17:30 a 21" -> minutos totales (cruza medianoche si corresponde)
+  L.minutos = h => {
+    let tot = 0, ok = false;
+    String(h || "").split("·").forEach(t => {
+      const m = t.match(/(\d{1,2})(?::(\d{2}))?\s*(?:hs)?\s*a\s*(\d{1,2})(?::(\d{2}))?/i);
+      if (!m) return;
+      const a = (+m[1]) * 60 + (+(m[2] || 0)); let b = (+m[3]) * 60 + (+(m[4] || 0));
+      if (b <= a) b += 1440;
+      tot += b - a; ok = true;
+    });
+    return ok ? tot : null;
+  };
+  L.fmtHoras = min => { const h = Math.floor(min / 60), m = min % 60; return h + (m ? ":" + String(m).padStart(2, "0") : "") + " h"; };
+  const cache = {};
+
   /* ---------- fechas ---------- */
   L.parseYMD = s => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
   L.ymd = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
@@ -24,7 +47,6 @@
   };
   // Trasladables: martes/miércoles -> lunes anterior; jueves/viernes -> lunes siguiente.
   L.trasladar = d => { const w = d.getDay(); return w === 2 || w === 3 ? L.addDays(d, 1 - w) : w === 4 || w === 5 ? L.addDays(d, 8 - w) : d; };
-  const cache = {};
   L.feriadosAnio = y => {
     if (cache[y]) return cache[y];
     const r = {}, put = (d, n, t) => { r[L.ymd(d)] = { nombre: n, tipo: t || "feriado" }; };
@@ -91,13 +113,13 @@
     const w = Math.round(L.dias(L.parseYMD(G.FINDE_BASE_SABADO), sab) / 7);
     return L.mod(w, 2) === 0 ? G.FINDE_BASE_GRUPO : L.otro(G.FINDE_BASE_GRUPO);
   };
+  // sábado de la planilla de referencia de cada grupo
+  L.baseGrupo = g => G.FINDE[g].base ? L.parseYMD(G.FINDE[g].base)
+    : L.addDays(L.parseYMD(G.FINDE_BASE_SABADO), g === G.FINDE_BASE_GRUPO ? 0 : 7);
   // cuántas veces trabajó ese grupo desde su planilla de referencia
-  L.findeK = sab => {
-    const w = Math.round(L.dias(L.parseYMD(G.FINDE_BASE_SABADO), sab) / 7);
-    return Math.floor(w / 2);
-  };
+  L.findeK = (sab, g) => Math.round(L.dias(L.baseGrupo(g || L.grupoFinde(sab)), sab) / 14);
   L.listaFinde = d => {
-    const sab = L.sabadoDelFinde(d), g = L.grupoFinde(sab), k = L.findeK(sab);
+    const sab = L.sabadoDelFinde(d), g = L.grupoFinde(sab), k = L.findeK(sab, g);
     return { grupo: g, k, lista: L.rotarLista(G.FINDE[g][d.getDay() === 6 ? "sab" : "dom"], k) };
   };
   // El equipo del 23-11 trabaja los feriados pares; su planilla rota una vez por cada feriado que trabaja.
@@ -110,12 +132,18 @@
   const buscar = (lista, nombre) => (lista || []).find(r => L.norm(r.n || r[1]) === L.norm(nombre));
   L.buscar = buscar;
 
-  L.grupoAuto = nombre => {
-    if (G.GRUPO_FIJO[nombre]) return G.GRUPO_FIJO[nombre];
+  L.grupoAuto = nombre => (G.GRUPO_FIJO && nombre in G.GRUPO_FIJO) ? G.GRUPO_FIJO[nombre] : L.grupoPlanilla(nombre);
+  // grupo según las planillas, sin ajustes manuales
+  L.grupoPlanilla = nombre => {
     const en = g => buscar(G.FINDE[g].sab, nombre) || buscar(G.FINDE[g].dom, nombre);
     return en("A") && en("B") ? "AB" : en("A") ? "A" : en("B") ? "B" : "";
   };
-  L.trabajoFeriadoBaseAuto = nombre => !!(G.TRABAJO_FERIADO_BASE[nombre] || buscar(G.FERIADO_PLANILLA.B.lista, nombre));
+  L.trabajoFeriadoBaseAuto = nombre => (G.TRABAJO_FERIADO_BASE && nombre in G.TRABAJO_FERIADO_BASE)
+    ? !!G.TRABAJO_FERIADO_BASE[nombre] : L.feriadoPlanilla(nombre);
+  L.feriadoPlanilla = nombre => !!buscar(G.FERIADO_PLANILLA.B.lista, nombre);
+  // lista de todas las personas de la planilla semanal
+  L.personas = () => { const r = []; G.SECTORES.forEach((s, si) => s.personas.forEach((p, pi) => r.push({ n: p.n, sector: s.nombre, si, pi }))); return r; };
+  L.ubicar = nombre => L.personas().find(x => L.norm(x.n) === L.norm(nombre)) || null;
 
   /* ---------- qué le toca a una persona un día ----------
      pref = { grupo: "A"|"B"|"AB"|""|undefined, ferBase: true|false|undefined, manual: {t,h}|undefined } */
