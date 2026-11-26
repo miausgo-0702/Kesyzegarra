@@ -33,8 +33,10 @@
   var LOCK_MS = 60 * 1000;
   var HASH_ROUNDS = 1500;
 
-  var DEFAULT_USER = 'julianp';
-  var DEFAULT_PASS = '070226';
+  // Credenciales iniciales guardadas solo como hash (no figuran en texto plano).
+  var DEFAULT_USER_HASH = '7f172b151dbca349ddfbd15b33dd4e7b7c8376f7c6c69e8699c758fa67e6811c';
+  var DEFAULT_PASS_HASH = 's2$5e7a0c19d2b84f6a3c01e9d7$65dd97178514d996269f178e9e2deb773b3990a8a330bf56614209ad18d6e882';
+  var LEGACY_DEFAULT_HASHES = ['84261309', '70101386'];
   var state = null;
 
   function activeDrinks() { return D.DRINKS.filter(function (d) { return d.enabled !== false; }); }
@@ -114,6 +116,8 @@
     return h;
   }
 
+  function userHash(u) { return sha256('u:' + String(u || '').trim().toLowerCase()); }
+
   function makeHash(password) {
     var salt = randomSalt();
     return 's2$' + salt + '$' + derive(String(password), salt);
@@ -146,7 +150,7 @@
 
   function defaultAdmin() {
     return {
-      user: DEFAULT_USER, passwordHash: makeHash(DEFAULT_PASS), passwordChanged: false,
+      userHash: DEFAULT_USER_HASH, passwordHash: DEFAULT_PASS_HASH, passwordChanged: false,
       paused: false, pausedAt: 0, crashMs: CRASH_MS, tickMs: TICK_MS,
       crashPct: CRASH_PCT, rallyPct: RALLY_PCT, log: []
     };
@@ -154,9 +158,10 @@
 
   function normalizeAdmin(a) {
     a = a || {};
-    if (!a.user) a.user = DEFAULT_USER;
-    var legacyDefault = a.passwordHash === fnv('sernova2026') || a.passwordHash === fnv(DEFAULT_PASS);
-    if (!a.passwordHash || (!a.passwordChanged && legacyDefault)) a.passwordHash = makeHash(DEFAULT_PASS);
+    if (a.user) { a.userHash = userHash(a.user); delete a.user; }
+    if (!a.userHash) a.userHash = DEFAULT_USER_HASH;
+    var legacyDefault = LEGACY_DEFAULT_HASHES.indexOf(a.passwordHash) >= 0;
+    if (!a.passwordHash || (!a.passwordChanged && legacyDefault)) a.passwordHash = DEFAULT_PASS_HASH;
     delete a.loggedIn;
     if (a.passwordChanged === undefined) a.passwordChanged = false;
     if (a.paused === undefined) a.paused = false;
@@ -723,13 +728,13 @@
     ensureSystemState();
     var remaining = lockRemaining();
     if (remaining) return { ok: false, locked: true, remaining: remaining };
-    var ok = String(user || '').trim().toLowerCase() === String(state.admin.user).toLowerCase() &&
+    var ok = userHash(user) === state.admin.userHash &&
       verifyHash(String(password || ''), state.admin.passwordHash);
     if (ok) {
       if (state.admin.passwordHash.indexOf('s2$') !== 0) state.admin.passwordHash = makeHash(password);
       lockSet({ count: 0, until: 0 });
-      sessionSet({ user: state.admin.user, at: now(), last: now() });
-      adminLog('Ingreso admin', state.admin.user);
+      sessionSet({ at: now(), last: now() });
+      adminLog('Ingreso admin', '');
       persist();
       return { ok: true };
     }
@@ -741,7 +746,7 @@
   }
 
   function logout() {
-    if (state && isAdmin()) { adminLog('Salida admin', state.admin.user); persist(); }
+    if (state && isAdmin()) { adminLog('Salida admin', ''); persist(); }
     sessionSet(null);
   }
 
@@ -762,7 +767,7 @@
     if (!verifyHash(String(current || ''), state.admin.passwordHash)) return { ok: false, error: 'La clave actual no es correcta.' };
     state.admin.passwordHash = makeHash(String(next));
     state.admin.passwordChanged = true;
-    adminLog('Cambio de contraseña', 'Usuario ' + state.admin.user);
+    adminLog('Cambio de contraseña', '');
     persist();
     return { ok: true };
   }
@@ -770,9 +775,8 @@
   function changeUser(next) {
     var u = String(next || '').trim().toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 24);
     if (!isAdmin() || u.length < 3) return false;
-    adminLog('Cambio de usuario', state.admin.user + ' → ' + u);
-    state.admin.user = u;
-    var s = sessionGet(); if (s) { s.user = u; sessionSet(s); }
+    adminLog('Cambio de usuario', '');
+    state.admin.userHash = userHash(u);
     persist();
     return true;
   }

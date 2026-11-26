@@ -50,7 +50,7 @@ También funciona abriendo `index.html` directamente (sin TVs en red).
 
 ## Administrador
 
-Botón **Admin** (o tecla `A`). Acceso inicial: **`julianp` / `070226`** — cambialo en *Acceso*.
+Botón **Admin** (o tecla `A`). El usuario y la clave iniciales los entrega el responsable del local; cambialos en *Acceso*. Las credenciales no aparecen en la pantalla ni en el código (se guardan solo como hash).
 
 - **Mercado**: estado, índice vs. carta, pausar/reanudar, caída/subida forzada, restablecer precios, cerrar mesa, reglas (intervalos y porcentajes).
 - **Carta y precios**: fijar precio actual, ±5 %, precio base, activar/desactivar, crear y eliminar tragos propios, filtro.

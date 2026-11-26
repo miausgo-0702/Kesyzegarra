@@ -199,8 +199,8 @@
     var pill = els['sync-pill'];
     if (!pill) return;
     var map = {
-      local: ['local', 'Solo local', 'Abrí la app con el servidor (INICIAR.bat / start.sh) para transmitir a las TVs.'],
-      idle: ['idle', 'Conectando', 'Esperando el primer envío al servidor.'],
+      local: ['local', 'Este equipo', 'Sin servidor: la pantalla TV funciona en este navegador (botón TV). Para TVs en red, iniciá INICIAR.bat / start.sh.'],
+      idle: ['idle', 'Conectando', 'Buscando el servidor SERNOVA…'],
       online: ['online', st.clients ? 'TV · ' + st.clients : 'En línea', 'Publicando en vivo para las pantallas.'],
       offline: ['offline', 'Sin servidor', 'El servidor no responde. La terminal sigue funcionando y reintenta sola.'],
       auth: ['auth', 'Falta clave', 'Ingresá la clave de publicación en Admin → Sistema.'],
@@ -783,7 +783,7 @@
       '<div class="admin-backdrop" data-admin-action="close">' +
         '<div class="admin-panel" role="dialog" aria-modal="true" aria-label="Panel de administrador">' +
           '<div class="admin-top"><div class="admin-top-l"><div class="brand-mark sm gold"><svg><use href="#i-shield"/></svg></div><div><p class="eyebrow gold">Acceso restringido</p><h2>Panel de administrador</h2></div></div>' +
-          (S.isAdmin() ? '<span class="admin-user">' + esc(state().admin.user) + '</span>' : '') +
+
           '<button class="icon-btn" type="button" data-admin-action="close" aria-label="Cerrar panel">×</button></div>' +
           tabs +
           '<div class="admin-body">' + content + '</div>' +
@@ -800,13 +800,13 @@
   function adminLogin() {
     var s = state();
     var locked = S.lockRemaining();
-    var hint = s.admin.passwordChanged ? '' : '<p class="admin-hint">Acceso inicial: <b>julianp</b> / <b>070226</b>. Cambiá la clave en «Acceso» después de entrar.</p>';
+    var hint = '';
     return '<form class="admin-login" data-admin-form="login" autocomplete="on">' +
       '<div class="login-icon"><svg><use href="#i-lock"/></svg></div>' +
       '<h3>Ingresar como administrador</h3>' +
       '<p>Mercado, carta, precios, mesas, reportes y seguridad.</p>' +
-      '<label class="field"><span class="field-label">Usuario</span><input id="admin-user" type="text" autocomplete="username" value="' + esc(s.admin.user) + '" /></label>' +
-      '<label class="field"><span class="field-label">Contraseña</span><input id="admin-pass" type="password" autocomplete="current-password" ' + (locked ? 'disabled' : 'autofocus') + ' /></label>' +
+      '<label class="field"><span class="field-label">Usuario</span><input id="admin-user" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" ' + (locked ? '' : 'autofocus') + ' /></label>' +
+      '<label class="field"><span class="field-label">Contraseña</span><input id="admin-pass" type="password" autocomplete="current-password" ' + (locked ? 'disabled' : '') + ' /></label>' +
       (locked ? '<p class="admin-error">Demasiados intentos. Probá de nuevo en <b id="lock-left">' + locked + '</b> s.</p>' : '') +
       '<button class="btn primary block" type="submit" data-admin-action="login"' + (locked ? ' disabled' : '') + '>Entrar al panel</button>' + hint +
       '</form>';
@@ -991,7 +991,7 @@
         '<input id="admin-new-pass" type="password" placeholder="Nueva contraseña" autocomplete="new-password" />' +
         '<input id="admin-new-pass2" type="password" placeholder="Repetir nueva contraseña" autocomplete="new-password" />' +
         '<button class="btn primary" data-admin-action="change-password">Guardar contraseña</button>') +
-      card('Usuario', '<p>Nombre de acceso actual: <b>' + esc(s.admin.user) + '</b>.</p>' +
+      card('Usuario', '<p>Cambiá el nombre de acceso. Por seguridad no se muestra el actual.</p>' +
         '<input id="admin-new-user" type="text" maxlength="24" placeholder="Nuevo usuario" autocomplete="off" />' +
         '<button class="btn" data-admin-action="change-user">Cambiar usuario</button>') +
       card('Sesión administrativa', '<p>La sesión se cierra sola tras ' + Math.round(S.ADMIN_IDLE_MS / 60000) + ' min sin actividad o al cerrar el navegador.</p>' +
@@ -1032,11 +1032,61 @@
     if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
   }
 
+  /* Pantalla TV integrada: funciona siempre, con o sin servidor. */
   function openTv() {
+    if (!state()) S.ensureSystemState();
+    closeAdmin();
+    closeDialog();
+    var ov = $('tv-overlay');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'tv-overlay';
+      ov.className = 'tv-overlay';
+      ov.setAttribute('role', 'dialog');
+      ov.setAttribute('aria-modal', 'true');
+      ov.setAttribute('aria-label', 'Pantalla de televisores');
+      ov.innerHTML =
+        '<div class="tv-overlay-bar">' +
+          '<span class="tv-overlay-title"><svg><use href="#i-tv"/></svg> Pantalla TV <small>en vivo</small></span>' +
+          '<div class="tv-overlay-actions">' +
+            '<button type="button" class="btn ghost sm" data-tv="window">Abrir en otra ventana</button>' +
+            '<button type="button" class="btn ghost sm" data-tv="full">Pantalla completa</button>' +
+            '<button type="button" class="icon-btn" data-tv="close" aria-label="Cerrar pantalla TV">×</button>' +
+          '</div>' +
+        '</div>' +
+        '<iframe data-sernova-tv title="Pantalla de televisores" src="tv.html" allow="fullscreen; screen-wake-lock" allowfullscreen></iframe>';
+      document.body.appendChild(ov);
+      ov.querySelector('iframe').addEventListener('load', function () { if (state()) S.save(); });
+      ov.addEventListener('click', function (ev) {
+        var b = ev.target.closest('[data-tv]');
+        if (!b) return;
+        if (b.dataset.tv === 'close') closeTv();
+        if (b.dataset.tv === 'full') {
+          var el = ov.querySelector('iframe');
+          var req = el.requestFullscreen || el.webkitRequestFullscreen;
+          if (req) { try { var pr = req.call(el); if (pr && pr.catch) pr.catch(function () { toast('Pantalla completa no disponible', 'El navegador no lo permite en esta página.', 'down'); }); } catch (e) { /* noop */ } }
+        }
+        if (b.dataset.tv === 'window') {
+          var win = null;
+          try { win = window.open('tv.html', 'sernova-tv'); } catch (e) { win = null; }
+          if (!win) toast('No se pudo abrir otra ventana', 'Usá la pantalla integrada o permití ventanas emergentes.', 'down');
+        }
+      });
+      lastFocus = document.activeElement;
+    }
+    ov.hidden = false;
+    document.body.classList.add('tv-open');
     if (state()) S.save();
-    var win = window.open('tv.html', 'sernova-tv');
-    if (!win) toast('No se pudo abrir la TV', 'Permití ventanas emergentes para este sitio.', 'down');
-    else toast('Pantalla TV abierta', 'En otros televisores abrí /tv.html desde la misma red.', 'info');
+    setTimeout(function () { var c = ov.querySelector('[data-tv="close"]'); if (c) c.focus(); }, 50);
+  }
+
+  function closeTv() {
+    var ov = $('tv-overlay');
+    if (!ov || ov.hidden) return false;
+    ov.hidden = true;
+    document.body.classList.remove('tv-open');
+    if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
+    return true;
   }
 
   function download(name, content, type) {
@@ -1067,7 +1117,7 @@
     var pass = $('admin-pass') ? $('admin-pass').value : '';
     var res = S.login(user, pass);
     if (res.ok) {
-      toast('Acceso concedido', 'Bienvenido, ' + state().admin.user + '.', 'info');
+      toast('Acceso concedido', 'Panel de administrador habilitado.', 'info');
       if (S.hasSession() && !els.app.hidden) renderHeader();
       renderAdmin();
     } else if (res.locked) {
@@ -1262,7 +1312,7 @@
         break;
       }
       case 'change-user':
-        if (S.changeUser($('admin-new-user').value)) { renderAdmin(); toast('Usuario actualizado', 'Nuevo usuario: ' + state().admin.user, 'info'); }
+        if (S.changeUser($('admin-new-user').value)) { renderAdmin(); toast('Usuario actualizado', 'Usá el nuevo usuario la próxima vez que ingreses.', 'info'); }
         else toast('Usuario inválido', 'Usá al menos 3 caracteres (letras, números, . _ -).', 'down');
         break;
       case 'logout':
@@ -1538,10 +1588,12 @@
       var modal = els['modal-root'].querySelector('.modal');
       var admin = els['admin-root'].querySelector('.admin-panel');
       if (ev.key === 'Escape') {
+        if (closeTv()) return;
         if (modal) closeDialog();
         else if (admin) closeAdmin();
         return;
       }
+      if (document.body.classList.contains('tv-open')) return;
       if (ev.key === 'Tab') { trapFocus(ev, modal || admin); return; }
       if (modal && modalDrinkId) {
         if (ev.key === '+' || ev.key === 'ArrowUp' || ev.key === 'ArrowRight') { ev.preventDefault(); setModalQty(modalQty + 1); }
@@ -1584,6 +1636,9 @@
     window.addEventListener('afterprint', function () { document.body.classList.remove('printing'); els['print-root'].innerHTML = ''; });
 
     Sync.onStatus(renderSync);
+    window.addEventListener('message', function (ev) {
+      if (ev.data && ev.data.sernova === 'close-tv') closeTv();
+    });
   }
 
   function init() {

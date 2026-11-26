@@ -98,11 +98,11 @@
       return;
     }
     connected = true;
-    if (src !== 'sse' && current && s.updatedAt && current.updatedAt && s.updatedAt < current.updatedAt && s.sessionId === current.sessionId) return;
+    if (src !== 'sse' && src !== 'frame' && current && s.updatedAt && current.updatedAt && s.updatedAt < current.updatedAt && s.sessionId === current.sessionId) return;
     if (s.serverAt && src !== 'local') clockOffset = s.serverAt - Date.now();
     var newSession = !current || current.sessionId !== s.sessionId;
     current = s;
-    if (src === 'sse' || source !== 'sse') source = src || 'local';
+    if (src === 'sse' || src === 'frame' || (source !== 'sse' && source !== 'frame')) source = src || 'local';
     D.applyCatalog(s.catalog || null);
     D.available().forEach(function (d) {
       if (s.market[d.id]) return;
@@ -158,9 +158,9 @@
     var status = $('tv-status');
     var label, cls;
     if (!connected && source !== 'local') { label = 'SIN SEÑAL'; cls = 'down'; }
-    else if (source === 'sse') { label = 'EN VIVO'; cls = ''; }
+    else if (source === 'sse' || source === 'frame') { label = 'EN VIVO'; cls = ''; }
     else if (source === 'poll' || source === 'initial') { label = 'EN VIVO · RED'; cls = ''; }
-    else { label = 'MODO LOCAL'; cls = 'off'; }
+    else { label = Sync.inFrame ? 'EN VIVO' : 'EN VIVO · ESTE EQUIPO'; cls = ''; }
     status.className = 'tv-status ' + cls;
     status.querySelector('span').textContent = label;
   }
@@ -381,6 +381,9 @@
     $('tv-fullscreen').addEventListener('click', toggleFullscreen);
     document.addEventListener('keydown', function (ev) {
       if (ev.key === 'f' || ev.key === 'F') toggleFullscreen();
+      if (ev.key === 'Escape' && Sync.inFrame && !document.fullscreenElement) {
+        try { window.parent.postMessage({ sernova: 'close-tv' }, '*'); } catch (e) { /* noop */ }
+      }
       if (!current) return;
       if (ev.key === 'ArrowRight') { focusIndex++; renderQuote(true); }
       if (ev.key === 'ArrowLeft') { focusIndex = Math.max(0, focusIndex - 1); renderQuote(true); }
