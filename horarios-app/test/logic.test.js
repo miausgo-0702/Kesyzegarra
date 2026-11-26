@@ -151,4 +151,13 @@ t("puentes y correcciones de feriados", () => {
   assert.strictEqual(L.feriado(D_("2027-05-24")).nombre, "Prueba");
   L.setData(orig);
 });
+t("Silva Virginia es solo del Grupo A", () => {
+  assert.strictEqual(L.grupoAuto("Silva Virginia"), "A");
+  assert(est("Ventas","Silva Virginia","2026-11-21").trabaja);
+  assert(est("Ventas","Silva Virginia","2026-11-22").trabaja);
+  assert(!est("Ventas","Silva Virginia","2026-11-28").trabaja);
+  assert(!est("Ventas","Silva Virginia","2026-11-29").trabaja);
+  assert(est("Ventas","Silva Virginia","2026-12-05").trabaja);
+  assert(est("Ventas","Daverio Daniela","2026-11-29").trabaja);
+});
 console.log("OK:", ok, "pruebas");

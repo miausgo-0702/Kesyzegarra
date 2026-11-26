@@ -119,7 +119,9 @@ window.FINDE = {
       ["Ventas","Vallejos Luis","10 a 19"],
       ["Ventas","Maguna Noelia","9 a 13 · 18:30 a 23:30"],
       ["Ventas","Juan Renzo","10 a 14 · 19:30 a 00:30"],
-      ["Ventas","Silva Virginia","14 a 22"],
+      // En la planilla del 15-11 figura Silva Virginia (Grupo A) cubriendo este puesto;
+      // el titular del Grupo B es Daverio Daniela.
+      ["Ventas","Daverio Daniela","14 a 22"],
       ["Ventas","Mitre Florencia","16 a 01"],
       ["Ventas","Lugones Maximiliano","23 a 07",1],
       ["Carga Medicamentos","Carrillo Jose","8:30 a 13 · 17:30 a 22"],

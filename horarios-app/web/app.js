@@ -170,12 +170,63 @@
     admin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>',
   };
   const NOMBRES = { inicio: "Inicio", calendario: "Calendario", equipo: "Equipo", admin: "Panel" };
+  // Color de la "gota" de cada pestaña (colores de la marca)
+  const COLOR = { inicio: "#b3bb06", calendario: "#eadd12", equipo: "#a3509a", admin: "#d6dd3c" };
+  let navItems = [];
   function armarNav() {
-    const items = ["inicio", "calendario", "equipo"].concat(st.user.tipo === "admin" ? ["admin"] : []);
-    $("nav").innerHTML = items.map(v => `<button data-v="${v}">${ICON[v]}<span>${NOMBRES[v]}</span></button>`).join("");
-    $("side").innerHTML = `<img class="logo" src="img/logo.svg" alt="">` + items.map(v => `<button data-v="${v}" title="${NOMBRES[v]}">${ICON[v]}</button>`).join("");
-    document.querySelectorAll("[data-v]").forEach(b => b.onclick = () => { st.vista = b.dataset.v; render(); window.scrollTo(0, 0); });
+    navItems = ["inicio", "calendario", "equipo"].concat(st.user.tipo === "admin" ? ["admin"] : []);
+    $("nav").innerHTML = `<div class="nav-glow"></div><div class="nav-bar"></div>
+      <div class="bead" id="bead"><div class="bead-in" id="beadIn"></div></div>` +
+      navItems.map(v => `<button data-v="${v}" aria-label="${NOMBRES[v]}">${ICON[v]}<span>${NOMBRES[v]}</span></button>`).join("");
+    $("side").innerHTML = `<img class="logo" src="img/logo.svg" alt=""><div class="side-ind" id="sideInd"></div>` +
+      navItems.map(v => `<button data-v="${v}" title="${NOMBRES[v]}">${ICON[v]}</button>`).join("");
+    document.querySelectorAll("[data-v]").forEach(b => b.onclick = () => irA(b.dataset.v));
+    st.vistaAnt = null;
+    arrastreGota();
   }
+  function irA(v) {
+    if (v === st.vista) return;
+    st.vista = v; render(); window.scrollTo({ top: 0 });
+  }
+  // Mueve la gota (y el hueco de la barra) a la pestaña activa
+  function moverGota(animar) {
+    const nav = $("nav"), b = nav.querySelector(`button[data-v="${st.vista}"]`);
+    if (!b) return;
+    const x = b.offsetLeft + b.offsetWidth / 2;
+    nav.classList.toggle("sin-anim", !animar);
+    nav.style.setProperty("--x", x + "px");
+    nav.style.setProperty("--bead", COLOR[st.vista]);
+    nav.style.setProperty("--bead-ink", st.vista === "equipo" ? "#fff" : "#1d2100");
+    $("side").style.setProperty("--bead-ink", st.vista === "equipo" ? "#fff" : "#1d2100");
+    $("beadIn").innerHTML = ICON[st.vista];
+    if (animar) { const g = $("bead"); g.classList.remove("salto"); void g.offsetWidth; g.classList.add("salto"); }
+    const si = $("sideInd"), sb = $("side").querySelector(`button[data-v="${st.vista}"]`);
+    if (si && sb) { si.style.transform = `translateY(${sb.offsetTop}px)`; si.style.background = COLOR[st.vista]; }
+  }
+  // Se puede arrastrar la gota a lo largo de la barra
+  function arrastreGota() {
+    const nav = $("nav"), g = $("bead");
+    let activo = false;
+    const xDe = e => Math.max(28, Math.min(nav.clientWidth - 28, e.clientX - nav.getBoundingClientRect().left));
+    g.onpointerdown = e => { activo = true; g.setPointerCapture(e.pointerId); nav.classList.add("arrastrando"); };
+    g.onpointermove = e => {
+      if (!activo) return;
+      const x = xDe(e); nav.style.setProperty("--x", x + "px");
+      const b = cercano(x); if (b) nav.style.setProperty("--bead", COLOR[b.dataset.v]);
+    };
+    const soltar = e => {
+      if (!activo) return; activo = false; nav.classList.remove("arrastrando");
+      const b = cercano(xDe(e));
+      if (b && b.dataset.v !== st.vista) irA(b.dataset.v); else moverGota(true);
+    };
+    g.onpointerup = soltar; g.onpointercancel = soltar;
+    function cercano(x) {
+      let mejor = null, d = 1e9;
+      nav.querySelectorAll("button[data-v]").forEach(b => { const c = b.offsetLeft + b.offsetWidth / 2; if (Math.abs(c - x) < d) { d = Math.abs(c - x); mejor = b; } });
+      return mejor;
+    }
+  }
+  window.addEventListener("resize", () => { if (st.user) moverGota(false); });
 
   /* ============================== DATOS DE LA PERSONA ============================== */
   function personaActual() { return st.user.tipo === "admin" ? st.ver : st.user.persona; }
@@ -197,6 +248,16 @@
     const esAdmin = st.user.tipo === "admin";
     document.querySelectorAll("[data-v]").forEach(b => b.classList.toggle("on", b.dataset.v === st.vista));
     ["inicio", "calendario", "equipo", "admin"].forEach(v => $("v-" + v).classList.toggle("oculto", v !== st.vista));
+    // transición entre pestañas: entra desde el lado hacia donde se movió, con desenfoque
+    const cambio = st.vistaAnt !== st.vista;
+    if (cambio) {
+      const dir = st.vistaAnt ? Math.sign(navItems.indexOf(st.vista) - navItems.indexOf(st.vistaAnt)) : 0;
+      const el = $("v-" + st.vista);
+      el.style.setProperty("--dir", dir);
+      el.classList.remove("entra"); void el.offsetWidth; el.classList.add("entra");
+      moverGota(!!st.vistaAnt);
+      st.vistaAnt = st.vista;
+    }
     const nombre = personaActual();
     $("avatar").innerHTML = esAdmin ? '<img class="logo-img" src="img/logo.svg" alt="">' : esc(iniciales(nombre));
     const h = new Date().getHours();

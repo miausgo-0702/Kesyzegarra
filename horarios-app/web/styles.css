@@ -166,11 +166,37 @@ tr.link{cursor:pointer}
 .seg button{flex:1 0 auto;border:none;background:none;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600;font-size:13.5px;color:var(--muted)}
 .seg button.on{background:var(--dark);color:#fff}
 
-/* navegación inferior (celular) */
-.nav{position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:10;display:flex;justify-content:space-around;
-  background:var(--dark);border-radius:22px;padding:8px;box-shadow:0 10px 30px rgba(40,44,8,.35)}
-.nav button{flex:1;border:none;background:none;color:rgba(255,255,255,.6);display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;padding:6px 0;border-radius:14px;cursor:pointer}
-.nav button.on{color:#1d2100;background:var(--acc)}
+/* navegación inferior (celular): "gota" que se mueve y la barra que se derrite a su alrededor */
+@property --x{syntax:"<length>";inherits:true;initial-value:60px}
+.nav{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:10;display:flex;height:64px;
+  --bead:#b3bb06;transition:--x .62s cubic-bezier(.45,1.45,.45,1);filter:drop-shadow(0 10px 22px rgba(40,44,8,.35))}
+.nav.sin-anim,.nav.arrastrando{transition:none}
+.nav-bar{position:absolute;inset:0;border-radius:24px;background:var(--dark);
+  -webkit-mask:radial-gradient(circle at var(--x) -4px,transparent 33px,#000 34.5px);
+          mask:radial-gradient(circle at var(--x) -4px,transparent 33px,#000 34.5px)}
+.nav-glow{position:absolute;left:calc(var(--x) - 90px);top:-30px;width:180px;height:120px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(closest-side,var(--bead),transparent);opacity:.28;filter:blur(18px);transition:background .5s}
+.bead{position:absolute;left:0;top:-24px;width:54px;height:54px;margin-left:-27px;transform:translateX(var(--x));z-index:2;touch-action:none;cursor:grab}
+.bead-in{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;color:var(--bead-ink,#1d2100);background:var(--bead);
+  box-shadow:0 8px 18px color-mix(in srgb,var(--bead) 55%,transparent),inset 0 -3px 0 rgba(0,0,0,.12),inset 0 2px 0 rgba(255,255,255,.35);
+  transition:background .45s}
+.bead-in svg{width:24px;height:24px}
+.bead.salto .bead-in{animation:salto .62s cubic-bezier(.3,.7,.3,1)}
+@keyframes salto{0%{transform:translateY(0) scale(1)}30%{transform:translateY(-12px) scale(.82,.9)}62%{transform:translateY(2px) scale(1.12,.9)}82%{transform:translateY(-2px) scale(.97,1.03)}100%{transform:none}}
+.nav.arrastrando .bead{cursor:grabbing}
+.nav.arrastrando .bead-in{transform:translateY(-6px) scale(1.06)}
+.nav button{position:relative;z-index:1;flex:1;border:none;background:none;color:rgba(255,255,255,.55);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;font-size:11px;padding:0;cursor:pointer;transition:color .3s}
+.nav button span{position:absolute;bottom:7px;opacity:0;transform:translateY(4px);transition:opacity .3s,transform .3s;font-weight:600}
+.nav button svg{transition:opacity .25s,transform .35s}
+.nav button.on{color:#fff}
+.nav button.on svg{opacity:0;transform:translateY(-14px) scale(.6)}
+.nav button.on span{opacity:1;transform:none;transition-delay:.18s}
+/* entrada de cada pestaña */
+.vista.entra{animation:entra .5s cubic-bezier(.2,.8,.2,1) both}
+@keyframes entra{from{opacity:0;transform:translateX(calc(var(--dir,0) * 28px)) translateY(calc((1 - var(--dir,0) * var(--dir,0)) * 14px)) scale(.985);filter:blur(8px)}
+  to{opacity:1;transform:none;filter:blur(0)}}
+@media (prefers-reduced-motion:reduce){ .nav{transition:none} .bead.salto .bead-in,.vista.entra{animation:none} }
 .nav svg,.side svg{width:22px;height:22px}
 
 /* editor de planillas */
@@ -196,7 +222,11 @@ tr.link{cursor:pointer}
   .side{display:flex;flex-direction:column;align-items:center;gap:8px;width:76px;padding:18px 0;position:sticky;top:0;height:100vh;background:var(--dark);flex:0 0 auto}
   .side .logo{width:50px;height:50px;border-radius:50%;margin-bottom:14px;display:block;box-shadow:0 0 0 4px rgba(255,255,255,.1)}
   .side button{width:48px;height:48px;border-radius:14px;border:none;background:none;color:rgba(255,255,255,.6);display:grid;place-items:center;cursor:pointer}
-  .side button.on{background:var(--acc);color:#1d2100}
+  .side{position:sticky}
+  .side button{position:relative;z-index:1;transition:color .3s}
+  .side button.on{background:none;color:var(--bead-ink,#1d2100)}
+  .side-ind{position:absolute;top:0;left:14px;width:48px;height:48px;border-radius:16px;background:var(--acc);
+    transition:transform .6s cubic-bezier(.45,1.45,.45,1),background .45s;box-shadow:0 8px 20px rgba(0,0,0,.25)}
   .side .sp{flex:1}
   .nav{display:none}
   .main{padding-bottom:30px}
