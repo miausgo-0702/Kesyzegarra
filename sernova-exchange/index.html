@@ -1,20 +1,20 @@
 <!DOCTYPE html>
-<html lang="es" data-theme="dark">
+<html lang="es" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="description" content="Sernova Exchange — terminal de consumo y mercado de bebidas por mesa." />
-  <meta name="theme-color" content="#07080d" />
+  <meta name="theme-color" content="#e8f1ed" />
   <meta name="color-scheme" content="dark light" />
   <title>SERNOVA EXCHANGE · Terminal de mesa</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Instrument+Serif:ital@0;1&display=swap" />
   <link rel="stylesheet" href="styles.css" />
   <script>
-    (function () { try { var s = JSON.parse(localStorage.getItem('sernova-exchange.v2') || 'null'); if (s && s.theme) document.documentElement.dataset.theme = s.theme; } catch (e) {} })();
+    (function () { try { var s = JSON.parse(localStorage.getItem('sernova-exchange.v2') || 'null'); if (s && s.theme && s.designVersion === 2) document.documentElement.dataset.theme = s.theme; } catch (e) {} })();
   </script>
 </head>
 <body>
@@ -48,7 +48,7 @@
           <div class="brand-mark lg"><svg><use href="#i-logo"/></svg></div>
           <div>
             <p class="eyebrow">Drinks exchange · en vivo</p>
-            <p class="hero-word">SERNOVA<br><span>EXCHANGE</span></p>
+            <p class="hero-word">SERNOVA<br><span>Exchange</span></p>
           </div>
         </div>
         <p class="hero-lead">Los precios se mueven con la demanda de la noche. Cuanto más se pide, más sube. Cada dos minutos, toda la carta cae a precio de costo por un minuto.</p>
@@ -65,7 +65,7 @@
           <div class="brand-mark"><svg><use href="#i-logo"/></svg></div>
           <div>
             <p class="eyebrow">Terminal de mesa</p>
-            <h1 class="setup-title">SERNOVA <span>EXCHANGE</span></h1>
+            <h1 class="setup-title">SERNOVA <span class="serif-accent">exchange</span></h1>
           </div>
         </div>
 

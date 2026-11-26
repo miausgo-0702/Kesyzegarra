@@ -62,15 +62,34 @@
     $('club').hidden = false;
   }
 
+  function joinReady() {
+    var b = $('join-btn');
+    if (b.classList.contains('loading') || b.classList.contains('success')) return;
+    b.classList.toggle('ready', $('join-name').value.trim().length >= 2 && !!$('join-table').value.trim());
+  }
+
   function onJoin(ev) {
     ev.preventDefault();
     if (busy) return;
     busy = true;
+    var b = $('join-btn'), t0 = Date.now();
+    b.className = 'glass-btn loading'; b.textContent = 'Entrando…';
+    $('join-error').textContent = '';
     API.call('join', { name: $('join-name').value, table: $('join-table').value }).then(function (r) {
-      busy = false;
-      if (!r.ok) { U.toast('No se pudo ingresar', r.error, 'down'); return; }
-      U.toast('¡Hola, ' + r.data.customer.name + '!', 'Ya estás en la mesa ' + r.data.customer.table + '.', 'up');
-      refresh().then(loadMarket);
+      setTimeout(function () {
+        busy = false;
+        if (!r.ok) {
+          b.className = 'glass-btn ready'; b.textContent = 'Entrar al club';
+          $('join-error').textContent = r.error;
+          var card = $('join-form'); card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake');
+          return;
+        }
+        b.className = 'glass-btn success'; b.textContent = '¡Listo!';
+        setTimeout(function () {
+          U.toast('¡Hola, ' + r.data.customer.name + '!', 'Ya estás en la mesa ' + r.data.customer.table + '.', 'up');
+          refresh().then(loadMarket);
+        }, 700);
+      }, Math.max(0, 550 - (Date.now() - t0)));
     });
   }
 
@@ -170,8 +189,8 @@
     var pend = me.loads.filter(function (l) { return l.status === 'pendiente'; });
     $('pending-loads').innerHTML = pend.map(function (l) {
       return '<div class="pending-load"><div><span>Carga pendiente · ' + esc(l.method) + '</span><strong>' + money(l.amount) + '</strong></div>' +
-        '<div class="load-code"><span>Código</span><b>' + esc(l.code) + '</b></div>' +
-        '<p>Mostrale este código al staff para que confirme la carga.</p></div>';
+        '<div class="load-code"><span>Tu código</span><div class="code-boxes">' + String(l.code).split('').map(function (d) { return '<b>' + esc(d) + '</b>'; }).join('') + '</div></div>' +
+        '<p>Pagale al staff y decile este código: lo tipea en su panel y tu saldo se acredita al instante.</p></div>';
     }).join('');
 
     var moves = [];
@@ -336,6 +355,8 @@
   function init() {
     U.applyTheme();
     $('join-form').addEventListener('submit', onJoin);
+    $('join-name').addEventListener('input', joinReady);
+    $('join-table').addEventListener('input', joinReady);
     document.addEventListener('click', function (ev) {
       var g = ev.target.closest('[data-go]');
       if (g) { go(g.dataset.go); return; }

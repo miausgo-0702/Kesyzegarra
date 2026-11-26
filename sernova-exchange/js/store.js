@@ -203,6 +203,7 @@
         if (state.tvFocusId === undefined) state.tvFocusId = '';
         if (state.tvRotate === undefined) state.tvRotate = true;
         if (state.tipPct === undefined) state.tipPct = 10;
+        if (state.designVersion !== 2) { state.theme = 'light'; state.designVersion = 2; }   // nuevo diseño claro por defecto
         if (!state.sessionId) state.sessionId = uid();
         D.applyCatalog(state.catalog);
         ensureMarket();
@@ -347,11 +348,12 @@
     admin.pausedAt = 0;
     return {
       version: 4,
+      designVersion: 2,
       sessionId: uid(),
       catalog: prev && prev.catalog ? prev.catalog : { basePrices: {}, disabled: [], custom: [], costs: {} },
       table: '', guests: 1, waiter: '',
       startedAt: ts, updatedAt: ts,
-      theme: prev && prev.theme ? prev.theme : 'dark',
+      theme: prev && prev.theme ? prev.theme : 'light',
       selectedId: prev && prev.selectedId ? prev.selectedId : D.DRINKS[0].id,
       mode: 'ambos', range: 'todo', category: 'Todos', tag: 'Todos', sort: 'carta', search: '',
       density: prev && prev.density ? prev.density : 'comfort',

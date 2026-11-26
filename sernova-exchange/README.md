@@ -37,6 +37,12 @@ Cada vez que se sube un cambio a GitHub, Render lo publica solo.
 | `PORT` / `SERNOVA_PORT` | Puerto |
 | `SERNOVA_TRUST_PROXY=1` | Usa la IP real detrás del proxy del hosting |
 
+## Diseño
+
+- **Estilo Dashboard** (tema claro, el predeterminado): fondo menta y durazno, tarjetas blancas muy redondeadas, verde petróleo con acentos naranjas y palabras destacadas en serif cursiva. El panel de staff tiene barra lateral con íconos y un inicio en bloques (clientes, gastado, mesas, pedidos, votación, fotos y notificaciones). El tema oscuro sigue disponible con `T`.
+- **Estilo Glassy** en los accesos (administrador, staff y clientes): tarjeta de vidrio esmerilado sobre un ambiente cálido.
+- **Confirmación de cargas con código**: el cliente ve un código de 4 dígitos en su celular; el staff lo tipea en su panel y, si es correcto, se ve la animación (cuadros en verde → X → check → «Pago verificado») y el saldo se acredita. El código no aparece en el panel del staff. El administrador puede confirmar sin código si el cliente no tiene el celular.
+
 ## Uso diario
 
 - **+ Registrar** suma 1 unidad; **Cantidad** abre el detalle (atajos ×2, ×3, ×4, ×6, ×10, flechas y Enter).

@@ -224,7 +224,8 @@
     db.orders.forEach(function (o) { if (o.status === 'pendiente') totals.pendingOrders++; if (o.status !== 'cancelado') totals.discounts += o.discount; });
     base.customers = customers;
     base.tables = tablesView(db);
-    base.loads = db.loads.slice(0, 200);
+    // El código solo lo ve el cliente: el staff lo tiene que tipear para confirmar.
+    base.loads = db.loads.slice(0, 200).map(function (l) { var c = Object.assign({}, l); delete c.code; delete c.tries; return c; });
     base.orders = db.orders.slice(0, 300);
     base.totals = totals;
     return base;
@@ -399,7 +400,13 @@
       case 'load.approve': case 'load.reject': {
         var l = findBy(db.loads, payload.id);
         if (!l || l.status !== 'pendiente') return fail('La carga ya fue procesada.');
+        if (op === 'load.approve' && !payload.force) {
+          l.tries = (l.tries || 0) + 1;
+          if (l.tries > 6) return fail('Demasiados intentos con esta carga. Pedile al cliente que la vuelva a pedir.', 429);
+          if (String(payload.code || '') !== l.code) return fail('Código incorrecto. Pedile al cliente el código de su celular.', 400);
+        }
         l.status = op === 'load.approve' ? 'aprobada' : 'rechazada';
+        l.verified = op === 'load.approve' && !payload.force;
         l.by = srole; l.doneAt = now;
         if (op === 'load.approve') {
           var lc = db.customers[l.customerId];

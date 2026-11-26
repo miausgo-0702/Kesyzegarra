@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-theme="dark">
+<html lang="es" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -9,28 +9,29 @@
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Instrument+Serif:ital@0;1&display=swap" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="club.css" />
 </head>
 <body class="club-page">
   <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
 
-  <!-- Ingreso -->
-  <main id="join" class="club-join" hidden>
-    <div class="join-card">
-      <div class="brand-mark lg"><svg viewBox="0 0 48 48" fill="none"><path d="M8 34h32M12 34V18l12-8 12 8v16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 34V24h12v10M24 10V6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="24" cy="18" r="2.5" fill="currentColor"/></svg></div>
-      <p class="eyebrow">Bienvenido a</p>
-      <h1 class="join-title">SERNOVA <span>CLUB</span></h1>
-      <p class="join-lead">Cargá saldo, pedí tragos al precio del mercado, sacá fotos para la pantalla y votá la mejor: <b>la foto ganadora se lleva un descuento</b>.</p>
-      <form id="join-form" class="join-form" autocomplete="off">
-        <label class="field"><span class="field-label">Tu nombre</span><input id="join-name" type="text" maxlength="28" placeholder="Ej: Sofi" required /></label>
-        <label class="field"><span class="field-label">Tu mesa</span><input id="join-table" type="text" maxlength="14" placeholder="Ej: 7" inputmode="text" required /></label>
-        <button class="btn primary lg block" type="submit">Entrar</button>
-      </form>
-      <p class="join-foot">Tu saldo queda guardado en este celular. No cierres sesión si tenés saldo.</p>
-    </div>
-  </main>
+  <!-- Ingreso (estilo Glassy) -->
+  <div id="join" class="glass-scene" hidden>
+    <form id="join-form" class="glass-card" autocomplete="off">
+      <div class="glass-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M6 4h12l-6 8-6-8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 12v7m-4 1h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+      <h1 class="glass-title">Bienvenido al <em>club</em></h1>
+      <p class="glass-sub">Cargá saldo, pedí tragos al precio del mercado y subí tus fotos a la pantalla. <span class="glass-chip">La foto más votada gana un descuento</span></p>
+      <div class="glass-form">
+        <label><span>Tu nombre</span><input id="join-name" type="text" maxlength="28" placeholder="Ej: Sofi" required /></label>
+        <label><span>Tu mesa</span><input id="join-table" type="text" maxlength="14" placeholder="Ej: 7" required /></label>
+      </div>
+      <p class="glass-error" id="join-error" aria-live="polite"></p>
+      <button class="glass-btn" id="join-btn" type="submit">Entrar al club</button>
+      <p class="glass-foot">Tu saldo queda guardado en este celular.</p>
+    </form>
+    <div class="glass-dock"><span>✦ SERNOVA CLUB</span><span>Pedí · Cargá · Votá</span></div>
+  </div>
 
   <!-- App cliente -->
   <div id="club" class="club-shell" hidden>

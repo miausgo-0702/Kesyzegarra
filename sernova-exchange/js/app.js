@@ -90,7 +90,7 @@
   function applyTheme(theme) {
     document.documentElement.dataset.theme = theme;
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.content = theme === 'light' ? '#f3f1ec' : '#07080d';
+    if (meta) meta.content = theme === 'light' ? '#e8f1ed' : '#07080d';
   }
 
   function toggleTheme() {
@@ -178,7 +178,7 @@
     clearInterval(heroTimer);
     els.setup.hidden = true;
     els.app.hidden = false;
-    applyTheme(state().theme || 'dark');
+    applyTheme(state().theme || 'light');
     prevPrices = {};
     shownTotal = S.stats().total;
     renderAll();
@@ -791,6 +791,7 @@
   var ADMIN_TABS = [['mercado', 'Mercado'], ['carta', 'Carta y precios'], ['mesas', 'Mesas'], ['reportes', 'Reportes'], ['sistema', 'Sistema'], ['acceso', 'Acceso']];
 
   function adminShell(content) {
+    if (content.indexOf('glass-scene') >= 0) { els['admin-root'].innerHTML = content; return; }
     var scroll = els['admin-root'].querySelector('.admin-body');
     var top = scroll ? scroll.scrollTop : 0;
     var tabs = S.isAdmin()
@@ -820,15 +821,23 @@
     var s = state();
     var locked = S.lockRemaining();
     var hint = '';
-    return '<form class="admin-login" data-admin-form="login" autocomplete="on">' +
-      '<div class="login-icon"><svg><use href="#i-lock"/></svg></div>' +
-      '<h3>Ingresar como administrador</h3>' +
-      '<p>Mercado, carta, precios, mesas, reportes y seguridad.</p>' +
-      '<label class="field"><span class="field-label">Usuario</span><input id="admin-user" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" ' + (locked ? '' : 'autofocus') + ' /></label>' +
-      '<label class="field"><span class="field-label">Contraseña</span><input id="admin-pass" type="password" autocomplete="current-password" ' + (locked ? 'disabled' : '') + ' /></label>' +
-      (locked ? '<p class="admin-error">Demasiados intentos. Probá de nuevo en <b id="lock-left">' + locked + '</b> s.</p>' : '') +
-      '<button class="btn primary block" type="submit" data-admin-action="login"' + (locked ? ' disabled' : '') + '>Entrar al panel</button>' + hint +
-      '</form>';
+    void hint; void s;
+    return '<div class="glass-scene" role="dialog" aria-modal="true" aria-label="Acceso de administrador">' +
+      '<form class="glass-card admin-login" data-admin-form="login" autocomplete="on">' +
+        '<button type="button" class="glass-close icon-btn" data-admin-action="close" aria-label="Cerrar">×</button>' +
+        '<div class="glass-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="5" y="10.5" width="14" height="9.5" rx="2.5" stroke="currentColor" stroke-width="1.6"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>' +
+        '<h2 class="glass-title">Panel de <em>administrador</em></h2>' +
+        '<p class="glass-sub">Mercado, carta, precios, mesas y reportes de <span class="glass-chip">SERNOVA EXCHANGE</span></p>' +
+        '<div class="glass-form">' +
+          '<label><span>Usuario</span><input id="admin-user" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Tu usuario" ' + (locked ? '' : 'autofocus') + ' /></label>' +
+          '<label><span>Contraseña</span><input id="admin-pass" type="password" autocomplete="current-password" placeholder="••••••" ' + (locked ? 'disabled' : '') + ' /></label>' +
+        '</div>' +
+        '<p class="glass-error" id="admin-login-error">' + (locked ? 'Demasiados intentos. Probá de nuevo en <b id="lock-left">' + locked + '</b> s.' : '') + '</p>' +
+        '<button class="glass-btn" id="admin-login-btn" type="submit" data-admin-action="login"' + (locked ? ' disabled' : '') + '>Entrar al panel</button>' +
+        '<p class="glass-foot">La sesión se cierra sola tras 30 min sin uso</p>' +
+      '</form>' +
+      '<div class="glass-dock"><span>✦ Acceso restringido</span><button type="button" data-admin-action="close">Volver</button></div>' +
+    '</div>';
   }
 
   function adminMercado() {
@@ -1139,21 +1148,32 @@
   }
 
   function doLogin() {
+    var btn = $('admin-login-btn');
+    if (!btn || btn.classList.contains('loading') || btn.classList.contains('success')) return;
     var user = $('admin-user') ? $('admin-user').value : '';
     var pass = $('admin-pass') ? $('admin-pass').value : '';
-    var res = S.login(user, pass);
-    if (res.ok) {
-      toast('Acceso concedido', 'Panel de administrador habilitado.', 'info');
-      if (S.hasSession() && !els.app.hidden) renderHeader();
-      renderAdmin();
-    } else if (res.locked) {
-      toast('Acceso bloqueado', 'Esperá ' + res.remaining + ' s antes de reintentar.', 'down');
-      renderAdmin();
-    } else {
-      toast('Acceso denegado', 'Usuario o contraseña incorrectos · ' + plural(res.attemptsLeft, 'intento restante', 'intentos restantes') + '.', 'down');
-      var p = $('admin-pass');
-      if (p) { p.value = ''; p.focus(); p.closest('.field').classList.add('shake'); setTimeout(function () { p.closest('.field').classList.remove('shake'); }, 450); }
-    }
+    btn.className = 'glass-btn loading'; btn.textContent = 'Verificando…';
+    setTimeout(function () {
+      var res = S.login(user, pass);
+      if (res.ok) {
+        btn.className = 'glass-btn success'; btn.textContent = 'Verificado';
+        setTimeout(function () {
+          toast('Acceso concedido', 'Panel de administrador habilitado.', 'info');
+          if (S.hasSession() && !els.app.hidden) renderHeader();
+          renderAdmin();
+        }, 650);
+      } else if (res.locked) {
+        renderAdmin();
+      } else {
+        btn.className = 'glass-btn ready'; btn.textContent = 'Entrar al panel';
+        var err = $('admin-login-error');
+        if (err) err.textContent = 'Usuario o contraseña incorrectos · ' + plural(res.attemptsLeft, 'intento restante', 'intentos restantes') + '.';
+        var card2 = els['admin-root'].querySelector('.glass-card');
+        if (card2) { card2.classList.remove('shake'); void card2.offsetWidth; card2.classList.add('shake'); }
+        var p = $('admin-pass');
+        if (p) { p.value = ''; p.focus(); }
+      }
+    }, 550);
   }
 
   function onAdminAction(ev) {
@@ -1382,6 +1402,11 @@
   }
 
   function onAdminInput(ev) {
+    if (ev.target.id === 'admin-user' || ev.target.id === 'admin-pass') {
+      var b = $('admin-login-btn');
+      if (b && !b.classList.contains('loading')) b.classList.toggle('ready', !!($('admin-user').value.trim() && $('admin-pass').value));
+      return;
+    }
     if (ev.target.id !== 'admin-filter') return;
     var q = normalize(ev.target.value);
     els['admin-root'].querySelectorAll('.admin-table tbody tr').forEach(function (tr) {
@@ -1652,7 +1677,7 @@
 
     document.addEventListener('keydown', function (ev) {
       var modal = els['modal-root'].querySelector('.modal');
-      var admin = els['admin-root'].querySelector('.admin-panel');
+      var admin = els['admin-root'].querySelector('.admin-panel, .glass-scene');
       if (ev.key === 'Escape') {
         if (closeTv()) return;
         if (modal) closeDialog();
@@ -1713,7 +1738,7 @@
     cacheEls();
     S.load();
     if (state()) S.save();
-    applyTheme(state() && state().theme ? state().theme : 'dark');
+    applyTheme(state() && state().theme ? state().theme : 'light');
     wire();
     renderClock();
     setInterval(renderClock, 15000);

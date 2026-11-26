@@ -1,50 +1,69 @@
 <!DOCTYPE html>
-<html lang="es" data-theme="dark">
+<html lang="es" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="description" content="SERNOVA CLUB — panel de staff: administración y community manager." />
-  <meta name="theme-color" content="#07080d" />
+  <meta name="theme-color" content="#e8f1ed" />
   <title>SERNOVA CLUB · Staff</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Instrument+Serif:ital@0;1&display=swap" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="club.css" />
 </head>
-<body class="club-page staff-page">
-  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<body class="club-page staff-page dash-page">
 
-  <main id="login" class="club-join" hidden>
-    <form id="login-form" class="join-card" autocomplete="on">
-      <div class="login-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="4" y="8.5" width="12" height="8" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M7 8.5V6a3 3 0 0 1 6 0v2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
-      <p class="eyebrow gold">Acceso de staff</p>
-      <h1 class="join-title">SERNOVA <span>CLUB</span></h1>
-      <p class="join-lead">Administración (mesas, saldos, cargas y pedidos) y community manager (fotos, votación y anuncios).</p>
-      <label class="field"><span class="field-label">Usuario</span><input id="st-user" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required /></label>
-      <label class="field"><span class="field-label">Contraseña</span><input id="st-pass" type="password" autocomplete="current-password" required /></label>
-      <button class="btn primary lg block" type="submit">Entrar</button>
-      <a class="join-foot link" href="index.html">← Volver a la terminal</a>
+  <!-- Acceso "Glassy" -->
+  <div id="login" class="glass-scene" hidden>
+    <form id="login-form" class="glass-card" autocomplete="on">
+      <div class="glass-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="5" y="10.5" width="14" height="9.5" rx="2.5" stroke="currentColor" stroke-width="1.6"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+      <h1 class="glass-title">Acceso de <em>staff</em></h1>
+      <p class="glass-sub">Ingresá con tu usuario de <span class="glass-chip">SERNOVA CLUB</span></p>
+      <div class="glass-form">
+        <label><span>Usuario</span><input id="st-user" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Tu usuario" required /></label>
+        <label><span>Contraseña</span><input id="st-pass" type="password" autocomplete="current-password" placeholder="••••••" required /></label>
+      </div>
+      <p class="glass-error" id="login-error" aria-live="polite"></p>
+      <button class="glass-btn" id="login-btn" type="submit">Entrar</button>
+      <p class="glass-foot">Administración y community manager</p>
     </form>
-  </main>
+    <nav class="glass-dock" aria-label="Accesos rápidos">
+      <span>✦ SERNOVA CLUB</span>
+      <a href="index.html">Terminal</a>
+      <a href="cliente.html">Clientes</a>
+      <a href="tv.html">TV</a>
+    </nav>
+  </div>
 
-  <div id="staff" class="staff-shell" hidden>
-    <header class="staff-top">
-      <div class="brand">
-        <div class="brand-mark sm"><svg viewBox="0 0 48 48" fill="none"><path d="M8 34h32M12 34V18l12-8 12 8v16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 34V24h12v10M24 10V6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="24" cy="18" r="2.5" fill="currentColor"/></svg></div>
-        <div class="brand-text"><strong>SERNOVA</strong><span>CLUB · STAFF</span></div>
+  <!-- Dashboard -->
+  <div id="staff" class="dash" hidden>
+    <aside class="dash-side" aria-label="Secciones">
+      <div class="dash-logo" title="SERNOVA CLUB">
+        <svg viewBox="0 0 48 48" fill="none"><path d="M8 34h32M12 34V18l12-8 12 8v16" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 34V24h12v10M24 10V6" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
       </div>
-      <span class="role-badge" id="role-badge">—</span>
-      <span class="mode-note" id="mode-note"></span>
-      <div class="top-actions">
-        <a class="btn ghost sm" href="index.html">Terminal</a>
-        <a class="btn ghost sm hide-sm" href="cliente.html">Portal clientes</a>
-        <button class="btn ghost sm" type="button" id="btn-logout">Salir</button>
+      <nav class="dash-nav" id="staff-tabs" role="tablist"></nav>
+      <div class="dash-side-bottom">
+        <a class="dash-icon" href="index.html" title="Terminal"><svg viewBox="0 0 24 24" fill="none"><path d="M4 16l5-5 4 3 7-7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <a class="dash-icon" href="tv.html" title="Pantalla TV"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 20h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></a>
+        <button class="dash-icon" type="button" id="btn-logout" title="Salir"><svg viewBox="0 0 24 24" fill="none"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 16l-4-4 4-4M6 12h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       </div>
-    </header>
-    <nav class="staff-tabs" id="staff-tabs" role="tablist"></nav>
-    <main class="staff-body" id="staff-body"></main>
+    </aside>
+
+    <div class="dash-main">
+      <header class="dash-head">
+        <div>
+          <p class="dash-date" id="dash-date"></p>
+          <h1 class="dash-title" id="dash-title">Resumen</h1>
+        </div>
+        <div class="dash-head-right">
+          <span class="mode-note" id="mode-note"></span>
+          <span class="role-badge" id="role-badge">—</span>
+        </div>
+      </header>
+      <main class="staff-body" id="staff-body"></main>
+    </div>
   </div>
 
   <div id="toasts" class="toasts" aria-live="polite"></div>

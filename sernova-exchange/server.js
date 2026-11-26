@@ -164,7 +164,9 @@ function handleClub(req, res, body) {
   try { msg = JSON.parse(body); } catch (e) { sendJson(req, res, 400, { ok: false, error: 'JSON inválido' }); return; }
   const op = String(msg.op || '');
   const ip = clientIp(req);
-  if (rateLimited(ip, 'club', 240, 60 * 1000) || (CLUB_LIMITS[op] && rateLimited(ip, op, CLUB_LIMITS[op][0], CLUB_LIMITS[op][1]))) {
+  const lim = CLUB_LIMITS[op];
+  const who = lim && lim.per === 'client' ? 'c:' + String(req.headers['x-club-id'] || ip).slice(0, 40) : ip;
+  if (rateLimited(ip, 'club', IP_MAX_PER_MIN, 60 * 1000) || (lim && rateLimited(who, op, lim.max, lim.win))) {
     sendJson(req, res, 429, { ok: false, error: 'Demasiados pedidos seguidos. Esperá un momento y probá de nuevo.', code: 429 });
     return;
   }
@@ -237,13 +239,18 @@ setInterval(() => {
   buckets.forEach((b, k) => { if (now - b.start > 15 * 60 * 1000) buckets.delete(k); });
 }, 60 * 1000).unref();
 
+// Límites pensados para un bar: muchos celulares comparten la misma IP (el wifi
+// del local), así que las acciones de clientes se cuentan por cliente y la IP
+// solo frena abusos masivos.
 const CLUB_LIMITS = {
-  join: [8, 10 * 60 * 1000],
-  'photo.upload': [12, 10 * 60 * 1000],
-  'staff.login': [12, 15 * 60 * 1000],
-  'load.request': [10, 10 * 60 * 1000],
-  order: [40, 10 * 60 * 1000]
+  join: { per: 'ip', max: 300, win: 10 * 60 * 1000 },
+  'staff.login': { per: 'ip', max: 40, win: 15 * 60 * 1000 },
+  'photo.upload': { per: 'client', max: 12, win: 10 * 60 * 1000 },
+  'load.request': { per: 'client', max: 10, win: 10 * 60 * 1000 },
+  order: { per: 'client', max: 40, win: 10 * 60 * 1000 },
+  vote: { per: 'client', max: 60, win: 10 * 60 * 1000 }
 };
+const IP_MAX_PER_MIN = Number(process.env.SERNOVA_IP_MAX_PER_MIN) || 6000;
 
 function securityHeaders(extra) {
   return Object.assign({

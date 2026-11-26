@@ -20,6 +20,20 @@
     admin: [['resumen', 'Resumen'], ['mesas', 'Mesas'], ['clientes', 'Clientes'], ['cargas', 'Cargas'], ['pedidos', 'Pedidos'], ['fotos', 'Fotos'], ['votacion', 'Votación'], ['anuncios', 'Anuncios'], ['ajustes', 'Ajustes']],
     cm: [['fotos', 'Fotos'], ['votacion', 'Votación'], ['anuncios', 'Anuncios'], ['cuenta', 'Cuenta']]
   };
+  function ic(d) { return '<svg viewBox="0 0 24 24" fill="none">' + d + '</svg>'; }
+  var S_ = 'stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"';
+  var TAB_ICONS = {
+    resumen: ic('<rect x="4" y="4" width="7" height="7" rx="2" ' + S_ + '/><rect x="13" y="4" width="7" height="7" rx="2" ' + S_ + '/><rect x="4" y="13" width="7" height="7" rx="2" ' + S_ + '/><rect x="13" y="13" width="7" height="7" rx="2" ' + S_ + '/>'),
+    mesas: ic('<path d="M3 9h18M6 9V6h12v3M7 9v10m10-10v10M5 19h14" ' + S_ + '/>'),
+    clientes: ic('<circle cx="9" cy="8" r="3.2" ' + S_ + '/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M16 5.5a3 3 0 0 1 0 5.5M18 14.6c1.5.6 2.4 2 2.7 4.4" ' + S_ + '/>'),
+    cargas: ic('<rect x="3" y="6" width="18" height="13" rx="3" ' + S_ + '/><path d="M3 10h18M16 14.5h2" ' + S_ + '/>'),
+    pedidos: ic('<path d="M6 4h12l-6 8-6-8ZM12 12v7m-4 1h8" ' + S_ + '/>'),
+    fotos: ic('<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.3-2h6.4L16.5 7h2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5v-9Z" ' + S_ + '/><circle cx="12" cy="13" r="3.2" ' + S_ + '/>'),
+    votacion: ic('<path d="M12 3.5l2.4 5 5.4.6-4 3.7 1.1 5.4L12 15.5l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6L12 3.5Z" ' + S_ + '/>'),
+    anuncios: ic('<path d="M4 10v4h3l6 4V6L7 10H4ZM16.5 9a4 4 0 0 1 0 6" ' + S_ + '/>'),
+    ajustes: ic('<circle cx="12" cy="12" r="3" ' + S_ + '/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8" ' + S_ + '/>'),
+    cuenta: ic('<circle cx="12" cy="8.5" r="3.5" ' + S_ + '/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5" ' + S_ + '/>')
+  };
 
   function money(v) { return D.money(v); }
   function when(ts) { return new Date(ts).toLocaleString('es-AR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }); }
@@ -52,23 +66,36 @@
     data = null;
     $('login').hidden = false;
     $('staff').hidden = true;
+    var btn = $('login-btn');
+    btn.className = 'glass-btn'; btn.textContent = 'Entrar'; btn.disabled = false;
     setTimeout(function () { $('st-user').focus(); }, 50);
   }
   function showStaff() {
     $('login').hidden = true;
     $('staff').hidden = false;
-    $('role-badge').textContent = data.role === 'admin' ? 'ADMINISTRACIÓN' : 'COMMUNITY MANAGER';
+    $('role-badge').textContent = data.role === 'admin' ? 'Administración' : 'Community manager';
     $('role-badge').className = 'role-badge ' + data.role;
-    $('mode-note').textContent = API.mode() === 'local' ? 'Modo este equipo (sin servidor)' : 'En vivo · servidor del bar';
+    $('mode-note').innerHTML = '<i></i>' + (API.mode() === 'local' ? 'Este equipo' : 'En vivo');
+    var d = new Date();
+    var wd = d.toLocaleDateString('es-AR', { weekday: 'long' });
+    var mo = d.toLocaleDateString('es-AR', { month: 'long' });
+    $('dash-date').textContent = wd.charAt(0).toUpperCase() + wd.slice(1) + ' ' + d.getDate() + ' de ' + mo + ', ' + d.getFullYear();
+  }
+  function loginBtnState() {
+    var btn = $('login-btn');
+    if (btn.classList.contains('loading') || btn.classList.contains('success')) return;
+    btn.classList.toggle('ready', !!($('st-user').value.trim() && $('st-pass').value));
   }
 
   function render() {
     var badges = { cargas: data.totals ? data.totals.pendingLoads : 0, pedidos: data.totals ? data.totals.pendingOrders : 0, votacion: data.contest ? '●' : 0 };
     $('staff-tabs').innerHTML = TABS[data.role].map(function (t) {
       var b = badges[t[0]];
-      return '<button type="button" role="tab" aria-selected="' + (tab === t[0]) + '" data-tab="' + t[0] + '" class="' + (tab === t[0] ? 'active' : '') + '">' + t[1] +
-        (b ? '<i class="tab-badge">' + b + '</i>' : '') + '</button>';
+      return '<button type="button" role="tab" aria-selected="' + (tab === t[0]) + '" aria-label="' + t[1] + '" title="' + t[1] + '" data-tab="' + t[0] + '" class="dash-icon' + (tab === t[0] ? ' active' : '') + '">' + TAB_ICONS[t[0]] +
+        '<span class="dash-tip">' + t[1] + '</span>' + (b ? '<i class="tab-badge">' + b + '</i>' : '') + '</button>';
     }).join('');
+    var cur = TABS[data.role].filter(function (t) { return t[0] === tab; })[0];
+    $('dash-title').textContent = cur ? cur[1] : '';
     var body = $('staff-body');
     var active = document.activeElement;
     var keepFocus = active && body.contains(active) && /INPUT|TEXTAREA|SELECT/.test(active.tagName) ? active.id : null;
@@ -90,8 +117,8 @@
 
   function loadRow(l, actions) {
     return '<div class="admin-row' + (l.status === 'pendiente' ? ' pending' : '') + '"><div class="admin-row-main"><strong>' + esc(l.name) + ' · Mesa ' + esc(l.table) + ' <b class="' + (l.amount < 0 ? 'down' : '') + '">' + (l.amount > 0 ? '+' : '') + money(l.amount) + '</b></strong>' +
-      '<small>' + esc(l.method) + (l.code ? ' · código <b class="code">' + esc(l.code) + '</b>' : '') + (l.note ? ' · ' + esc(l.note) : '') + ' · ' + when(l.ts) + ' · <span class="st-' + l.status + '">' + l.status + '</span></small></div>' +
-      (actions && l.status === 'pendiente' ? '<div class="admin-row-actions"><button class="btn xs primary" data-op="load.approve" data-id="' + esc(l.id) + '">Confirmar pago</button><button class="btn xs danger" data-op="load.reject" data-id="' + esc(l.id) + '">Rechazar</button></div>' : '') +
+      '<small>' + esc(l.method) + (l.note ? ' · ' + esc(l.note) : '') + ' · ' + when(l.ts) + ' · <span class="st-' + l.status + '">' + l.status + '</span>' + (l.verified ? ' · ✓ código' : '') + '</small></div>' +
+      (actions && l.status === 'pendiente' ? '<div class="admin-row-actions"><button class="btn xs primary" data-verify="' + esc(l.id) + '">Confirmar con código</button><button class="btn xs danger" data-op="load.reject" data-id="' + esc(l.id) + '">Rechazar</button></div>' : '') +
     '</div>';
   }
 
@@ -100,16 +127,83 @@
     var t = data.totals;
     var pend = data.loads.filter(function (l) { return l.status === 'pendiente'; });
     var po = data.orders.filter(function (o) { return o.status === 'pendiente'; });
-    return '<div class="admin-stats">' +
-        stat('Clientes', data.customers.length) + stat('Mesas', data.tables.length) +
-        stat('Saldo cargado', money(t.loaded)) + stat('Gastado en tragos', money(t.spent), 'up') +
-        stat('Saldo sin usar', money(t.balance), 'gold') + stat('Descuentos dados', money(t.discounts)) +
-      '</div>' +
-      '<div class="admin-grid two">' +
-        '<div class="admin-card"><h3>Cargas por confirmar <small>' + pend.length + '</small></h3>' + (pend.slice(0, 6).map(function (l) { return loadRow(l, true); }).join('') || empty('Sin cargas pendientes.')) + '</div>' +
-        '<div class="admin-card"><h3>Pedidos por entregar <small>' + po.length + '</small></h3>' + (po.slice(0, 6).map(function (o) { return orderRow(o, true); }).join('') || empty('Sin pedidos pendientes.')) + '</div>' +
-      '</div>' +
-      '<div class="admin-card"><h3>Mesas que más gastan</h3>' + tablesList(data.tables.slice(0, 5)) + '</div>';
+    var delivered = data.orders.filter(function (o) { return o.status === 'entregado'; }).length;
+    var totalOrders = data.orders.filter(function (o) { return o.status !== 'cancelado'; }).length;
+    var people = data.customers.slice(0, 5);
+    var flow = Math.max(1, t.loaded);
+    var top = data.tables.slice(0, 4);
+    var maxT = top.length ? Math.max(1, top[0].spent) : 1;
+    var photos = data.photos.filter(function (p) { return !p.hidden; }).slice(0, 6);
+    var feed = [];
+    pend.forEach(function (l) { feed.push({ ts: l.ts, html: '<span class="avatar sm">' + esc(U.initials(l.name)) + '</span><div><b>' + esc(l.name) + ' pidió cargar ' + money(l.amount) + '</b><small>Mesa ' + esc(l.table) + ' · ' + esc(l.method) + ' · ' + U.ago(l.ts) + '</small></div><button class="live-chip" data-verify="' + esc(l.id) + '">Confirmar</button>' }); });
+    po.forEach(function (o) { feed.push({ ts: o.ts, html: '<span class="avatar sm">' + esc(U.initials(o.name)) + '</span><div><b>' + o.qty + '× ' + esc(o.drinkName) + ' · mesa ' + esc(o.table) + '</b><small>' + esc(o.name) + ' · ' + money(o.total) + ' · ' + U.ago(o.ts) + '</small></div><button class="live-chip live" data-op="order.deliver" data-id="' + esc(o.id) + '" title="Marcar entregado">Live</button>' }); });
+    feed.sort(function (a, b) { return b.ts - a.ts; });
+
+    return '<div class="bento">' +
+      '<section class="b-hero">' +
+        '<div><h2>La noche es <em>mejor</em> en el club</h2>' +
+        '<p>Cargas, pedidos y fotos de tus clientes en tiempo real. Confirmá cada pago con el código del celular.</p>' +
+        '<div class="b-hero-actions"><button class="pill-orange" data-tab="cargas">+ Confirmar cargas' + (pend.length ? ' (' + pend.length + ')' : '') + '</button></div></div>' +
+        '<div class="b-hero-side"><div class="avatar-stack">' + (people.length ? people.map(function (c) { return '<span class="avatar">' + esc(U.initials(c.name)) + '</span>'; }).join('') : '<span class="avatar">—</span>') +
+          (data.customers.length > 5 ? '<span class="avatar more">+' + (data.customers.length - 5) + '</span>' : '') + '</div>' +
+          '<span class="online-chip"><i></i>' + data.customers.length + (data.customers.length === 1 ? ' cliente' : ' clientes') + '</span></div>' +
+      '</section>' +
+
+      '<section class="b-card b-members"><div class="b-head"><h3>Clientes <span class="b-count">' + data.customers.length + '</span></h3><button class="b-link" data-tab="clientes" aria-label="Ver clientes">↗</button></div>' +
+        '<div class="members">' + (data.customers.slice(0, 6).map(function (c) {
+          return '<div class="member"><span class="avatar lg">' + esc(U.initials(c.name)) + '</span><b>' + esc(c.name) + '</b><small>Mesa ' + esc(c.table) + '</small></div>';
+        }).join('') || '<p class="b-empty">Todavía no entró nadie.</p>') + '</div></section>' +
+
+      '<section class="b-card b-big"><div class="b-head"><h3>Gastado</h3><button class="b-link" data-tab="mesas" aria-label="Ver mesas">→</button></div>' +
+        '<div class="big-num">' + money(t.spent) + '</div>' +
+        '<div class="seg-bar"><i class="s1" style="flex:' + Math.max(0.001, t.spent) + '"></i><i class="s2" style="flex:' + Math.max(0.001, t.balance) + '"></i><i class="s3" style="flex:' + Math.max(0.001, t.discounts) + '"></i></div>' +
+        '<div class="seg-legend"><span><i class="s1"></i>' + Math.round(t.spent / flow * 100) + '% usado</span><span><i class="s2"></i>' + money(t.balance) + ' sin usar</span><span><i class="s3"></i>' + money(t.discounts) + ' desc.</span></div></section>' +
+
+      '<section class="b-card b-impact"><div class="b-head"><h3>Mesas</h3><span class="b-sub">Top gasto</span></div>' +
+        '<div class="pillbars">' + (top.map(function (r, i) {
+          return '<div class="pillbar"><div class="pill-track"><i class="' + (i === 0 ? 'hi' : i % 2 ? 'peach' : 'mint') + '" style="height:' + Math.max(14, r.spent / maxT * 100) + '%"><b>' + D.moneyShort(r.spent) + '</b></i></div><span>M' + esc(r.table) + '</span></div>';
+        }).join('') || '<p class="b-empty">Sin consumos.</p>') + '</div></section>' +
+
+      '<section class="b-card b-stats"><div class="b-head"><h3>Pedidos</h3><div class="mini-seg"><span class="on">Hoy</span></div></div>' +
+        '<div class="stat-row"><div class="big-num sm">' + delivered + '<span>/' + totalOrders + '</span></div><small>entregados</small></div>' +
+        '<div class="dash-bar"><i style="width:' + (totalOrders ? delivered / totalOrders * 100 : 0) + '%"></i></div>' +
+        '<div class="stat-tiles"><div><b>' + po.length + '</b><small>Por entregar</small></div><div><b>' + pend.length + '</b><small>Cargas pendientes</small></div></div></section>' +
+
+      '<section class="b-card b-promo"><div class="promo-badge">★</div><h3>Votá la <em>mejor</em> foto</h3>' +
+        '<p>' + (data.contest ? 'Votación abierta · termina en <b id="st-contest-left">' + U.mmss(data.contest.endsAt - Date.now()) + '</b>' : 'Abrí una votación: la foto ganadora se lleva ' + data.settings.discountPct + '% OFF.') + '</p>' +
+        '<button class="pill-mint" data-tab="votacion">' + (data.contest ? 'Ver ranking' : 'Abrir votación') + '</button></section>' +
+
+      '<section class="b-card b-photos"><div class="b-head"><h3>Fotos de la noche</h3><button class="b-link" data-tab="fotos" aria-label="Ver fotos">+</button></div>' +
+        '<div class="photo-row">' + (photos.map(function (p) {
+          return '<figure><div class="ph"><img src="' + esc(p.src) + '" alt="" loading="lazy" /><span class="ph-tag">' + p.votes + ' ★</span></div><figcaption><b>' + esc(p.name) + '</b><small>Mesa ' + esc(p.table) + '</small></figcaption></figure>';
+        }).join('') || '<p class="b-empty">Las fotos de los clientes aparecen acá.</p>') + '</div></section>' +
+
+      '<section class="b-card b-notif"><div class="b-head"><h3>Notificaciones</h3><span class="b-sub">' + feed.length + ' pendientes</span></div>' +
+        '<div class="notif-tabs"><span class="on">Todo</span><span>Cargas ' + pend.length + '</span><span>Pedidos ' + po.length + '</span></div>' +
+        '<div class="notif-list">' + (feed.slice(0, 7).map(function (f) { return '<div class="notif">' + f.html + '</div>'; }).join('') || '<p class="b-empty">Todo al día ✓</p>') + '</div></section>' +
+    '</div>';
+  }
+
+  /* Confirmar una carga tipeando el código del celular del cliente (estilo Glassy OTP). */
+  function verifyLoad(id) {
+    var l = data.loads.filter(function (x) { return x.id === id; })[0];
+    if (!l) return;
+    U.otp({
+      icon: 'wallet',
+      title: 'Confirmá el pago',
+      sub: 'Ingresá el código de 4 dígitos que ' + esc(l.name) + ' ve en su celular<br><span class="glass-chip">' + money(l.amount) + ' · Mesa ' + esc(l.table) + '</span>',
+      button: 'Verificar código',
+      foot: data.role === 'admin' ? '¿Sin código? <button type="button" data-force-load="' + esc(l.id) + '">Confirmar igual</button>' : '',
+      dock: '<span>✦ Pago en ' + esc(l.method) + '</span><span>' + money(l.amount) + '</span>',
+      onSubmit: function (code) {
+        return API.call('load.approve', { id: id, code: code }).then(function (r) {
+          return r.ok ? { ok: true } : { ok: false, error: r.error };
+        });
+      },
+      verifiedTitle: 'Pago verificado',
+      verifiedSub: '+' + money(l.amount) + ' para ' + l.name + ' · el saldo ya está disponible',
+      onDone: function () { refresh(); }
+    });
   }
 
   function tablesList(list) {
@@ -147,7 +241,7 @@
   function vCargas() {
     var pend = data.loads.filter(function (l) { return l.status === 'pendiente'; });
     var done = data.loads.filter(function (l) { return l.status !== 'pendiente'; });
-    return '<div class="admin-card"><h3>Por confirmar <small>' + pend.length + '</small></h3><p>Confirmá cuando recibas el pago (efectivo, transferencia o tarjeta). Pedile al cliente el código que ve en su celular.</p>' +
+    return '<div class="admin-card"><h3>Por confirmar <small>' + pend.length + '</small></h3><p>Cuando recibas el pago, tocá «Confirmar con código» y tipeá el código de 4 dígitos que el cliente ve en su celular.</p>' +
       (pend.map(function (l) { return loadRow(l, true); }).join('') || empty('Sin cargas pendientes.')) + '</div>' +
       '<div class="admin-card"><h3>Historial</h3><div class="admin-list">' + (done.slice(0, 80).map(function (l) { return loadRow(l, false); }).join('') || empty('Sin movimientos.')) + '</div></div>';
   }
@@ -297,16 +391,33 @@
 
   /* --------------------------------------------------------------- wire */
   function init() {
-    U.applyTheme();
+    document.documentElement.dataset.theme = 'light';   // el panel siempre usa el diseño claro
+    $('st-user').addEventListener('input', loginBtnState);
+    $('st-pass').addEventListener('input', loginBtnState);
     $('login-form').addEventListener('submit', function (ev) {
       ev.preventDefault();
+      var btn = $('login-btn'), card = $('login-form');
+      if (btn.classList.contains('loading')) return;
+      btn.className = 'glass-btn loading'; btn.textContent = 'Verificando…'; btn.disabled = true;
+      $('login-error').textContent = '';
+      var t0 = Date.now();
       API.call('staff.login', { user: $('st-user').value, pass: $('st-pass').value }).then(function (r) {
-        $('st-pass').value = '';
-        if (!r.ok) { U.toast('Acceso denegado', r.error, 'down'); return; }
-        $('st-user').value = '';
-        U.toast('Acceso concedido', r.data.role === 'admin' ? 'Panel de administración.' : 'Panel de community manager.', 'up');
-        tab = null;
-        refresh();
+        setTimeout(function () {
+          $('st-pass').value = '';
+          if (!r.ok) {
+            btn.className = 'glass-btn'; btn.textContent = 'Entrar'; btn.disabled = false;
+            $('login-error').textContent = r.error;
+            card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake');
+            $('st-pass').focus();
+            return;
+          }
+          $('st-user').value = '';
+          btn.className = 'glass-btn success'; btn.textContent = 'Verificado';
+          setTimeout(function () {
+            tab = null;
+            refresh().then(function () { U.toast('Acceso concedido', r.data.role === 'admin' ? 'Panel de administración.' : 'Panel de community manager.', 'up'); });
+          }, 650);
+        }, Math.max(0, 600 - (Date.now() - t0)));
       });
     });
     $('btn-logout').addEventListener('click', function () { API.call('staff.logout').then(showLogin); });
@@ -320,6 +431,15 @@
         if (o.dataset.text !== undefined) payload = { text: o.dataset.text };
         var msgs = { 'load.approve': ['Carga confirmada', 'El saldo ya está disponible.', 'up'], 'load.reject': ['Carga rechazada'], 'order.deliver': ['Pedido entregado', '', 'up'], 'announce': ['Anuncio quitado'] };
         act(o.dataset.op, payload, msgs[o.dataset.op]);
+        return;
+      }
+      var vf = ev.target.closest('[data-verify]');
+      if (vf) { verifyLoad(vf.dataset.verify); return; }
+      var fz = ev.target.closest('[data-force-load]');
+      if (fz) {
+        var lid = fz.dataset.forceLoad;
+        U.closeSheet();
+        act('load.approve', { id: lid, force: true }, ['Carga confirmada sin código', 'Quedó registrada como confirmación manual.', 'info']);
         return;
       }
       var k = ev.target.closest('[data-ask]');
