@@ -74,12 +74,23 @@
       this._sesion({ tipo: "admin", usuario: u });
     },
     async salir() { this._sesion(null); },
+    sesionNativa() { return null; },
     async ocupadas() { return new Set(Object.values(this._db().empleados || {}).map(e => keyPersona(e.persona))); },
     async guardarDatos(d) { const db = this._db(); db.datos = { ...d, actualizado: Date.now() }; this._save(db); this._all("datos"); },
     async borrarEmpleado(id) { const db = this._db(); delete (db.empleados || {})[id]; this._save(db); this._all("empleados"); },
     async reasignarEmpleado(id, persona) { const db = this._db(); db.empleados[id].persona = persona; this._save(db); this._all("empleados"); },
     async guardarCambio(c) { const db = this._db(); db.cambios = db.cambios || {}; db.cambios["c" + Date.now().toString(36)] = { ...c, creado: Date.now() }; this._save(db); this._all("cambios"); },
     async borrarCambio(id) { const db = this._db(); delete db.cambios[id]; this._save(db); this._all("cambios"); },
+    async guardarCambios(lista) {
+      const db = this._db(); db.cambios = db.cambios || {};
+      lista.forEach((c, i) => { db.cambios["c" + Date.now().toString(36) + i] = { ...c, creado: Date.now() }; });
+      this._save(db); this._all("cambios");
+    },
+    async responderCambio(ids, estado, respuesta) {
+      const db = this._db();
+      ids.forEach(id => { const c = (db.cambios || {})[id]; if (c && c.estado === "pendiente") Object.assign(c, { estado, respuesta: respuesta || "", respondido: Date.now() }); });
+      this._save(db); this._all("cambios");
+    },
     async publicarAviso(texto, por) { const db = this._db(); db.avisos = db.avisos || {}; db.avisos["a" + Date.now().toString(36)] = { texto, por, creado: Date.now() }; this._save(db); this._all("avisos"); },
     async borrarAviso(id) { const db = this._db(); delete db.avisos[id]; this._save(db); this._all("avisos"); },
   };
@@ -206,6 +217,23 @@
     },
     async guardarCambio(c) { await this.db.collection("cambios").add({ ...c, creado: Date.now() }); },
     async borrarCambio(id) { await this.db.collection("cambios").doc(id).delete(); },
+    // todos los días de un cambio en una sola escritura: el empleado recibe una sola notificación
+    async guardarCambios(lista) {
+      const b = this.db.batch(), ahora = Date.now();
+      lista.forEach(c => b.set(this.db.collection("cambios").doc(), { ...c, creado: ahora }));
+      await b.commit();
+    },
+    async responderCambio(ids, estado, respuesta) {
+      const b = this.db.batch();
+      ids.forEach(id => b.update(this.db.collection("cambios").doc(id), { estado, respuesta: respuesta || "", respondido: Date.now() }));
+      await b.commit();
+    },
+    // datos para que el teléfono revise cambios pendientes aunque la app esté cerrada
+    sesionNativa(persona) {
+      const u = this.auth.currentUser, c = G.FIREBASE_CONFIG;
+      if (!u || c.emulador) return null;
+      return { apiKey: c.apiKey, projectId: c.projectId, refreshToken: u.refreshToken, persona };
+    },
     async publicarAviso(texto, por) { await this.db.collection("avisos").add({ texto, por, creado: Date.now() }); },
     async borrarAviso(id) { await this.db.collection("avisos").doc(id).delete(); },
   };

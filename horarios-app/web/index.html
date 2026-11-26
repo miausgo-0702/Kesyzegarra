@@ -109,6 +109,10 @@
         <div class="t1" id="saludo">Hola</div>
         <div class="t2" id="quien">—</div>
       </div>
+      <button class="iconbtn campana" id="bNotif" title="Notificaciones" aria-label="Notificaciones">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span class="badge oculto" id="notifBadge">0</span>
+      </button>
       <button class="iconbtn" id="bSalir" title="Salir" aria-label="Salir">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
       </button>
@@ -129,6 +133,8 @@
   <nav class="nav" id="nav"></nav>
 </section>
 <div class="toast" id="toast"></div>
+<div class="banner" id="banner" role="status"></div>
+<div class="sheet oculto" id="sheet"><div class="sheet-in"><div class="sheet-asa"></div><button class="iconbtn sheet-x" data-cerrar aria-label="Cerrar">✕</button><div id="sheetBody"></div></div></div>
 
 <script src="vendor/firebase-app-compat.js"></script>
 <script src="vendor/firebase-auth-compat.js"></script>
@@ -138,6 +144,7 @@
 <script src="data.js"></script>
 <script src="logic.js"></script>
 <script src="backend.js"></script>
+<script src="notif.js"></script>
 <script src="app.js"></script>
 <script>
   if ("serviceWorker" in navigator && location.protocol === "https:" && !/appassets\.androidplatform\.net/.test(location.host))

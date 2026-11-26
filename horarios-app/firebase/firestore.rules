@@ -31,10 +31,17 @@ service cloud.firestore {
       allow create: if logueado() && !admin() && request.resource.data.uid == request.auth.uid;
       allow update, delete: if admin();
     }
-    // Cambios de turno / francos y avisos: los cargan los administradores.
+    // Cambios de turno / francos: los cargan los administradores. El empleado solo puede
+    // aceptar o rechazar (una vez) los cambios pendientes que son suyos.
     match /cambios/{id} {
       allow read: if admin() || empleado();
-      allow write: if admin();
+      allow create, delete: if admin();
+      allow update: if admin() || (empleado()
+        && get(/databases/$(database)/documents/empleados/$(request.auth.uid)).data.persona == resource.data.persona
+        && resource.data.estado == 'pendiente'
+        && request.resource.data.estado in ['aceptado', 'rechazado']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'respuesta', 'respondido'])
+        && request.resource.data.respuesta is string && request.resource.data.respuesta.size() <= 300);
     }
     match /avisos/{id} {
       allow read: if admin() || empleado();

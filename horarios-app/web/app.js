@@ -145,6 +145,10 @@
       if (B.online && st.datosCargados && !st.datos) B.guardarDatos(SEED).catch(() => {});
     }
     armarNav(); render();
+    if (u.tipo === "empleado") { Notif.sesion(B.sesionNativa(u.persona)); setTimeout(() => Notif.pedir(), 2500); }
+    else Notif.sesion(null);
+    procesarNotifs(true);
+    if (location.hash === "#notificaciones") { history.replaceState(null, "", location.pathname); abrirNotificaciones(); }
   }
   B.onUser((u, aviso) => {
     if (st.animando) { st.pendiente = u; return; }
@@ -157,10 +161,10 @@
     if (!d && st.user && st.user.tipo === "admin" && B.online) B.guardarDatos(SEED).catch(() => {});
     if (st.user) render();
   });
-  B.on("cambios", c => { st.cambios = c || []; if (st.user) render(); });
+  B.on("cambios", c => { st.cambios = c || []; if (st.user) { render(); procesarNotifs(); } });
   B.on("avisos", a => { st.avisos = a || []; if (st.user) render(); });
   B.on("empleados", e => { st.empleados = (e || []).sort((a, b) => (a.persona || "").localeCompare(b.persona || "")); if (st.user) render(); });
-  $("bSalir").onclick = () => { if (confirm("¿Cerrar sesión?")) B.salir(); };
+  $("bSalir").onclick = () => { if (confirm("¿Cerrar sesión?")) { Notif.sesion(null); B.salir(); } };
 
   /* ============================== NAVEGACIÓN ============================== */
   const ICON = {
@@ -280,7 +284,7 @@
   function personaActual() { return st.user.tipo === "admin" ? st.ver : st.user.persona; }
   function cambioDe(nombre, d) {
     const k = ymd(d), n = norm(nombre);
-    return st.cambios.filter(c => c.fecha === k && norm(c.persona) === n).sort((a, b) => b.creado - a.creado)[0] || null;
+    return st.cambios.filter(c => c.fecha === k && norm(c.persona) === n && c.estado !== "rechazado").sort((a, b) => b.creado - a.creado)[0] || null;
   }
   function estado(nombre, d) {
     const u = L.ubicar(nombre); if (!u) return null;
@@ -351,7 +355,9 @@
     if (s.tipo === "feriado") pills += `<span class="pill">${s.trabaja ? "Feriado que trabajás" : "Feriado que descansás"}</span>`;
     if (s.tipo === "semana" && !s.manual) pills += `<span class="pill">Semana ${corto(lun)} – ${corto(addDays(lun, 4))}</span>`;
     if (s.fijo) pills += `<span class="pill">Horario fijo</span>`;
-    if (s.cambio) pills += `<span class="pill ${s.cambio.t ? "ok" : "bad"}">Cambio cargado</span>`;
+    if (s.cambio) pills += s.cambio.estado === "pendiente"
+      ? `<span class="pill pend">⏳ Cambio pendiente de aprobación</span>`
+      : `<span class="pill ok">✓ Cambio aceptado</span>`;
     const notas = [];
     if (s.cambio && s.cambio.nota) notas.push("📝 " + esc(s.cambio.nota));
     if (s.trabaja && s.h === "Horario a confirmar") notas.push(s.tipo === "finde"
@@ -581,21 +587,27 @@
   function admCambios(root) {
     const desde = ymd(addDays(hoy(), -30));
     const lista = st.cambios.filter(c => c.fecha >= desde).sort((a, b) => a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : b.creado - a.creado);
+    // borrador del formulario: se conserva aunque lleguen datos nuevos y se vuelva a dibujar
+    const bd = st.cb = st.cb || { per: st.ver, fec: ymd(st.fecha), hasta: "", tipo: 1, hora: "", nota: "" };
     root.innerHTML = `<div class="card"><h3>Cargar cambio o franco</h3>
-        <div class="field"><label>Persona</label><select class="in" id="cbPer">${opcionesPersonas(st.ver)}</select></div>
-        <div class="row"><div class="field f"><label>Desde</label><input type="date" class="in" id="cbFec" value="${ymd(st.fecha)}"></div>
-          <div class="field f"><label>Hasta (opcional)</label><input type="date" class="in" id="cbHasta"></div></div>
-        <div class="field"><label>Ese día</label><div class="seg" id="cbTipo"><button class="on" data-t="1">Trabaja</button><button data-t="0">Franco</button></div></div>
-        <div class="field" id="cbHoraF"><label>Horario</label><input class="in" id="cbHora" placeholder="Ej: 8 a 16  ·  o  9 a 13 · 18 a 22"></div>
-        <div class="field"><label>Nota (la ve el empleado)</label><input class="in" id="cbNota" placeholder="Ej: cubre a Rojas"></div>
+        <div class="field"><label>Persona</label><select class="in" id="cbPer">${opcionesPersonas(bd.per)}</select></div>
+        <div class="row"><div class="field f"><label>Desde</label><input type="date" class="in" id="cbFec" value="${esc(bd.fec)}"></div>
+          <div class="field f"><label>Hasta (opcional)</label><input type="date" class="in" id="cbHasta" value="${esc(bd.hasta)}"></div></div>
+        <div class="field"><label>Ese día</label><div class="seg" id="cbTipo"><button class="${bd.tipo ? "on" : ""}" data-t="1">Trabaja</button><button class="${bd.tipo ? "" : "on"}" data-t="0">Franco</button></div></div>
+        <div class="field ${bd.tipo ? "" : "oculto"}" id="cbHoraF"><label>Horario</label><input class="in" id="cbHora" value="${esc(bd.hora)}" placeholder="Ej: 8 a 16  ·  o  9 a 13 · 18 a 22"></div>
+        <div class="field"><label>Nota (la ve el empleado)</label><input class="in" id="cbNota" value="${esc(bd.nota)}" placeholder="Ej: cubre a Rojas"></div>
+        <p class="muted" style="margin:0 0 8px">Al guardar, el empleado recibe una notificación y tiene que aprobar el cambio.</p>
         <div class="muted" id="cbPrev" style="margin-bottom:8px"></div>
         <button class="btn pri" id="cbOk">Guardar cambio</button>
       </div>
       <div class="card"><h3>Cambios cargados <span class="sp"></span><span class="muted">últimos 30 días y futuros</span></h3><div class="list">${lista.length ? lista.map(c => `
         <div class="it"><span class="dot" style="background:${c.t ? "var(--acc)" : "var(--bad)"}"></span><div class="grow"><b>${esc(c.persona)}</b> · ${DIAS[parseYMD(c.fecha).getDay()]} ${corto(parseYMD(c.fecha))}
-          <div class="muted">${c.t ? "Trabaja " + esc(c.h || "") : "Franco"}${c.nota ? " · " + esc(c.nota) : ""} · por ${esc(c.por || "")}</div></div>
+          <div class="muted">${c.t ? "Trabaja " + esc(c.h || "") : "Franco"}${c.nota ? " · " + esc(c.nota) : ""} · por ${esc(c.por || "")}</div>
+          <div style="margin-top:4px">${chipEstado(c)}${c.respuesta ? ` <span class="muted">“${esc(c.respuesta)}”</span>` : ""}</div></div>
           <button class="btn sm bad" data-del="${esc(c.id)}">Quitar</button></div>`).join("") : `<div class="empty">No hay cambios cargados.</div>`}</div></div>`;
-    let tipo = 1;
+    let tipo = bd.tipo;
+    const sync = () => Object.assign(bd, { per: $("cbPer").value, fec: $("cbFec").value, hasta: $("cbHasta").value, tipo, hora: $("cbHora").value, nota: $("cbNota").value });
+    ["cbPer", "cbFec", "cbHasta", "cbHora", "cbNota"].forEach(id => $(id).addEventListener("input", sync));
     const prev = () => {
       const p = $("cbPer").value, d = $("cbFec").value ? parseYMD($("cbFec").value) : null;
       if (!d) return $("cbPrev").textContent = "";
@@ -603,8 +615,8 @@
       $("cbPrev").textContent = s ? `Según la planilla, el ${corto(d)} ${p} tiene: ${s.h}${s.cambio ? " (ya tiene un cambio cargado)" : ""}.` : "";
       if (tipo && !$("cbHora").value && s && s.trabaja && s.h !== "Horario a confirmar") $("cbHora").placeholder = "Ej: " + s.h;
     };
-    $("cbTipo").querySelectorAll("button").forEach(b => b.onclick = () => { tipo = +b.dataset.t; $("cbTipo").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); $("cbHoraF").classList.toggle("oculto", !tipo); });
-    $("cbPer").onchange = prev; $("cbFec").onchange = prev; prev();
+    $("cbTipo").querySelectorAll("button").forEach(b => b.onclick = () => { tipo = +b.dataset.t; sync(); $("cbTipo").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); $("cbHoraF").classList.toggle("oculto", !tipo); });
+    $("cbPer").onchange = () => { sync(); prev(); }; $("cbFec").onchange = () => { sync(); prev(); }; prev();
     $("cbOk").onclick = async () => {
       const persona = $("cbPer").value, f1 = $("cbFec").value, f2 = $("cbHasta").value || f1;
       if (!f1) return toast("Elegí la fecha");
@@ -613,7 +625,10 @@
       if (tipo && h && L.minutos(h) === null) return toast("Escribí el horario como '8 a 16' o '9 a 13 · 18 a 22'");
       const dias = []; for (let x = parseYMD(f1); ymd(x) <= f2 && dias.length < 62; x = addDays(x, 1)) dias.push(ymd(x));
       try {
-        for (const fecha of dias) await B.guardarCambio({ persona, fecha, t: !!tipo, h: tipo ? h : "", nota: $("cbNota").value.trim(), por: st.user.usuario });
+        const lote = "L" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        const nota = $("cbNota").value.trim();
+        await B.guardarCambios(dias.map(fecha => ({ persona, fecha, t: !!tipo, h: tipo ? h : "", nota, por: st.user.usuario, estado: "pendiente", lote })));
+        st.cb = { per: persona, fec: f1, hasta: "", tipo: 1, hora: "", nota: "" };
         toast(dias.length > 1 ? `Guardado para ${dias.length} días` : "Cambio guardado");
       } catch (er) { toast(er.message); }
     };
@@ -802,6 +817,122 @@
       try { await B.guardarDatos(D2); toast("Grupos invertidos"); } catch (er) { toast(er.message); }
     };
   }
+
+  /* ============================== NOTIFICACIONES ============================== */
+  function chipEstado(c) {
+    const e = c.estado || "aceptado";
+    return e === "pendiente" ? `<span class="pill pend">⏳ Pendiente</span>` : e === "rechazado" ? `<span class="pill bad">✕ Rechazado</span>` : `<span class="pill ok">✓ Aceptado</span>`;
+  }
+  // los cambios de varios días cargados juntos forman un "lote" y se aprueban juntos
+  function lotes(lista) {
+    const m = new Map();
+    lista.forEach(c => { const k = c.lote || c.id; if (!m.has(k)) m.set(k, []); m.get(k).push(c); });
+    return [...m.entries()].map(([id, cs]) => {
+      cs.sort((a, b) => a.fecha < b.fecha ? -1 : 1);
+      const est = cs.some(c => c.estado === "pendiente") ? "pendiente" : cs.some(c => c.estado === "rechazado") ? "rechazado" : "aceptado";
+      return { id, cs, primero: cs[0], estado: est, creado: Math.max(...cs.map(c => c.creado || 0)), respondido: Math.max(...cs.map(c => c.respondido || 0)) };
+    }).sort((a, b) => b.creado - a.creado);
+  }
+  function textoLote(l) {
+    const a = parseYMD(l.cs[0].fecha), z = parseYMD(l.cs[l.cs.length - 1].fecha), c = l.primero;
+    const cuando = l.cs.length === 1 ? `${DIAS[a.getDay()]} ${corto(a)}` : `del ${corto(a)} al ${corto(z)}`;
+    return { cuando, que: c.t ? (c.h ? "trabajás " + c.h : "trabajás") : "franco" };
+  }
+  const misLotes = () => st.user && st.user.tipo === "empleado" ? lotes(st.cambios.filter(c => norm(c.persona) === norm(st.user.persona))) : [];
+  const vistos = k => { try { return new Set(JSON.parse(localStorage.getItem(k) || "[]")); } catch (e) { return new Set(); } };
+  const guardarVistos = (k, set) => { try { localStorage.setItem(k, JSON.stringify([...set].slice(-300))); } catch (e) {} };
+
+  function procesarNotifs() {
+    if (!st.user) return;
+    const esAdmin = st.user.tipo === "admin";
+    let pend = 0;
+    if (!esAdmin) {
+      const k = "mh_nv_" + norm(st.user.persona), v = vistos(k);
+      misLotes().filter(l => l.estado === "pendiente").forEach(l => {
+        pend++;
+        if (v.has(l.id)) return;
+        v.add(l.id);
+        const t = textoLote(l);
+        const titulo = "Cambio en tu horario", texto = `${t.cuando[0].toUpperCase() + t.cuando.slice(1)}: ${t.que}. Lo cargó ${l.primero.por || "un administrador"}. Tocá para aprobarlo.`;
+        banner(titulo, texto);
+        Notif.mostrar(l.id, titulo, texto);
+      });
+      guardarVistos(k, v);
+    } else {
+      // respuestas de los empleados
+      const k = "mh_rv_" + st.user.usuario, v = vistos(k), primera = !localStorage.getItem(k);
+      lotes(st.cambios).filter(l => l.respondido && l.estado !== "pendiente").forEach(l => {
+        if (v.has(l.id + l.respondido)) return;
+        v.add(l.id + l.respondido);
+        if (Date.now() - l.respondido > 86400000 * 3 || primera) return;
+        pend++;
+        const t = textoLote(l), ok = l.estado === "aceptado";
+        const titulo = `${l.primero.persona} ${ok ? "aceptó" : "rechazó"} el cambio`;
+        const texto = `${t.cuando[0].toUpperCase() + t.cuando.slice(1)}: ${t.que}.${l.cs.find(c => c.respuesta) ? " Motivo: " + l.cs.find(c => c.respuesta).respuesta : ""}`;
+        banner(titulo, texto);
+        Notif.mostrar("r" + l.id, titulo, texto);
+      });
+      guardarVistos(k, v);
+      pend = lotes(st.cambios).filter(l => l.estado === "pendiente").length;
+    }
+    const bd = $("notifBadge"); if (bd) { bd.textContent = pend; bd.classList.toggle("oculto", !pend); }
+  }
+
+  function banner(titulo, texto) {
+    const b = $("banner");
+    b.innerHTML = `<img src="img/logo.svg" alt=""><div class="grow"><b>${esc(titulo)}</b><div>${esc(texto)}</div></div><button class="btn sm acc">Ver</button>`;
+    b.classList.remove("on"); void b.offsetWidth; b.classList.add("on");
+    b.onclick = () => { b.classList.remove("on"); abrirNotificaciones(); };
+    clearTimeout(banner.t); banner.t = setTimeout(() => b.classList.remove("on"), 7000);
+  }
+
+  function abrirNotificaciones() {
+    if (!st.user) return;
+    const esAdmin = st.user.tipo === "admin";
+    const ls = esAdmin ? lotes(st.cambios).filter(l => Date.now() - l.creado < 86400000 * 30) : misLotes();
+    const estadoNotif = Notif.estado();
+    const pie = estadoNotif === "granted" ? "" : estadoNotif === "denied"
+      ? `<p class="muted">Las notificaciones están bloqueadas. Activalas en los ajustes del ${Notif.nativo ? "teléfono" : "navegador"} para enterarte de los cambios.</p>`
+      : estadoNotif === "no-soportado" ? "" : `<button class="btn pri" id="nfPermiso" style="width:100%;margin-bottom:10px">🔔 Activar notificaciones</button>`;
+    $("sheetBody").innerHTML = `<h3 style="margin:0 0 4px">Notificaciones</h3>
+      <p class="muted" style="margin:0 0 12px">${esAdmin ? "Cambios cargados y respuestas de los empleados (últimos 30 días)." : "Cambios que un administrador hizo en tu horario."}</p>${pie}
+      <div class="list">${ls.length ? ls.map(l => {
+        const t = textoLote(l), c = l.primero, resp = l.cs.find(x => x.respuesta);
+        return `<div class="it notif ${l.estado}" data-l="${esc(l.id)}">
+          <div class="nico">${l.estado === "pendiente" ? "⏳" : l.estado === "aceptado" ? "✓" : "✕"}</div>
+          <div class="grow">
+            <b>${esAdmin ? esc(c.persona) + " · " : ""}${esc(t.cuando)}</b>
+            <div>${c.t ? "Trabaja <b>" + esc(c.h || "horario a confirmar") + "</b>" : "<b>Franco</b>"}</div>
+            ${c.nota ? `<div class="muted">📝 ${esc(c.nota)}</div>` : ""}
+            <div class="muted">Cargado por ${esc(c.por || "—")} · ${new Date(l.creado).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}</div>
+            <div style="margin-top:6px">${chipEstado(l)}${resp ? ` <span class="muted">“${esc(resp.respuesta)}”</span>` : ""}</div>
+            ${!esAdmin && l.estado === "pendiente" ? `<div class="row" style="margin-top:8px">
+              <button class="btn acc" data-r="aceptado">✓ Aceptar</button><button class="btn bad" data-r="rechazado">✕ Rechazar</button></div>
+              <div class="row oculto" data-motivo style="margin-top:8px"><input class="in f" placeholder="Motivo (opcional)"><button class="btn pri" data-r="rechazar-ok">Enviar</button></div>` : ""}
+          </div></div>`;
+      }).join("") : `<div class="empty">No hay notificaciones.</div>`}</div>`;
+    $("sheet").classList.remove("oculto"); requestAnimationFrame(() => $("sheet").classList.add("on"));
+    if ($("nfPermiso")) $("nfPermiso").onclick = async () => { await Notif.pedir(); setTimeout(abrirNotificaciones, 600); };
+    $("sheetBody").querySelectorAll(".notif").forEach(it => {
+      const l = ls.find(x => x.id === it.dataset.l);
+      it.querySelectorAll("[data-r]").forEach(b => b.onclick = async () => {
+        const r = b.dataset.r;
+        if (r === "rechazado") { it.querySelector("[data-motivo]").classList.remove("oculto"); it.querySelector("[data-motivo] input").focus(); return; }
+        const estado = r === "aceptado" ? "aceptado" : "rechazado";
+        const motivo = r === "rechazar-ok" ? it.querySelector("[data-motivo] input").value.trim() : "";
+        try {
+          await B.responderCambio(l.cs.filter(c => c.estado === "pendiente").map(c => c.id), estado, motivo);
+          toast(estado === "aceptado" ? "Cambio aceptado ✓" : "Cambio rechazado");
+          setTimeout(abrirNotificaciones, 250);
+        } catch (er) { toast(er.message); }
+      });
+    });
+  }
+  function cerrarNotificaciones() { $("sheet").classList.remove("on"); setTimeout(() => $("sheet").classList.add("oculto"), 300); }
+  window.abrirNotificaciones = abrirNotificaciones;
+  $("bNotif").onclick = abrirNotificaciones;
+  $("sheet").onclick = e => { if (e.target.id === "sheet" || e.target.closest("[data-cerrar]")) cerrarNotificaciones(); };
+  if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", e => { if (e.data && e.data.abrir === "notificaciones") abrirNotificaciones(); });
 
   /* ============================== APERTURA ============================== */
   (function apertura() {

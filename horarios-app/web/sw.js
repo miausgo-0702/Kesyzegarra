@@ -1,6 +1,6 @@
 // Service worker: permite abrir la app sin conexión (PC / iPhone instalados desde el navegador).
-const CACHE = "mh-v7";
-const ARCHIVOS = ["./", "index.html", "styles.css", "app.js", "logic.js", "backend.js", "data.js", "config.js",
+const CACHE = "mh-v8";
+const ARCHIVOS = ["./", "index.html", "styles.css", "app.js", "logic.js", "backend.js", "notif.js", "data.js", "config.js",
   "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png", "img/logo.svg", "img/la-esquina.png", "img/la-esquina-blanco.png", "img/belgrano.png", "img/belgrano-blanco.png",
   "vendor/firebase-app-compat.js", "vendor/firebase-auth-compat.js", "vendor/firebase-firestore-compat.js"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS))); self.skipWaiting(); });
@@ -11,4 +11,14 @@ self.addEventListener("fetch", e => {
   if (e.request.method !== "GET" || u.origin !== location.origin) return;
   e.respondWith(fetch(e.request).then(r => { const c = r.clone(); caches.open(CACHE).then(k => k.put(e.request, c)); return r; })
     .catch(() => caches.match(e.request).then(r => r || caches.match("index.html"))));
+});
+
+// Al tocar una notificación se abre (o enfoca) la app en el panel de notificaciones.
+self.addEventListener("notificationclick", e => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || "./#notificaciones", self.registration.scope).href;
+  e.waitUntil(clients.matchAll({ type: "window", includeUncontrolled: true }).then(cs => {
+    for (const c of cs) { if ("focus" in c) { c.postMessage({ abrir: "notificaciones" }); return c.focus(); } }
+    return clients.openWindow(url);
+  }));
 });
