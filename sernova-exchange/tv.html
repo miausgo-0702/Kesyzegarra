@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="SERNOVA EXCHANGE — pantalla de mercado para televisores." />
+  <title>SERNOVA EXCHANGE · Pantalla TV</title>
+  <link rel="stylesheet" href="tv.css" />
+</head>
+<body>
+  <div class="tv-shell" id="tv-shell">
+
+    <header class="tv-header">
+      <div class="tv-brand">
+        <div class="tv-brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none"><path d="M8 34h32M12 34V18l12-8 12 8v16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M18 34V24h12v10M24 10V6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="24" cy="18" r="2.5" fill="currentColor"/></svg>
+        </div>
+        <div>
+          <p class="tv-eyebrow">Pantalla de mercado · en vivo</p>
+          <h1>SERNOVA <span>EXCHANGE</span></h1>
+        </div>
+      </div>
+      <div class="tv-header-right">
+        <div class="tv-table-tag">MESA <strong id="tv-table">—</strong></div>
+        <div class="tv-countdown"><span>PRÓXIMA CAÍDA</span><strong id="tv-countdown">--:--</strong></div>
+        <div class="tv-clock" id="tv-clock">--:--:--</div>
+        <div class="tv-status" id="tv-status"><i></i> CONECTANDO</div>
+      </div>
+    </header>
+
+    <div class="tv-banner" id="tv-banner" hidden>
+      <strong id="tv-banner-title">CAÍDA GENERAL</strong>
+      <span id="tv-banner-detail">Todos los precios bajaron 10%</span>
+    </div>
+
+    <div class="tv-ticker">
+      <span class="tv-ticker-tag">MERCADO</span>
+      <div class="tv-ticker-window"><div class="tv-ticker-track" id="tv-ticker"></div></div>
+    </div>
+
+    <main class="tv-main">
+      <section class="tv-quote">
+        <div class="tv-quote-head">
+          <p class="tv-eyebrow" id="tv-quote-label">PRECIO EN VIVO</p>
+          <span class="tv-focus-tag" id="tv-focus-tag">ROTACIÓN AUTO</span>
+        </div>
+        <h2 id="tv-drink">—</h2>
+        <p class="tv-desc" id="tv-desc"></p>
+        <div class="tv-price-row">
+          <div class="tv-price" id="tv-price">$ 0</div>
+          <div class="tv-change" id="tv-change">—</div>
+        </div>
+        <div class="tv-kpis" id="tv-kpis"></div>
+        <div class="tv-chart" id="tv-chart"></div>
+      </section>
+
+      <aside class="tv-aside">
+        <section class="tv-card tv-total-card">
+          <p class="tv-eyebrow">Consumo de la mesa</p>
+          <div class="tv-total" id="tv-total">$ 0</div>
+          <p class="tv-total-sub" id="tv-total-sub">Sin consumos registrados</p>
+          <div class="tv-mini-kpis" id="tv-mini-kpis"></div>
+        </section>
+        <section class="tv-card">
+          <p class="tv-eyebrow">Lo más pedido</p>
+          <div id="tv-ranking" class="tv-ranking"></div>
+        </section>
+        <section class="tv-card tv-moves-card">
+          <p class="tv-eyebrow">Últimos movimientos</p>
+          <div id="tv-moves" class="tv-moves"></div>
+        </section>
+      </aside>
+    </main>
+
+    <section class="tv-board">
+      <div class="tv-board-head"><span>TODA LA CARTA</span><span id="tv-board-count">0 precios</span></div>
+      <div class="tv-board-grid" id="tv-board"></div>
+    </section>
+
+    <button class="tv-fullscreen" id="tv-fullscreen" type="button" title="Pantalla completa (F)">
+      <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 7V3h4m6 0h4v4m0 6v4h-4m-6 0H3v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Pantalla completa
+    </button>
+
+    <div class="tv-waiting" id="tv-waiting">
+      <div class="tv-waiting-mark">SERNOVA <span>EXCHANGE</span></div>
+      <h2>Esperando datos de una terminal…</h2>
+      <p>Abrí <b>index.html</b> en una computadora, iniciá una mesa y esta pantalla se actualizará sola.</p>
+      <p class="tv-waiting-tip">Si la terminal está en otro dispositivo, iniciá el servidor con <code>node server.js</code> y abrí <code>tv.html</code> desde la misma red.</p>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/sync.js"></script>
+  <script src="js/chart.js"></script>
+  <script src="js/tv.js"></script>
+</body>
+</html>
