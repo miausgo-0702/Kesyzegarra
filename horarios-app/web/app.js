@@ -145,8 +145,8 @@
       if (B.online && st.datosCargados && !st.datos) B.guardarDatos(SEED).catch(() => {});
     }
     armarNav(); render();
-    if (u.tipo === "empleado") { Notif.sesion(B.sesionNativa(u.persona)); setTimeout(() => Notif.pedir(), 2500); }
-    else Notif.sesion(null);
+    if (u.tipo === "empleado") Notif.sesion(B.sesionNativa(u.persona)); else Notif.sesion(null);
+    if (B.online) setTimeout(async () => { await Notif.pedir(); registrarPush(); }, 2500);
     procesarNotifs(true);
     if (location.hash === "#notificaciones") { history.replaceState(null, "", location.pathname); abrirNotificaciones(); }
   }
@@ -164,7 +164,20 @@
   B.on("cambios", c => { st.cambios = c || []; if (st.user) { render(); procesarNotifs(); } });
   B.on("avisos", a => { st.avisos = a || []; if (st.user) render(); });
   B.on("empleados", e => { st.empleados = (e || []).sort((a, b) => (a.persona || "").localeCompare(b.persona || "")); if (st.user) render(); });
-  $("bSalir").onclick = () => { if (confirm("¿Cerrar sesión?")) { Notif.sesion(null); B.salir(); } };
+  $("bSalir").onclick = async () => {
+    if (!confirm("¿Cerrar sesión?")) return;
+    Notif.sesion(null);
+    if (st.token) { await B.borrarToken(st.token).catch(() => {}); st.token = null; }
+    B.salir();
+  };
+  // registra este dispositivo para recibir notificaciones push con la app cerrada
+  async function registrarPush() {
+    if (!st.user || !B.online) return;
+    const t = await Notif.token();
+    if (!t) return;
+    try { await B.registrarToken(t.token, t.plataforma); st.token = t.token; } catch (e) { console.warn(e); }
+  }
+  window.registrarPush = registrarPush;
 
   /* ============================== NAVEGACIÓN ============================== */
   const ICON = {
@@ -912,7 +925,7 @@
           </div></div>`;
       }).join("") : `<div class="empty">No hay notificaciones.</div>`}</div>`;
     $("sheet").classList.remove("oculto"); requestAnimationFrame(() => $("sheet").classList.add("on"));
-    if ($("nfPermiso")) $("nfPermiso").onclick = async () => { await Notif.pedir(); setTimeout(abrirNotificaciones, 600); };
+    if ($("nfPermiso")) $("nfPermiso").onclick = async () => { await Notif.pedir(); setTimeout(() => { abrirNotificaciones(); registrarPush(); }, 900); };
     $("sheetBody").querySelectorAll(".notif").forEach(it => {
       const l = ls.find(x => x.id === it.dataset.l);
       it.querySelectorAll("[data-r]").forEach(b => b.onclick = async () => {

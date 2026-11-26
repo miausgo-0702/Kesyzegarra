@@ -1,0 +1,15 @@
+{
+  "name": "mis-horarios-functions",
+  "private": true,
+  "description": "Notificaciones push de Mis Horarios (cambios, respuestas, planillas y resumen semanal)",
+  "main": "index.js",
+  "engines": { "node": "20" },
+  "scripts": {
+    "copiar": "node copiar-logica.js",
+    "test": "node test/funciones.test.js"
+  },
+  "dependencies": {
+    "firebase-admin": "12.7.0",
+    "firebase-functions": "6.1.1"
+  }
+}

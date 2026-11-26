@@ -1,4 +1,7 @@
 plugins { id 'com.android.application' }
+// Notificaciones push: se activan cuando está el archivo google-services.json de Firebase
+// (Firebase > Configuración del proyecto > Tus apps > Android). Sin él, la app compila igual.
+if (file('google-services.json').exists()) { apply plugin: 'com.google.gms.google-services' }
 android {
     sourceSets { main { assets.srcDirs = ["../web"] } }
     namespace 'com.kesyzegarra.horarios'
@@ -7,8 +10,8 @@ android {
         applicationId 'com.kesyzegarra.horarios'
         minSdk 21
         targetSdk 34
-        versionCode 6
-        versionName '5.0'
+        versionCode 7
+        versionName '5.1'
     }
     buildTypes {
         release {
@@ -22,4 +25,6 @@ dependencies {
     implementation 'androidx.webkit:webkit:1.12.1'
     implementation 'androidx.work:work-runtime:2.9.1'
     implementation 'androidx.core:core:1.13.1'
+    implementation platform('com.google.firebase:firebase-bom:33.7.0')
+    implementation 'com.google.firebase:firebase-messaging'
 }

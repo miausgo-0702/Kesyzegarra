@@ -43,6 +43,17 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'respuesta', 'respondido'])
         && request.resource.data.respuesta is string && request.resource.data.respuesta.size() <= 300);
     }
+    // Dispositivos para notificaciones push: cada usuario registra / borra solo los suyos.
+    // Solo los leen las funciones del servidor.
+    match /tokens/{t} {
+      allow create, update: if logueado() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'token', 'plataforma', 'actualizado']);
+      allow delete: if logueado() && resource.data.uid == request.auth.uid;
+      allow read: if false;
+    }
+    // Uso interno de las funciones del servidor.
+    match /notifEnviadas/{d} { allow read, write: if false; }
+    match /_pruebaEnvios/{d} { allow read, write: if false; }
     match /avisos/{id} {
       allow read: if admin() || empleado();
       allow write: if admin();

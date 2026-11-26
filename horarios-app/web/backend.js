@@ -75,6 +75,7 @@
     },
     async salir() { this._sesion(null); },
     sesionNativa() { return null; },
+    async registrarToken() {}, async borrarToken() {},
     async ocupadas() { return new Set(Object.values(this._db().empleados || {}).map(e => keyPersona(e.persona))); },
     async guardarDatos(d) { const db = this._db(); db.datos = { ...d, actualizado: Date.now() }; this._save(db); this._all("datos"); },
     async borrarEmpleado(id) { const db = this._db(); delete (db.empleados || {})[id]; this._save(db); this._all("empleados"); },
@@ -227,6 +228,16 @@
       const b = this.db.batch();
       ids.forEach(id => b.update(this.db.collection("cambios").doc(id), { estado, respuesta: respuesta || "", respondido: Date.now() }));
       await b.commit();
+    },
+    // dispositivo que recibe notificaciones push (lo usa el servidor)
+    async registrarToken(token, plataforma) {
+      const u = this.auth.currentUser; if (!u || !token) return;
+      await this.db.collection("tokens").doc(token.replace(/\//g, "_").slice(0, 1400))
+        .set({ uid: u.uid, token, plataforma, actualizado: Date.now() });
+    },
+    async borrarToken(token) {
+      if (!token || !this.auth.currentUser) return;
+      await this.db.collection("tokens").doc(token.replace(/\//g, "_").slice(0, 1400)).delete().catch(() => {});
     },
     // datos para que el teléfono revise cambios pendientes aunque la app esté cerrada
     sesionNativa(persona) {

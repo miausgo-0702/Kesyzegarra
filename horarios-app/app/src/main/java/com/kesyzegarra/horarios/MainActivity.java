@@ -18,6 +18,8 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 import androidx.webkit.WebViewAssetLoader;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.messaging.FirebaseMessaging;
 import androidx.work.Constraints;
 import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.NetworkType;
@@ -78,6 +80,11 @@ public class MainActivity extends Activity {
             web.evaluateJavascript("window.abrirNotificaciones && window.abrirNotificaciones()", null);
     }
 
+    private void avisarToken(String t) {
+        final String js = "window.__tokenPush && window.__tokenPush(" + (t.isEmpty() ? "null" : org.json.JSONObject.quote(t)) + ")";
+        runOnUiThread(() -> web.evaluateJavascript(js, null));
+    }
+
     /** Funciones que la app web puede llamar como window.AndroidApp.* */
     private class Puente {
         @JavascriptInterface
@@ -96,6 +103,19 @@ public class MainActivity extends Activity {
                     requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 7);
                 }
             });
+        }
+
+        /** Token de notificaciones push; si todavía no está, lo pide y avisa con window.__tokenPush(t). */
+        @JavascriptInterface
+        public String tokenPush() {
+            SharedPreferences p = getSharedPreferences(Notifs.PREFS, MODE_PRIVATE);
+            String t = p.getString("fcmToken", "");
+            if (!t.isEmpty()) return t;
+            if (FirebaseApp.getApps(MainActivity.this).isEmpty()) { avisarToken(""); return ""; }
+            FirebaseMessaging.getInstance().getToken()
+                    .addOnSuccessListener(nuevo -> { p.edit().putString("fcmToken", nuevo).apply(); avisarToken(nuevo); })
+                    .addOnFailureListener(e -> avisarToken(""));
+            return "";
         }
 
         @JavascriptInterface

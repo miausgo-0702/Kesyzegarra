@@ -34,4 +34,7 @@ seguí [GUIA_FIREBASE.md](GUIA_FIREBASE.md).
   `backend.js` = datos (local / Firebase), `app.js` = pantallas.
 - `node test/logic.test.js` — pruebas de los cálculos.
 - `./gradlew assembleRelease` — genera el APK (necesita el SDK de Android en `local.properties`).
-- `firebase/` — reglas de seguridad de Firestore y configuración del emulador para pruebas.
+- `firebase/` — reglas de seguridad de Firestore, configuración del emulador y `desplegar.sh`.
+- `firebase/functions/` — funciones del servidor que envían las notificaciones push (cambios, respuestas,
+  planilla nueva y resumen semanal de los domingos 20 hs). Usan el mismo `logic.js` de la app.
+  Prueba: `firebase emulators:exec --only auth,firestore,functions --project demo-mishorarios "npm --prefix functions test"`.
