@@ -173,7 +173,7 @@
   function armarNav() {
     const items = ["inicio", "calendario", "equipo"].concat(st.user.tipo === "admin" ? ["admin"] : []);
     $("nav").innerHTML = items.map(v => `<button data-v="${v}">${ICON[v]}<span>${NOMBRES[v]}</span></button>`).join("");
-    $("side").innerHTML = `<div class="logo">MH</div>` + items.map(v => `<button data-v="${v}" title="${NOMBRES[v]}">${ICON[v]}</button>`).join("");
+    $("side").innerHTML = `<img class="logo" src="img/logo.svg" alt="">` + items.map(v => `<button data-v="${v}" title="${NOMBRES[v]}">${ICON[v]}</button>`).join("");
     document.querySelectorAll("[data-v]").forEach(b => b.onclick = () => { st.vista = b.dataset.v; render(); window.scrollTo(0, 0); });
   }
 
@@ -198,7 +198,7 @@
     document.querySelectorAll("[data-v]").forEach(b => b.classList.toggle("on", b.dataset.v === st.vista));
     ["inicio", "calendario", "equipo", "admin"].forEach(v => $("v-" + v).classList.toggle("oculto", v !== st.vista));
     const nombre = personaActual();
-    $("avatar").textContent = esAdmin ? "★" : iniciales(nombre);
+    $("avatar").innerHTML = esAdmin ? '<img class="logo-img" src="img/logo.svg" alt="">' : esc(iniciales(nombre));
     const h = new Date().getHours();
     $("saludo").textContent = (h < 12 ? "Buen día" : h < 20 ? "Buenas tardes" : "Buenas noches") + (esAdmin ? " · Administrador" : "");
     $("quien").textContent = esAdmin ? st.user.usuario : nombre;
@@ -293,6 +293,7 @@
         <div class="card"><h3>📢 Avisos</h3><div class="list">${avisos.length ? avisos.map(a => `<div class="it"><span class="dot"></span><div class="grow">${esc(a.texto)}<div class="muted">${esc(a.por || "")} · ${new Date(a.creado).toLocaleDateString("es-AR")}</div></div></div>`).join("") : `<div class="empty">No hay avisos.</div>`}</div></div>
         <div class="card"><h3>Próximos findes y feriados</h3><table>${filasEventos(nombre)}</table></div>
         <div class="card"><h3>Próximas semanas <span class="muted">(lunes a viernes)</span></h3><table>${filasSemanas(nombre)}</table></div>
+        ${MARCA}
       </div>
     </div>`;
     enlazarFecha($("v-inicio"), "fInicio");
@@ -409,6 +410,11 @@
       <div class="card"><h3>${titulo}</h3><table>${html}</table><p class="muted">${nota}</p></div></div>`;
     enlazarFecha($("v-equipo"), "fEquipo");
   }
+
+  const MARCA = `<div class="card marca-card"><img class="lg" src="img/logo.svg" alt="">
+    <img class="wm claro" src="img/la-esquina.png" alt="La Esquina"><img class="wm osc" src="img/la-esquina-blanco.png" alt="La Esquina">
+    <span class="sep"></span>
+    <img class="wm claro" src="img/belgrano.png" alt="Belgrano"><img class="wm osc" src="img/belgrano-blanco.png" alt="Belgrano"></div>`;
 
   /* ============================== ADMINISTRACIÓN ============================== */
   function renderAdmin() {

@@ -24,7 +24,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Window w = getWindow();
-        if (Build.VERSION.SDK_INT >= 21) w.setStatusBarColor(Color.parseColor("#0f3b31"));
+        if (Build.VERSION.SDK_INT >= 21) w.setStatusBarColor(Color.parseColor("#3a4108"));
 
         final WebViewAssetLoader loader = new WebViewAssetLoader.Builder()
                 .setDomain(HOST)

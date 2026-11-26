@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Logo de la farmacia">
+  <circle cx="50" cy="50" r="50" fill="#b3bb06"/>
+  <circle cx="50" cy="50" r="42.5" fill="#ffffff"/>
+  <circle cx="50" cy="50" r="36.5" fill="#b3bb06"/>
+  <g fill="#ffffff">
+    <rect x="38.7" y="17.9" width="8.2" height="28.7" rx="2.6"/><rect x="17.9" y="38.5" width="29" height="8.1" rx="2.6"/><rect x="38.7" y="38.5" width="8.2" height="8.1"/>
+    <rect x="53.2" y="53" width="28.8" height="8.2" rx="2.6"/><rect x="53.2" y="53" width="8.4" height="29" rx="2.6"/><rect x="53.2" y="53" width="8.4" height="8.2"/>
+  </g>
+  <g fill="#eadd12">
+    <rect x="53.2" y="17.9" width="8.4" height="28.7" rx="2.6"/><rect x="53.2" y="38.5" width="28.8" height="8.1" rx="2.6"/><rect x="53.2" y="38.5" width="8.4" height="8.1"/>
+    <rect x="17.9" y="53" width="29" height="8.2" rx="2.6"/><rect x="38.7" y="53" width="8.2" height="29" rx="2.6"/><rect x="38.7" y="53" width="8.2" height="8.2"/>
+  </g>
+  <path fill="#65265d" d="M56.7 45.2C55 42.8 54.3 41.6 54.3 40.4a2.4 2.4 0 1 1 4.8 0c0 1.2-.7 2.4-2.4 4.8z"/>
+</svg>
