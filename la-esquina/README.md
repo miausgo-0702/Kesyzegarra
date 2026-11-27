@@ -2,8 +2,11 @@
 
 App para el celular (se instala como aplicación, funciona sin internet) que:
 
-1. **Saca una foto** del producto (o usa la cámara en vivo / una foto de la galería).
-2. **Lee el código de barras** de la foto (EAN-13, EAN-8, UPC, Code128, Code39, ITF, QR…).
+1. **Escanea en vivo**: con la cámara abierta, el código se reconoce solo al instante (también acepta foto o galería).
+   - *Uno por uno*: lee el código y completás los datos; al guardar sigue escaneando solo.
+   - *Ráfaga*: cada lectura suma 1 unidad a la planilla (ideal para contar). En Vencidos se elige antes el vencimiento del lote.
+   - Linterna y zoom si el teléfono lo permite.
+2. **Reconoce el código de barras** (EAN-13, EAN-8, UPC, Code128, Code39, ITF, QR…).
 3. Lo pasa a una de **2 planillas**:
    - **Pedidos**: código de barras + nombre del producto (cantidad opcional).
    - **Vencidos**: código de barras + nombre + cantidad + vencimiento.

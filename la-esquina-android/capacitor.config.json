@@ -2,5 +2,5 @@
   "appId": "ar.laesquina.planillas",
   "appName": "La Esquina",
   "webDir": "www",
-  "android": { "backgroundColor": "#F3F5EA" }
+  "android": { "backgroundColor": "#98B828" }
 }

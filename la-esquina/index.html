@@ -15,6 +15,19 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!-- Pantalla de inicio -->
+  <div class="splash" id="splash" role="img" aria-label="La Esquina, siempre de tu lado">
+    <div class="sp-rings" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="sp-center">
+      <div class="sp-icon"><img src="img/icono.png" alt=""></div>
+      <div class="sp-logo"><img src="img/logo-blanco.png" alt="La Esquina"></div>
+      <p class="sp-app">Planillas · Pedidos y Vencidos</p>
+    </div>
+    <div class="sp-bottom">
+      <div class="sp-bar"><span></span></div>
+      <small>Tocá para empezar</small>
+    </div>
+  </div>
   <!-- Filtro "goo": hace que la burbuja activa se derrita con la barra -->
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <defs>
@@ -39,11 +52,11 @@
       <div class="hero">
         <p class="eyebrow"><span class="dot"></span><span id="hoyTxt"></span></p>
         <h1>Inicio</h1>
-        <p class="sub">Sacá una foto, la app lee el código y lo pasa a la planilla.</p>
+        <p class="sub">Apuntá la cámara al código de barras y la app lo pasa a la planilla.</p>
       </div>
       <button class="cta" data-go="escanear">
         <span class="cta-ico"><svg viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M8 8v8M11 8v8M14 8v8M17 8v8"/></svg></span>
-        <span><b>Sacar foto y leer código</b><small>Pedidos o vencidos</small></span>
+        <span><b>Escanear en vivo</b><small>Apuntá y se lee solo · Pedidos o vencidos</small></span>
       </button>
       <div class="stats">
         <button class="stat" data-go="pedidos"><span class="stat-n" id="stPedidos">0</span><span class="stat-l">Pedidos</span></button>
@@ -60,9 +73,9 @@
     <!-- ESCANEAR -->
     <section class="view" id="view-escanear" data-title="Escanear">
       <div class="hero">
-        <p class="eyebrow"><span class="dot"></span>Paso 1 · Foto</p>
+        <p class="eyebrow"><span class="dot"></span>Paso 1 · Cámara en vivo</p>
         <h1>Escanear</h1>
-        <p class="sub">Encuadrá el código de barras derecho y con buena luz.</p>
+        <p class="sub">Apuntá la cámara al código: se reconoce solo, al instante.</p>
       </div>
 
       <div class="dest-toggle" role="tablist" aria-label="Planilla destino">
@@ -71,28 +84,51 @@
         <span class="seg-bg"></span>
       </div>
 
-      <div class="shot card">
-        <div class="shot-box" id="shotBox">
+      <div class="modo-toggle" role="tablist" aria-label="Modo de escaneo">
+        <button class="chip on" data-modo="uno" role="tab"><b>Uno por uno</b><small>leo y completo datos</small></button>
+        <button class="chip" data-modo="rafaga" role="tab"><b>Ráfaga</b><small>cada lectura suma 1</small></button>
+      </div>
+
+      <div class="scanner card">
+        <div class="cam" id="cam">
+          <video id="liveVideo" playsinline muted autoplay></video>
           <img id="shotImg" alt="" hidden>
-          <video id="liveVideo" playsinline muted hidden></video>
-          <div class="shot-empty" id="shotEmpty">
-            <svg viewBox="0 0 24 24"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.7l1.2-1.8A1.5 1.5 0 0 1 9.6 3.5h4.8a1.5 1.5 0 0 1 1.2.7L16.8 6h1.7A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5v-9Z"/><circle cx="12" cy="13" r="3.5"/></svg>
-            <span>Todavía no hay foto</span>
+          <div class="cam-mask" id="camMask" aria-hidden="true">
+            <div class="ventana" id="ventana"><i></i><i></i><i></i><i></i><span class="laser"></span></div>
           </div>
-          <div class="scan-line" id="scanLine" hidden></div>
+          <div class="cam-tools">
+            <button class="cam-btn" id="btnLinterna" hidden aria-label="Linterna"><svg viewBox="0 0 24 24"><path d="M9 2h6l-1 6h-4L9 2ZM10 8h4v3l-1 11h-2L10 11V8Z"/></svg></button>
+            <button class="cam-btn" id="btnZoom" hidden aria-label="Zoom"><span>1×</span></button>
+          </div>
+          <div class="cam-pill" id="camPill">Iniciando cámara…</div>
+          <button class="cam-off" id="camOff" hidden>
+            <svg viewBox="0 0 24 24"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.7l1.2-1.8A1.5 1.5 0 0 1 9.6 3.5h4.8a1.5 1.5 0 0 1 1.2.7L16.8 6h1.7A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5v-9Z"/><circle cx="12" cy="13" r="3.5"/></svg>
+            <b id="camOffTxt">Tocá para activar la cámara</b>
+            <small id="camOffSub">El código se lee solo, al instante</small>
+          </button>
+          <div class="cam-flash" id="camFlash"></div>
         </div>
         <div class="shot-actions">
-          <label class="btn primary">
+          <button class="btn primary" id="btnVivo">Pausar</button>
+          <label class="btn ghost">
             <input type="file" accept="image/*" capture="environment" id="fotoInput" hidden>
-            Sacar foto
+            Foto
           </label>
           <label class="btn ghost">
             <input type="file" accept="image/*" id="galeriaInput" hidden>
-            Desde galería
+            Galería
           </label>
-          <button class="btn ghost" id="btnVivo">Cámara en vivo</button>
         </div>
         <p class="status" id="scanStatus"></p>
+      </div>
+
+      <div class="card rafaga" id="rafagaPanel" hidden>
+        <div class="card-h"><h3>Ráfaga · <span id="rafagaDest">Pedidos</span></h3><span class="badge ok" id="rafagaTotal">0 lecturas</span></div>
+        <label class="fld only-v"><span>Vencimiento de este lote (se aplica a todo lo que escanees)</span>
+          <input id="rVence" type="date">
+        </label>
+        <p class="muted small">Pasá los productos uno por uno frente a la cámara: cada lectura suma 1 unidad. Para volver a contar el mismo producto, sacalo del cuadro y volvé a pasarlo.</p>
+        <ul class="feed" id="feed"></ul>
       </div>
 
       <form class="card form" id="itemForm" autocomplete="off">

@@ -62,6 +62,7 @@
     $$('.tab').forEach(t => t.classList.toggle('active', t === tab));
     moverBurbuja(tab);
     if (vista !== 'escanear') pararVivo();
+    else setTimeout(iniciarCamara, 50);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     try { history.replaceState(null, '', '#' + vista); } catch {}
   }
@@ -180,22 +181,368 @@
     return null;
   }
 
+  // ======================================================================
+  //  ESCÁNER EN VIVO: la cámara queda prendida y el código se reconoce solo
+  // ======================================================================
+  const FORMATOS_NATIVOS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'code_93', 'itf', 'codabar', 'qr_code', 'data_matrix'];
+  const Cam = {
+    stream: null, track: null, activa: false, pausada: false,
+    detector: null, worker: null, ocupado: false, idPedido: 0, ciclo: 0,
+    ultimo: {}, ignorar: null, zoomPasos: [], zoomIdx: 0, linterna: false,
+    canvas: document.createElement('canvas'), modo: 'uno'
+  };
+  Cam.ctx = Cam.canvas.getContext('2d', { willReadFrequently: true });
+
+  const pill = (txt, cls = '') => { const p = $('#camPill'); p.textContent = txt; p.className = 'cam-pill ' + cls; };
+
+  // Sonido corto de "bip" al leer
+  let audio;
+  function bip() {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = 'square'; o.frequency.value = 1760;
+      g.gain.setValueAtTime(.12, audio.currentTime);
+      g.gain.exponentialRampToValueAtTime(.001, audio.currentTime + .12);
+      o.connect(g).connect(audio.destination);
+      o.start(); o.stop(audio.currentTime + .12);
+    } catch {}
+    if (navigator.vibrate) navigator.vibrate(70);
+    const f = $('#camFlash'); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
+  }
+
+  async function prepararDetector() {
+    // 1) Lector nativo del teléfono (Android/Chrome): el más rápido
+    if (!Cam.detector && 'BarcodeDetector' in window) {
+      try {
+        const sop = await window.BarcodeDetector.getSupportedFormats();
+        const f = FORMATOS_NATIVOS.filter(x => sop.includes(x));
+        if (f.length) Cam.detector = new window.BarcodeDetector({ formats: f });
+      } catch { Cam.detector = null; }
+    }
+    // 2) Lector ZXing en segundo plano (siempre disponible)
+    if (!Cam.worker && window.Worker) {
+      try {
+        Cam.worker = new Worker('scan-worker.js');
+        Cam.worker.onmessage = e => {
+          const d = e.data;
+          if (d.listo) return;
+          if (d.id !== Cam.idPedido) return;
+          Cam.ocupado = false;
+          if (d.texto) detectado(d.texto);
+        };
+        Cam.worker.onerror = () => { Cam.worker = null; Cam.ocupado = false; };
+      } catch { Cam.worker = null; }
+    }
+  }
+
+  async function iniciarCamara() {
+    if (Cam.activa) { reanudar(); return; }
+    if (!navigator.mediaDevices?.getUserMedia) return camaraApagada('Este navegador no permite la cámara en vivo', 'Usá “Foto” o abrí la app desde https');
+    $('#camOff').hidden = true;
+    pill('Iniciando cámara…');
+    try {
+      Cam.stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } }
+      });
+    } catch (e) {
+      const denegada = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError');
+      return camaraApagada(denegada ? 'Sin permiso para la cámara' : 'No se pudo abrir la cámara', denegada ? 'Habilitá el permiso de cámara y tocá acá' : 'Tocá para reintentar');
+    }
+    if (!$('#view-escanear').classList.contains('active')) { soltarCamara(); return; }
+    Cam.track = Cam.stream.getVideoTracks()[0];
+    const v = $('#liveVideo');
+    v.srcObject = Cam.stream;
+    v.hidden = false; $('#shotImg').hidden = true;
+    try { await v.play(); } catch {}
+    await ajustesCamara();
+    await prepararDetector();
+    Cam.activa = true; Cam.pausada = false;
+    $('#cam').classList.add('viva'); $('#cam').classList.remove('pausa');
+    $('#btnVivo').textContent = 'Pausar';
+    pill('Apuntá al código de barras');
+    bucle();
+  }
+
+  async function ajustesCamara() {
+    const t = Cam.track;
+    if (!t || !t.getCapabilities) return;
+    const caps = t.getCapabilities();
+    const adv = [];
+    if (caps.focusMode && caps.focusMode.includes('continuous')) adv.push({ focusMode: 'continuous' });
+    if (adv.length) { try { await t.applyConstraints({ advanced: adv }); } catch {} }
+    $('#btnLinterna').hidden = !caps.torch;
+    Cam.zoomPasos = [];
+    if (caps.zoom && caps.zoom.max > 1) {
+      const base = Math.max(1, caps.zoom.min);
+      Cam.zoomPasos = [base, 1.6, 2.4, 3.2].filter(z => z <= caps.zoom.max && z >= base);
+      Cam.zoomIdx = 0;
+    }
+    $('#btnZoom').hidden = Cam.zoomPasos.length < 2;
+  }
+
+  $('#btnLinterna').addEventListener('click', async () => {
+    Cam.linterna = !Cam.linterna;
+    try { await Cam.track.applyConstraints({ advanced: [{ torch: Cam.linterna }] }); } catch { Cam.linterna = false; }
+    $('#btnLinterna').classList.toggle('on', Cam.linterna);
+  });
+  $('#btnZoom').addEventListener('click', async () => {
+    Cam.zoomIdx = (Cam.zoomIdx + 1) % Cam.zoomPasos.length;
+    const z = Cam.zoomPasos[Cam.zoomIdx];
+    try { await Cam.track.applyConstraints({ advanced: [{ zoom: z }] }); } catch {}
+    $('#btnZoom span').textContent = (Math.round(z * 10) / 10) + '×';
+  });
+
+  function camaraApagada(txt, sub) {
+    soltarCamara();
+    $('#camOffTxt').textContent = txt;
+    $('#camOffSub').textContent = sub;
+    $('#camOff').hidden = false;
+    pill('Cámara apagada', 'off');
+  }
+  function soltarCamara() {
+    Cam.activa = false; Cam.ocupado = false; Cam.linterna = false;
+    if (Cam.stream) Cam.stream.getTracks().forEach(t => t.stop());
+    Cam.stream = Cam.track = null;
+    $('#liveVideo').srcObject = null;
+    $('#cam').classList.remove('viva');
+    $('#btnLinterna').classList.remove('on');
+  }
+  function pararVivo() {
+    if (!Cam.activa) return;
+    soltarCamara();
+    $('#camOffTxt').textContent = 'Tocá para activar la cámara';
+    $('#camOffSub').textContent = 'El código se lee solo, al instante';
+    $('#camOff').hidden = false;
+    $('#btnVivo').textContent = 'Activar cámara';
+  }
+  function pausar(msg) {
+    Cam.pausada = true;
+    $('#cam').classList.add('pausa');
+    $('#btnVivo').textContent = 'Escanear otro';
+    if (msg) pill(msg, 'ok');
+  }
+  function reanudar() {
+    if (!Cam.activa) return iniciarCamara();
+    Cam.pausada = false;
+    $('#cam').classList.remove('pausa');
+    $('#shotImg').hidden = true; $('#liveVideo').hidden = false;
+    $('#btnVivo').textContent = 'Pausar';
+    pill(Cam.modo === 'rafaga' ? 'Ráfaga: pasá los productos' : 'Apuntá al código de barras');
+    bucle();
+  }
+  $('#btnVivo').addEventListener('click', () => {
+    if (!Cam.activa) iniciarCamara();
+    else if (Cam.pausada) reanudar();
+    else { pausar(); pill('En pausa'); }
+  });
+  $('#camOff').addEventListener('click', iniciarCamara);
+  $('#cam').addEventListener('click', e => {
+    if (e.target.closest('.cam-btn,.cam-off')) return;
+    if (Cam.activa && Cam.pausada) reanudar();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) pararVivo();
+    else if ($('#view-escanear').classList.contains('active')) iniciarCamara();
+  });
+
+  // Zona de lectura: el recuadro marcado en pantalla (con margen), en coordenadas del video
+  function zonaLectura(v, vertical) {
+    const box = $('#cam').getBoundingClientRect();
+    const vw = v.videoWidth, vh = v.videoHeight;
+    const s = Math.max(box.width / vw, box.height / vh);          // object-fit: cover
+    const ox = (vw - box.width / s) / 2, oy = (vh - box.height / s) / 2;
+    const r = $('#ventana').getBoundingClientRect();
+    let x = ox + (r.left - box.left) / s, y = oy + (r.top - box.top) / s;
+    let w = r.width / s, h = r.height / s;
+    if (vertical) { const cx = x + w / 2, cy = y + h / 2; [w, h] = [h * 1.1, Math.min(vh, w)]; x = cx - w / 2; y = cy - h / 2; }
+    const mx = w * .12, my = h * .25;
+    x = Math.max(0, x - mx); y = Math.max(0, y - my);
+    w = Math.min(vw - x, w + 2 * mx); h = Math.min(vh - y, h + 2 * my);
+    return { x, y, w, h };
+  }
+
+  function recorteGris(v, z, rot) {
+    const k = Math.min(1, 960 / Math.max(z.w, z.h));
+    const w = Math.round(z.w * k), h = Math.round(z.h * k);
+    const cv = Cam.canvas, ctx = Cam.ctx;
+    if (rot) { cv.width = h; cv.height = w; } else { cv.width = w; cv.height = h; }
+    ctx.save();
+    if (rot) { ctx.translate(h, 0); ctx.rotate(Math.PI / 2); }
+    ctx.drawImage(v, z.x, z.y, z.w, z.h, 0, 0, w, h);
+    ctx.restore();
+    const px = ctx.getImageData(0, 0, cv.width, cv.height).data;
+    const lum = new Uint8ClampedArray(cv.width * cv.height);
+    for (let i = 0, j = 0; j < lum.length; i += 4, j++) lum[j] = (px[i] * 77 + px[i + 1] * 150 + px[i + 2] * 29) >> 8;
+    return { lum, w: cv.width, h: cv.height };
+  }
+
+  let bucleT;
+  function bucle() {
+    clearTimeout(bucleT);
+    if (!Cam.activa || Cam.pausada) return;
+    const v = $('#liveVideo');
+    const sig = () => { bucleT = setTimeout(bucle, Cam.detector ? 60 : 40); };
+    if (v.readyState < 2 || !v.videoWidth) return sig();
+    Cam.ciclo++;
+    if (Cam.detector) {
+      Cam.detector.detect(v).then(r => {
+        const ok = r && r.find(x => x.rawValue);
+        if (ok) detectado(ok.rawValue);
+        else if (Cam.worker && Cam.ciclo % 3 === 0) porWorker(v); // ayuda extra para códigos difíciles
+      }).catch(() => { Cam.detector = null; }).finally(sig);
+      return;
+    }
+    porWorker(v);
+    sig();
+  }
+  function porWorker(v) {
+    if (Cam.ocupado) return;
+    // Alterna: horizontal, horizontal, vertical (por si el código está parado), y cada tanto modo "difícil"
+    const paso = Cam.ciclo % 4;
+    const vertical = paso === 2;
+    const z = zonaLectura(v, vertical);
+    const g = recorteGris(v, z, vertical);
+    const hard = paso === 3;
+    Cam.idPedido++;
+    if (Cam.worker) {
+      Cam.ocupado = true;
+      Cam.worker.postMessage({ id: Cam.idPedido, lum: g.lum, w: g.w, h: g.h, hard }, [g.lum.buffer]);
+      setTimeout(() => { Cam.ocupado = false; }, 600); // por si el worker no respondió
+    } else if (ZX) {
+      try {
+        const res = new ZX.MultiFormatReader();
+        res.setHints(zxHints);
+        const r = res.decode(new ZX.BinaryBitmap(new ZX.HybridBinarizer(new ZX.RGBLuminanceSource(g.lum, g.w, g.h))));
+        if (r) detectado(r.getText());
+      } catch {}
+    }
+  }
+
+  // Qué pasa cuando se reconoce un código
+  function detectado(code) {
+    code = String(code).trim();
+    if (!code || !Cam.activa || Cam.pausada) return;
+    const ahora = Date.now();
+    const visto = Cam.ultimo[code] || 0;
+    Cam.ultimo[code] = ahora;
+    if (Cam.ignorar && Cam.ignorar.code === code && ahora < Cam.ignorar.hasta) return;
+    if (Cam.modo === 'rafaga') {
+      if (ahora - visto < 1500) return; // sigue en cuadro: no lo vuelve a contar
+      sumarRafaga(code);
+      return;
+    }
+    bip();
+    // Congela la imagen para que se vea qué se leyó
+    const v = $('#liveVideo'), img = $('#shotImg');
+    try {
+      const c = document.createElement('canvas');
+      c.width = v.videoWidth; c.height = v.videoHeight;
+      c.getContext('2d').drawImage(v, 0, 0);
+      img.src = c.toDataURL('image/jpeg', .7); img.hidden = false;
+    } catch {}
+    pausar('✓ ' + code + ' · tocá para escanear otro');
+    codigoLeido(code);
+    // Lleva al formulario para completar
+    const foco = S.dest === 'vencidos' ? '#fVence' : '#fNombre';
+    setTimeout(() => {
+      $('#itemForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (S.dest === 'vencidos' && $('#fNombre').value) $(foco).focus({ preventScroll: true });
+    }, 250);
+  }
+
+  function codigoLeido(code) {
+    const st = $('#scanStatus');
+    st.className = 'status ok';
+    st.textContent = `✓ Código leído: ${code}`;
+    $('#fCodigo').value = code;
+    $('#fNombre').value = '';
+    buscarNombre(code);
+  }
+
+  // ---------- Modo ráfaga: cada lectura suma 1 a la planilla ----------
+  const feed = [];
+  function sumarRafaga(code) {
+    let item;
+    if (S.dest === 'vencidos') {
+      const vence = $('#rVence').value;
+      if (!vence) {
+        pill('Elegí primero el vencimiento del lote', 'err');
+        $('#rVence').focus({ preventScroll: true });
+        if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+        return;
+      }
+      item = S.vencidos.find(x => x.codigo === code && x.vence === vence);
+      if (item) item.cantidad += 1;
+      else { item = { id: uid(), codigo: code, nombre: S.catalogo[code] || 'Buscando nombre…', cantidad: 1, vence, fecha: isoHoy(), cal: false }; S.vencidos.push(item); }
+    } else {
+      item = S.pedidos.find(x => x.codigo === code);
+      if (item) item.cantidad = (item.cantidad || 0) + 1;
+      else { item = { id: uid(), codigo: code, nombre: S.catalogo[code] || 'Buscando nombre…', cantidad: 1, fecha: isoHoy() }; S.pedidos.unshift(item); }
+    }
+    bip();
+    guardar(); render();
+    pill(`+1 ${item.nombre === 'Buscando nombre…' ? code : item.nombre} (${item.cantidad})`, 'ok');
+    feed.unshift({ item, dest: S.dest, t: Date.now() });
+    if (feed.length > 30) feed.pop();
+    pintarFeed();
+    if (item.nombre === 'Buscando nombre…') {
+      consultarNombre(code).then(n => {
+        const nuevo = n || 'Sin nombre (tocá ✎ para editar)';
+        [...S.pedidos, ...S.vencidos].forEach(x => { if (x.codigo === code && x.nombre === 'Buscando nombre…') x.nombre = nuevo; });
+        if (n) S.catalogo[code] = n;
+        guardar(); render(); pintarFeed();
+      });
+    }
+  }
+  function pintarFeed() {
+    $('#rafagaTotal').textContent = `${feed.length} lectura${feed.length === 1 ? '' : 's'}`;
+    $('#feed').innerHTML = feed.slice(0, 12).map((f, i) => `
+      <li><div class="f-n"><b>${esc(f.item.nombre)}</b><small>${esc(f.item.codigo)}${f.dest === 'vencidos' ? ' · vence ' + fmt(f.item.vence) : ''} · total ${f.item.cantidad || 0}</small></div>
+      <span class="f-c">+1</span><button class="mini" data-menos="${i}" aria-label="Restar uno">−1</button></li>`).join('');
+  }
+  $('#feed').addEventListener('click', e => {
+    const b = e.target.closest('[data-menos]');
+    if (!b) return;
+    const f = feed[+b.dataset.menos];
+    const lista = S[f.dest];
+    f.item.cantidad = (f.item.cantidad || 1) - 1;
+    if (f.item.cantidad <= 0) { const i = lista.indexOf(f.item); if (i >= 0) lista.splice(i, 1); }
+    feed.splice(+b.dataset.menos, 1);
+    guardar(); render(); pintarFeed();
+  });
+
+  function setModo(m) {
+    Cam.modo = m;
+    $$('.chip[data-modo]').forEach(c => c.classList.toggle('on', c.dataset.modo === m));
+    $('#rafagaPanel').hidden = m !== 'rafaga';
+    $('#itemForm').hidden = m === 'rafaga';
+    $('#rafagaPanel').classList.toggle('v', S.dest === 'vencidos');
+    $('#rafagaDest').textContent = S.dest === 'pedidos' ? 'Pedidos' : 'Vencidos';
+    if (Cam.activa && Cam.pausada) reanudar();
+    else if (Cam.activa) pill(m === 'rafaga' ? 'Ráfaga: pasá los productos' : 'Apuntá al código de barras');
+  }
+  $$('.chip[data-modo]').forEach(c => c.addEventListener('click', () => setModo(c.dataset.modo)));
+  $$('.seg').forEach(s => s.addEventListener('click', () => setModo(Cam.modo)));
+
+  // ---------- Foto (alternativa) ----------
   async function procesarFoto(file) {
     if (!file) return;
     pararVivo();
     const st = $('#scanStatus');
     st.className = 'status';
-    st.textContent = 'Leyendo el código…';
-    $('#scanLine').hidden = false;
+    st.textContent = 'Leyendo el código de la foto…';
     try {
       const { img, url } = await cargarImagen(file);
       const shot = $('#shotImg');
       if (shot.dataset.url) URL.revokeObjectURL(shot.dataset.url);
       shot.src = url; shot.dataset.url = url; shot.hidden = false;
-      $('#shotEmpty').hidden = true;
+      $('#camOff').hidden = true;
+      $('#btnVivo').textContent = 'Volver a la cámara';
       await new Promise(r => setTimeout(r, 30));
       const code = (await leerConDetectorNativo(img)) || leerConZXing(img);
-      if (code) codigoLeido(code);
+      if (code) { bip(); pill('✓ ' + code, 'ok'); codigoLeido(code); }
       else {
         st.className = 'status err';
         st.textContent = 'No se pudo leer. Probá más cerca, sin reflejos, o escribí el código a mano.';
@@ -204,64 +551,27 @@
     } catch (e) {
       st.className = 'status err';
       st.textContent = 'No se pudo abrir la foto.';
-    } finally {
-      $('#scanLine').hidden = true;
     }
   }
-
-  function codigoLeido(code) {
-    code = String(code).trim();
-    if (navigator.vibrate) navigator.vibrate(60);
-    const st = $('#scanStatus');
-    st.className = 'status ok';
-    st.textContent = `✓ Código leído: ${code}`;
-    $('#fCodigo').value = code;
-    buscarNombre(code);
-  }
-
   $('#fotoInput').addEventListener('change', e => { procesarFoto(e.target.files[0]); e.target.value = ''; });
   $('#galeriaInput').addEventListener('change', e => { procesarFoto(e.target.files[0]); e.target.value = ''; });
 
-  // Cámara en vivo (requiere https)
-  let vivo = null;
-  async function iniciarVivo() {
-    if (vivo) { pararVivo(); return; }
-    if (!ZX || !navigator.mediaDevices?.getUserMedia) { toast('Tu navegador no permite cámara en vivo. Usá “Sacar foto”.'); return; }
-    const video = $('#liveVideo');
-    video.hidden = false; $('#shotImg').hidden = true; $('#shotEmpty').hidden = true; $('#scanLine').hidden = false;
-    $('#btnVivo').textContent = 'Detener cámara';
-    $('#scanStatus').className = 'status';
-    $('#scanStatus').textContent = 'Apuntá al código de barras…';
-    vivo = new ZX.BrowserMultiFormatReader(zxHints, 250);
-    try {
-      await vivo.decodeFromConstraints({ video: { facingMode: 'environment', width: { ideal: 1280 } } }, video, res => {
-        if (!res) return;
-        // congela el cuadro como "foto"
-        const cv = document.createElement('canvas');
-        cv.width = video.videoWidth; cv.height = video.videoHeight;
-        cv.getContext('2d').drawImage(video, 0, 0);
-        const shot = $('#shotImg');
-        shot.src = cv.toDataURL('image/jpeg', .8); shot.hidden = false;
-        pararVivo();
-        codigoLeido(res.getText());
-      });
-    } catch (e) {
-      pararVivo();
-      toast('No se pudo abrir la cámara. Revisá los permisos o usá “Sacar foto”.');
-    }
-  }
-  function pararVivo() {
-    if (!vivo) return;
-    try { vivo.reset(); } catch {}
-    vivo = null;
-    $('#liveVideo').hidden = true;
-    $('#scanLine').hidden = true;
-    $('#btnVivo').textContent = 'Cámara en vivo';
-    if ($('#shotImg').hidden) $('#shotEmpty').hidden = false;
-  }
-  $('#btnVivo').addEventListener('click', iniciarVivo);
-
   // ---------- Nombre del producto ----------
+  async function consultarNombre(code) {
+    if (S.catalogo[code]) return S.catalogo[code];
+    try {
+      const ctl = new AbortController();
+      const to = setTimeout(() => ctl.abort(), 6000);
+      const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,product_name_es,brands,quantity`, { signal: ctl.signal });
+      clearTimeout(to);
+      const j = await r.json();
+      const p = j && j.status === 1 ? j.product : null;
+      const n = p && (p.product_name_es || p.product_name);
+      if (!n) return null;
+      const marca = (p.brands || '').split(',')[0].trim();
+      return [n, marca && !n.toLowerCase().includes(marca.toLowerCase()) ? marca : '', p.quantity || ''].filter(Boolean).join(' ');
+    } catch { return null; }
+  }
   let busqueda = 0;
   async function buscarNombre(code) {
     const hint = $('#nombreHint');
@@ -273,26 +583,14 @@
       return;
     }
     hint.textContent = '· buscando…';
-    try {
-      const ctl = new AbortController();
-      const to = setTimeout(() => ctl.abort(), 6000);
-      const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,product_name_es,brands,quantity`, { signal: ctl.signal });
-      clearTimeout(to);
-      const j = await r.json();
-      if (id !== busqueda) return;
-      const p = j && j.status === 1 ? j.product : null;
-      const n = p && (p.product_name_es || p.product_name);
-      if (n) {
-        const marca = (p.brands || '').split(',')[0].trim();
-        const full = [n, marca && !n.toLowerCase().includes(marca.toLowerCase()) ? marca : '', p.quantity || ''].filter(Boolean).join(' ');
-        if (!nombre.value.trim()) nombre.value = full;
-        hint.textContent = '· sugerido, revisalo';
-      } else {
-        hint.textContent = '· no encontrado, escribilo';
-        nombre.focus();
-      }
-    } catch {
-      if (id === busqueda) { hint.textContent = '· escribilo'; nombre.focus(); }
+    const n = await consultarNombre(code);
+    if (id !== busqueda) return;
+    if (n) {
+      if (!nombre.value.trim()) nombre.value = n;
+      hint.textContent = '· sugerido, revisalo';
+    } else {
+      hint.textContent = '· no encontrado, escribilo';
+      nombre.focus({ preventScroll: true });
     }
   }
   $('#fCodigo').addEventListener('change', e => {
@@ -337,6 +635,10 @@
     }
     limpiarForm();
     render();
+    // Vuelve a escanear solo, ignorando un momento el código recién guardado
+    Cam.ignorar = { code: codigo, hasta: Date.now() + 2500 };
+    $('#cam').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (Cam.activa) reanudar(); else if ($('#view-escanear').classList.contains('active')) iniciarCamara();
   });
 
   function limpiarForm() {
@@ -346,7 +648,7 @@
     $('#fCantPedido').value = '';
     $('#fVence').value = '';
     $('#nombreHint').textContent = '';
-    $('#scanStatus').textContent = 'Listo. Sacá la próxima foto.';
+    $('#scanStatus').textContent = 'Guardado ✓ Apuntá al próximo código.';
     $('#scanStatus').className = 'status ok';
   }
 
@@ -770,7 +1072,25 @@
   setDest('pedidos');
   render();
   const inicial = location.hash.slice(1);
-  requestAnimationFrame(() => ir($(`#view-${inicial}`) ? inicial : 'inicio'));
+  // Pantalla de inicio: se muestra al abrir y se cierra sola (o tocándola)
+  const splash = $('#splash');
+  let splashListo = false;
+  const cerrarSplash = () => {
+    if (splashListo) return;
+    splashListo = true;
+    splash.classList.add('fuera');
+    document.body.classList.remove('splash-on');
+    setTimeout(() => splash.remove(), 600);
+    ir($(`#view-${inicial}`) ? inicial : 'inicio');
+  };
+  let yaVisto = false;
+  try { yaVisto = sessionStorage.getItem('le_splash') === '1'; sessionStorage.setItem('le_splash', '1'); } catch {}
+  if (yaVisto || matchMedia('(prefers-reduced-motion: reduce)').matches) { splash.remove(); requestAnimationFrame(() => ir($(`#view-${inicial}`) ? inicial : 'inicio')); splashListo = true; }
+  else {
+    document.body.classList.add('splash-on');
+    splash.addEventListener('click', cerrarSplash);
+    setTimeout(cerrarSplash, 2600);
+  }
 
   if (!NATIVO && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
