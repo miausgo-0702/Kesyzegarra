@@ -233,6 +233,25 @@ public class MainActivity extends Activity {
             return "";
         }
 
+        /** Comparte un flyer de oferta (PNG en base64) con WhatsApp, Instagram, etc. */
+        @JavascriptInterface
+        public void compartirImagen(String base64, String nombre, String texto) {
+            try {
+                java.io.File dir = new java.io.File(getCacheDir(), "compartir");
+                if (!dir.exists()) dir.mkdirs();
+                String seguro = nombre == null ? "oferta.png" : nombre.replaceAll("[^a-zA-Z0-9._-]", "_");
+                java.io.File f = new java.io.File(dir, seguro.endsWith(".png") ? seguro : seguro + ".png");
+                try (java.io.FileOutputStream o = new java.io.FileOutputStream(f)) { o.write(android.util.Base64.decode(base64, android.util.Base64.DEFAULT)); }
+                Uri uri = androidx.core.content.FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".archivos", f);
+                Intent i = new Intent(Intent.ACTION_SEND).setType("image/png")
+                        .putExtra(Intent.EXTRA_STREAM, uri).putExtra(Intent.EXTRA_TEXT, texto == null ? "" : texto)
+                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                runOnUiThread(() -> startActivity(Intent.createChooser(i, "Compartir oferta")));
+            } catch (Exception e) {
+                js("window.MH && window.MH.toast('No se pudo compartir la imagen.')");
+            }
+        }
+
         // ---- voz (asistente de IA) ----
         @JavascriptInterface
         public boolean vozDisponible() { return SpeechRecognizer.isRecognitionAvailable(MainActivity.this); }

@@ -58,6 +58,16 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['nombreCompleto'])
         && request.resource.data.nombreCompleto is string && request.resource.data.nombreCompleto.size() <= 80;
     }
+    // Ofertas y descuentos (feed): las ven todos, las publican los administradores.
+    match /ofertas/{id} {
+      allow read: if admin() || empleado();
+      allow write: if admin();
+    }
+    // Clave del buscador de imágenes: la escribe un administrador; solo la lee el servidor.
+    match /secretos/{d} {
+      allow read: if false;
+      allow write: if admin();
+    }
     // Uso interno de las funciones del servidor.
     match /notifEnviadas/{d} { allow read, write: if false; }
     match /_pruebaEnvios/{d} { allow read, write: if false; }

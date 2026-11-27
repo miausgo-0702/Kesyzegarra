@@ -102,6 +102,24 @@ console.anthropic.com → *Limits*.
 **Voz:** en Android usa el dictado y la voz del teléfono (pide permiso de micrófono la primera vez);
 en PC funciona con Chrome o Edge; en iPhone, con Safari.
 
+## 8. Ofertas y descuentos (feed con flyers)
+Todos ven la pestaña **Ofertas** (🏷️): un feed de mini flyers con foto, descuento, precio de antes y de ahora,
+condiciones y vigencia, que se pueden compartir como imagen (WhatsApp, Instagram, etc.).
+
+Los administradores tocan **✨ Cargar ofertas con IA** y suben **fotos**, un **Excel** (.xlsx, .xls, .csv), un **PDF**
+o un **Word** (.docx). La IA (Claude, con la misma clave de la sección 7) arma una oferta por producto, se busca la
+foto de cada uno en **Google Imágenes**, y el administrador revisa, corrige y publica.
+
+**Buscador de imágenes de Google** (opcional, para que las fotos se busquen solas):
+1. Creá una cuenta en https://serper.dev (2.500 búsquedas gratis; cada producto usa 1) y copiá tu **API key**.
+   Alternativa: la búsqueda programable de Google (clave de API + ID del buscador "cx" con búsqueda de imágenes activada).
+2. En la app: **Ofertas → ✨ Cargar ofertas con IA → Buscador de imágenes de Google**, pegá la clave y **Guardar clave**.
+   Queda guardada en el servidor y ningún teléfono la puede leer.
+Sin buscador configurado, cada oferta se puede publicar subiendo la foto a mano (o sin foto).
+
+Las fotos de productos que trae el buscador pertenecen a sus dueños (fabricantes o comercios). Para uso interno y de
+promoción de la farmacia suele no haber problema, pero si alguna marca lo pide, reemplazá la foto por una propia.
+
 ## Seguridad
 - Las reglas permiten que cada empleado vea solo su propia cuenta. Los horarios, los cambios y
   los avisos los ven todos los empleados registrados.

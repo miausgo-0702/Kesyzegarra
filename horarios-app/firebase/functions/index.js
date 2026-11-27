@@ -187,3 +187,38 @@ exports.asistente = onCall({ secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 300, 
     throw new HttpsError("internal", "El asistente no pudo responder: " + (e.message || e));
   }
 });
+
+/* ---------------- 6) ofertas: la IA arma los flyers a partir de fotos, Excel, Word o PDF ---------------- */
+exports.ofertasIA = onCall({ secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 300, memory: "512MiB", maxInstances: 3 }, async req => {
+  const email = req.auth && req.auth.token && req.auth.token.email;
+  if (!email || !ADMINS.includes(email)) throw new HttpsError("permission-denied", "Solo los administradores pueden cargar ofertas.");
+  const d = req.data || {};
+  const O = require("./ofertas");
+  try {
+    if (d.accion === "extraer") {
+      const archivos = (Array.isArray(d.archivos) ? d.archivos : []).slice(0, 10).filter(a => a &&
+        ((a.tipo === "imagen" && /^image\/(jpeg|png|webp|gif)$/.test(a.media) && typeof a.datos === "string" && a.datos.length < 7e6) ||
+         (a.tipo === "pdf" && typeof a.datos === "string" && a.datos.length < 9e6) ||
+         (a.tipo === "texto" && typeof a.contenido === "string")));
+      if (!archivos.length) throw new HttpsError("invalid-argument", "Subí al menos una foto, Excel, Word o PDF.");
+      const Anthropic = require("@anthropic-ai/sdk");
+      const anthropic = new (Anthropic.default || Anthropic)({ apiKey: ANTHROPIC_API_KEY.value() });
+      const r = await O.extraer(anthropic, archivos, String(d.nota || "").slice(0, 1000));
+      const cfg = (await db.doc("secretos/imagenes").get()).data();
+      r.conBuscador = !!(cfg && cfg.clave);
+      return r;
+    }
+    if (d.accion === "buscar") {
+      const cfg = (await db.doc("secretos/imagenes").get()).data();
+      if (!cfg || !cfg.clave) return { imagenes: [], sinBuscador: true };
+      return { imagenes: await O.buscarImagenes(String(d.q || "").slice(0, 200), cfg) };
+    }
+    if (d.accion === "imagen") return await O.descargarImagen(String(d.url || ""));
+    throw new HttpsError("invalid-argument", "Acción desconocida.");
+  } catch (e) {
+    if (e instanceof HttpsError) throw e;
+    logger.warn("ofertasIA", e.message);
+    if (e && e.status === 401) throw new HttpsError("failed-precondition", "La clave de Anthropic no es válida.");
+    throw new HttpsError("internal", e.message || String(e));
+  }
+});

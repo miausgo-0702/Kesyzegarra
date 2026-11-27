@@ -34,9 +34,10 @@
       if (ev === "datos") emit("datos", db.datos || null);
       if (ev === "cambios") emit("cambios", Object.entries(db.cambios || {}).map(([id, c]) => ({ id, ...c })));
       if (ev === "avisos") emit("avisos", Object.entries(db.avisos || {}).map(([id, c]) => ({ id, ...c })).sort((a, b) => b.creado - a.creado));
+      if (ev === "ofertas") emit("ofertas", Object.entries(db.ofertas || {}).map(([id, o]) => ({ id, ...o })));
       if (ev === "empleados") emit("empleados", Object.entries(db.empleados || {}).map(([id, e]) => ({ id, dni: e.dni, persona: e.persona, creado: e.creado })));
     },
-    _emitAll() { ["datos", "cambios", "avisos", "empleados"].forEach(e => this._all(e)); },
+    _emitAll() { ["datos", "cambios", "avisos", "empleados", "ofertas"].forEach(e => this._all(e)); },
     async init() {
       let s = null; try { s = JSON.parse(localStorage.getItem("mh_sesion")); } catch (e) {}
       setTimeout(() => { this._emitAll(); this._sesion(s); }, 0);
@@ -75,6 +76,10 @@
     },
     async salir() { this._sesion(null); },
     sesionNativa() { return null; },
+    async guardarOferta(o) { const db = this._db(); db.ofertas = db.ofertas || {}; const id = o.id || "o" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); const x = { ...o }; delete x.id; db.ofertas[id] = { ...(db.ofertas[id] || {}), ...x }; this._save(db); this._all("ofertas"); return id; },
+    async borrarOferta(id) { const db = this._db(); delete (db.ofertas || {})[id]; this._save(db); this._all("ofertas"); },
+    async ofertasIA() { const e = new Error("Cargar ofertas con IA necesita el modo online (Firebase)."); e.codigo = "local"; throw e; },
+    async guardarClaveImagenes() { const e = new Error("Necesita el modo online."); e.codigo = "local"; throw e; },
     async leerPerfil(clave) { try { return JSON.parse(localStorage.getItem("mh_perfil_" + clave)) || {}; } catch (e) { return {}; } },
     async guardarPerfil(clave, perfil) { localStorage.setItem("mh_perfil_" + clave, JSON.stringify(perfil)); },
     async registrarToken() {}, async borrarToken() {},
@@ -135,6 +140,7 @@
         emit("datos", datos);
       }, e => console.warn(e)));
       S.push(db.collection("cambios").onSnapshot(q => emit("cambios", q.docs.map(d => ({ id: d.id, ...d.data() }))), e => console.warn(e)));
+      S.push(db.collection("ofertas").onSnapshot(q => emit("ofertas", q.docs.map(d => ({ id: d.id, ...d.data() }))), e => console.warn(e)));
       S.push(db.collection("avisos").orderBy("creado", "desc").limit(30).onSnapshot(q => emit("avisos", q.docs.map(d => ({ id: d.id, ...d.data() }))), e => console.warn(e)));
       if (adm) S.push(db.collection("empleados").onSnapshot(q => emit("empleados", q.docs.map(d => ({ id: d.id, ...d.data() }))), e => console.warn(e)));
       userCb(perfil);
@@ -244,6 +250,20 @@
         throw err(e.code || "asistente", m);
       }
     },
+    // ofertas (feed): las publican los administradores
+    async guardarOferta(o) {
+      const x = { ...o }; const id = x.id; delete x.id;
+      if (id) { await this.db.collection("ofertas").doc(id).set(x, { merge: true }); return id; }
+      return (await this.db.collection("ofertas").add(x)).id;
+    },
+    async borrarOferta(id) { await this.db.collection("ofertas").doc(id).delete(); },
+    async ofertasIA(payload) {
+      if (!this._fn) { this._fn = firebase.app().functions("southamerica-east1"); if (G.FIREBASE_CONFIG.emulador) this._fn.useEmulator(G.FIREBASE_CONFIG.emulador, 5001); }
+      try { return (await this._fn.httpsCallable("ofertasIA", { timeout: 300000 })(payload)).data; }
+      catch (e) { throw err(e.code || "ofertas", e.message || "No se pudo procesar."); }
+    },
+    // clave del buscador de imágenes: se escribe, pero ningún teléfono la puede leer (solo el servidor)
+    async guardarClaveImagenes(cfg) { await this.db.collection("secretos").doc("imagenes").set(cfg); },
     // perfil del administrador (nombre y apellido para el saludo del asistente)
     async leerPerfil(clave) {
       const u = this.auth.currentUser; if (!u) return {};

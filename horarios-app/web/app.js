@@ -162,6 +162,7 @@
     if (!d && st.user && st.user.tipo === "admin" && B.online) B.guardarDatos(SEED).catch(() => {});
     if (st.user) render();
   });
+  B.on("ofertas", l => Ofertas.setLista(l));
   B.on("cambios", c => { st.cambios = c || []; if (st.user) { render(); procesarNotifs(); } });
   B.on("avisos", a => { st.avisos = a || []; if (st.user) render(); });
   B.on("empleados", e => { st.empleados = (e || []).sort((a, b) => (a.persona || "").localeCompare(b.persona || "")); if (st.user) render(); });
@@ -170,6 +171,7 @@
     Notif.sesion(null); cerrarVivo(); IA.cargado = null; IA.perfil = null;
     (IA.caras || []).forEach(c => c && c.destroy()); IA.caras = null;
     if ($("v-ia")) $("v-ia").innerHTML = "";
+    if ($("v-ofertas")) $("v-ofertas").innerHTML = "";
     if (st.token) { await B.borrarToken(st.token).catch(() => {}); st.token = null; }
     B.salir();
   };
@@ -190,9 +192,10 @@
     admin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>',
   };
   ICON.ia = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>';
-  const NOMBRES = { inicio: "Inicio", calendario: "Calendario", equipo: "Equipo", admin: "Panel", ia: "IA" };
+  ICON.ofertas = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m15 9-6 6"/><path d="M9 9h.01"/><path d="M15 15h.01"/></svg>';
+  const NOMBRES = { inicio: "Inicio", calendario: "Calendario", equipo: "Equipo", ofertas: "Ofertas", admin: "Panel", ia: "IA" };
   // Color de la "gota" de cada pestaña (colores de la marca)
-  const COLOR = { inicio: "#b3bb06", calendario: "#eadd12", equipo: "#a3509a", admin: "#d6dd3c", ia: "#65265d" };
+  const COLOR = { inicio: "#b3bb06", calendario: "#eadd12", equipo: "#a3509a", ofertas: "#e8590c", admin: "#d6dd3c", ia: "#65265d" };
   let navItems = [];
   function montarTema() {
     if (st.tema || !$("temaSlot")) return;
@@ -203,11 +206,12 @@
   }
   function armarNav() {
     montarTema();
-    navItems = ["inicio", "calendario", "equipo"].concat(st.user.tipo === "admin" ? ["ia", "admin"] : []);
+    navItems = ["inicio", "calendario", "equipo", "ofertas"].concat(st.user.tipo === "admin" ? ["ia", "admin"] : []);
     $("nav").innerHTML = `<div class="nav-glow" id="navGlow"></div>
       <svg class="nav-svg" id="navSvg" aria-hidden="true"><path id="navPath"/></svg>
       <div class="bead" id="bead"><div class="bead-in" id="beadIn"></div></div>` +
       navItems.map(v => `<button data-v="${v}" aria-label="${NOMBRES[v]}">${ICON[v]}<span>${NOMBRES[v]}</span></button>`).join("");
+    $("nav").classList.toggle("muchos", navItems.length > 5);
     $("side").innerHTML = `<img class="logo" src="img/logo.svg" alt=""><div class="side-ind" id="sideInd"></div>` +
       navItems.map(v => `<button data-v="${v}" title="${NOMBRES[v]}">${ICON[v]}</button>`).join("");
     document.querySelectorAll("[data-v]").forEach(b => b.onclick = () => irA(b.dataset.v));
@@ -222,7 +226,7 @@
     const b = $("nav").querySelector(`button[data-v="${st.vista}"]`);
     if (!b) return;
     Gota.ir(b.offsetLeft + b.offsetWidth / 2, !animar);
-    const nav = $("nav"), ink = st.vista === "equipo" || st.vista === "ia" ? "#fff" : "#1d2100";
+    const nav = $("nav"), ink = st.vista === "equipo" || st.vista === "ia" || st.vista === "ofertas" ? "#fff" : "#1d2100";
     nav.style.setProperty("--bead", COLOR[st.vista]); nav.style.setProperty("--bead-ink", ink);
     $("side").style.setProperty("--bead-ink", ink);
     $("beadIn").innerHTML = ICON[st.vista];
@@ -324,7 +328,7 @@
     if (!st.user) return;
     const esAdmin = st.user.tipo === "admin";
     document.querySelectorAll("[data-v]").forEach(b => b.classList.toggle("on", b.dataset.v === st.vista));
-    ["inicio", "calendario", "equipo", "admin", "ia"].forEach(v => $("v-" + v).classList.toggle("oculto", v !== st.vista));
+    ["inicio", "calendario", "equipo", "admin", "ia", "ofertas"].forEach(v => $("v-" + v).classList.toggle("oculto", v !== st.vista));
     // transición entre pestañas: entra desde el lado hacia donde se movió, con desenfoque
     const cambio = st.vistaAnt !== st.vista;
     if (cambio) {
@@ -341,20 +345,21 @@
     $("quien").textContent = esAdmin ? (nombreAdmin() || st.user.usuario) : nombre;
 
     // selector "ver como" (solo administradores)
-    $("verComo").classList.toggle("oculto", !esAdmin || st.vista === "admin" || st.vista === "ia");
+    $("verComo").classList.toggle("oculto", !esAdmin || st.vista === "admin" || st.vista === "ia" || st.vista === "ofertas");
     if (esAdmin) {
       const ps = L.personas();
       $("selVer").innerHTML = ps.map(p => `<option ${p.n === st.ver ? "selected" : ""}>${esc(p.n)}</option>`).join("");
       $("selVer").onchange = () => { st.ver = $("selVer").value; render(); };
     }
     const ok = !!(nombre && L.ubicar(nombre));
-    $("sinPersona").classList.toggle("oculto", ok || st.vista === "admin" || st.vista === "ia");
+    $("sinPersona").classList.toggle("oculto", ok || st.vista === "admin" || st.vista === "ia" || st.vista === "ofertas");
     if (!ok) $("sinPersona").innerHTML = `<h3>Tu nombre no está en la planilla</h3><p class="muted">Tu cuenta está asociada a <b>${esc(nombre)}</b>, que no aparece en la planilla actual. Pedile a un administrador que te asigne a la persona correcta.</p>`;
     if (st.vista === "inicio") ok ? renderInicio(nombre) : ($("v-inicio").innerHTML = "");
     if (st.vista === "calendario") ok ? renderCalendario(nombre) : ($("v-calendario").innerHTML = "");
     if (st.vista === "equipo") renderEquipo(ok ? nombre : null);
     if (st.vista === "admin" && esAdmin) renderAdmin();
     if (st.vista === "ia" && esAdmin) renderIA();
+    if (st.vista === "ofertas") Ofertas.render($("v-ofertas"));
   }
 
   function selectorFecha(id) {
@@ -955,6 +960,11 @@
   }
   function cerrarNotificaciones() { $("sheet").classList.remove("on"); setTimeout(() => $("sheet").classList.add("oculto"), 300); }
   window.abrirNotificaciones = abrirNotificaciones;
+  function abrirHoja(html) {
+    $("sheetBody").innerHTML = html;
+    if ($("sheet").classList.contains("oculto")) { $("sheet").classList.remove("oculto"); requestAnimationFrame(() => $("sheet").classList.add("on")); }
+  }
+  window.MH = { st, B, toast, esc, abrirHoja, cerrarHoja: cerrarNotificaciones };
   $("bNotif").onclick = abrirNotificaciones;
   $("sheet").onclick = e => { if (e.target.id === "sheet" || e.target.closest("[data-cerrar]")) cerrarNotificaciones(); };
   if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", e => { if (e.data && e.data.abrir === "notificaciones") abrirNotificaciones(); });

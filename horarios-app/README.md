@@ -39,6 +39,11 @@ seguí [GUIA_FIREBASE.md](GUIA_FIREBASE.md).
   herramientas de consulta y de propuestas; `web/acciones.js` valida y aplica las propuestas (servidor y app).
   `web/voz.js` = dictado y lectura en voz alta. Prueba sin gastar: `node functions/test/asistente.test.js`
   (con el emulador de Firestore; usa un Claude simulado).
+- `web/ofertas.js` — pestaña Ofertas (feed de flyers, carga con IA, compartir como imagen);
+  `firebase/functions/ofertas.js` — lectura de fotos/Excel/PDF/Word con Claude (formato fijo) y Google Imágenes.
+  Excel y Word se convierten a texto en la app con SheetJS 0.20.3 y mammoth (`web/vendor/`, se cargan solo al usarlos).
+- `web/components/ui/` — componentes visuales: `live-orb.js` (la cara del asistente) y
+  `sun-moon-theme-toggle.js` (botón de tema), adaptados a JavaScript de componentes shadcn/React.
 - `firebase/functions/` — funciones del servidor que envían las notificaciones push (cambios, respuestas,
   planilla nueva y resumen semanal de los domingos 20 hs). Usan el mismo `logic.js` de la app.
   Prueba: `firebase emulators:exec --only auth,firestore,functions --project demo-mishorarios "npm --prefix functions test"`.
