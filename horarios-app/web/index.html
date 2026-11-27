@@ -128,6 +128,7 @@
       <div id="v-calendario" class="vista oculto"></div>
       <div id="v-equipo" class="vista oculto"></div>
       <div id="v-admin" class="vista oculto"></div>
+      <div id="v-ia" class="vista oculto"></div>
     </div>
   </div>
   <nav class="nav" id="nav"></nav>
@@ -140,12 +141,15 @@
 <script src="vendor/firebase-auth-compat.js"></script>
 <script src="vendor/firebase-firestore-compat.js"></script>
 <script src="vendor/firebase-messaging-compat.js"></script>
+<script src="vendor/firebase-functions-compat.js"></script>
 <script src="config.js"></script>
 <script src="admins.local.js" onerror="void 0"></script>
 <script src="data.js"></script>
 <script src="logic.js"></script>
 <script src="backend.js"></script>
 <script src="notif.js"></script>
+<script src="acciones.js"></script>
+<script src="voz.js"></script>
 <script src="app.js"></script>
 <script>
   if ("serviceWorker" in navigator && location.protocol === "https:" && !/appassets\.androidplatform\.net/.test(location.host))

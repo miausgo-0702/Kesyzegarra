@@ -166,7 +166,7 @@
   B.on("empleados", e => { st.empleados = (e || []).sort((a, b) => (a.persona || "").localeCompare(b.persona || "")); if (st.user) render(); });
   $("bSalir").onclick = async () => {
     if (!confirm("¿Cerrar sesión?")) return;
-    Notif.sesion(null);
+    Notif.sesion(null); cerrarVivo(); IA.cargado = null; if ($("v-ia")) $("v-ia").innerHTML = "";
     if (st.token) { await B.borrarToken(st.token).catch(() => {}); st.token = null; }
     B.salir();
   };
@@ -186,12 +186,13 @@
     equipo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.5 3.3-5.5 6.5-5.5s5.9 2 6.5 5.5"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14.5c2.6.2 4.2 2 4.5 4.5"/></svg>',
     admin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>',
   };
-  const NOMBRES = { inicio: "Inicio", calendario: "Calendario", equipo: "Equipo", admin: "Panel" };
+  ICON.ia = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>';
+  const NOMBRES = { inicio: "Inicio", calendario: "Calendario", equipo: "Equipo", admin: "Panel", ia: "IA" };
   // Color de la "gota" de cada pestaña (colores de la marca)
-  const COLOR = { inicio: "#b3bb06", calendario: "#eadd12", equipo: "#a3509a", admin: "#d6dd3c" };
+  const COLOR = { inicio: "#b3bb06", calendario: "#eadd12", equipo: "#a3509a", admin: "#d6dd3c", ia: "#65265d" };
   let navItems = [];
   function armarNav() {
-    navItems = ["inicio", "calendario", "equipo"].concat(st.user.tipo === "admin" ? ["admin"] : []);
+    navItems = ["inicio", "calendario", "equipo"].concat(st.user.tipo === "admin" ? ["ia", "admin"] : []);
     $("nav").innerHTML = `<div class="nav-glow" id="navGlow"></div>
       <svg class="nav-svg" id="navSvg" aria-hidden="true"><path id="navPath"/></svg>
       <div class="bead" id="bead"><div class="bead-in" id="beadIn"></div></div>` +
@@ -210,7 +211,7 @@
     const b = $("nav").querySelector(`button[data-v="${st.vista}"]`);
     if (!b) return;
     Gota.ir(b.offsetLeft + b.offsetWidth / 2, !animar);
-    const nav = $("nav"), ink = st.vista === "equipo" ? "#fff" : "#1d2100";
+    const nav = $("nav"), ink = st.vista === "equipo" || st.vista === "ia" ? "#fff" : "#1d2100";
     nav.style.setProperty("--bead", COLOR[st.vista]); nav.style.setProperty("--bead-ink", ink);
     $("side").style.setProperty("--bead-ink", ink);
     $("beadIn").innerHTML = ICON[st.vista];
@@ -312,7 +313,7 @@
     if (!st.user) return;
     const esAdmin = st.user.tipo === "admin";
     document.querySelectorAll("[data-v]").forEach(b => b.classList.toggle("on", b.dataset.v === st.vista));
-    ["inicio", "calendario", "equipo", "admin"].forEach(v => $("v-" + v).classList.toggle("oculto", v !== st.vista));
+    ["inicio", "calendario", "equipo", "admin", "ia"].forEach(v => $("v-" + v).classList.toggle("oculto", v !== st.vista));
     // transición entre pestañas: entra desde el lado hacia donde se movió, con desenfoque
     const cambio = st.vistaAnt !== st.vista;
     if (cambio) {
@@ -330,19 +331,20 @@
     $("quien").textContent = esAdmin ? st.user.usuario : nombre;
 
     // selector "ver como" (solo administradores)
-    $("verComo").classList.toggle("oculto", !esAdmin || st.vista === "admin");
+    $("verComo").classList.toggle("oculto", !esAdmin || st.vista === "admin" || st.vista === "ia");
     if (esAdmin) {
       const ps = L.personas();
       $("selVer").innerHTML = ps.map(p => `<option ${p.n === st.ver ? "selected" : ""}>${esc(p.n)}</option>`).join("");
       $("selVer").onchange = () => { st.ver = $("selVer").value; render(); };
     }
     const ok = !!(nombre && L.ubicar(nombre));
-    $("sinPersona").classList.toggle("oculto", ok || st.vista === "admin");
+    $("sinPersona").classList.toggle("oculto", ok || st.vista === "admin" || st.vista === "ia");
     if (!ok) $("sinPersona").innerHTML = `<h3>Tu nombre no está en la planilla</h3><p class="muted">Tu cuenta está asociada a <b>${esc(nombre)}</b>, que no aparece en la planilla actual. Pedile a un administrador que te asigne a la persona correcta.</p>`;
     if (st.vista === "inicio") ok ? renderInicio(nombre) : ($("v-inicio").innerHTML = "");
     if (st.vista === "calendario") ok ? renderCalendario(nombre) : ($("v-calendario").innerHTML = "");
     if (st.vista === "equipo") renderEquipo(ok ? nombre : null);
     if (st.vista === "admin" && esAdmin) renderAdmin();
+    if (st.vista === "ia" && esAdmin) renderIA();
   }
 
   function selectorFecha(id) {
@@ -946,6 +948,246 @@
   $("bNotif").onclick = abrirNotificaciones;
   $("sheet").onclick = e => { if (e.target.id === "sheet" || e.target.closest("[data-cerrar]")) cerrarNotificaciones(); };
   if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", e => { if (e.data && e.data.abrir === "notificaciones") abrirNotificaciones(); });
+
+
+  /* ============================== ASISTENTE DE IA (administradores) ============================== */
+  const SUGERENCIAS = [
+    "¿Quién trabaja este sábado?",
+    "Dale franco a Pacheco el jueves",
+    "¿Qué horario tiene Rojas la semana que viene?",
+    "Avisá a todos que el lunes hay reunión a las 9",
+    "¿Quiénes trabajan el próximo feriado?",
+    "Cambiá el horario de Vallejos en la planilla semanal a 8 a 16",
+  ];
+  const IA = st.ia = { mensajes: [], cargando: false, adjuntos: [], leer: false, rev: 0, pintado: -1 };
+  const claveIA = () => "mh_ia_" + (st.user && st.user.usuario);
+  function cargarIA() {
+    try { const g = JSON.parse(localStorage.getItem(claveIA()) || "{}"); IA.mensajes = g.mensajes || []; IA.leer = !!g.leer; } catch (e) { IA.mensajes = []; }
+    IA.mensajes.forEach(m => (m.propuestas || []).forEach(p => { if (p.estado === "aplicando") p.estado = "pendiente"; }));
+    IA.rev++;
+  }
+  function guardarIA() {
+    try { localStorage.setItem(claveIA(), JSON.stringify({ leer: IA.leer, mensajes: IA.mensajes.slice(-60).map(m => ({ ...m, imagenes: m.imagenes ? m.imagenes.length : 0 })) })); } catch (e) {}
+  }
+  const pendientes = () => IA.mensajes.flatMap(m => m.propuestas || []).filter(p => p.estado === "pendiente");
+
+  // Aplica una propuesta con los datos ACTUALES (la misma validación que usó el servidor).
+  async function aplicarPropuesta(p) {
+    p.estado = "aplicando"; IA.rev++; pintarIA();
+    try {
+      const r = Acciones.aplicar(L.getData(), { tipo: p.tipo, datos: p.datos }, { empleados: st.empleados });
+      if (r.datos) { await B.guardarDatos(r.datos); L.setData(r.datos); }
+      for (const op of r.ops) {
+        if (op.tipo === "cambios") {
+          const lote = "L" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+          await B.guardarCambios(op.lista.map(c => ({ ...c, por: st.user.usuario, estado: "pendiente", lote })));
+        } else if (op.tipo === "borrarCambios") {
+          const n = norm(op.persona);
+          for (const c of st.cambios.filter(c => norm(c.persona) === n && c.fecha >= op.desde && c.fecha <= op.hasta)) await B.borrarCambio(c.id);
+        } else if (op.tipo === "aviso") await B.publicarAviso(op.texto, st.user.usuario);
+        else if (op.tipo === "borrarEmpleado") {
+          const e = st.empleados.find(x => norm(x.persona) === norm(op.persona));
+          if (!e) throw new Error(`${op.persona} no tiene cuenta registrada.`);
+          await B.borrarEmpleado(e.id);
+        } else if (op.tipo === "reasignarEmpleado") {
+          const e = st.empleados.find(x => norm(x.persona) === norm(op.de));
+          if (e) await B.reasignarEmpleado(e.id, op.a);
+        }
+      }
+      p.estado = "aplicada";
+    } catch (er) { p.estado = "error"; p.error = er.message; }
+    IA.rev++; guardarIA(); pintarIA();
+    return p.estado === "aplicada";
+  }
+  async function aplicarPendientes() {
+    let ok = 0, mal = 0;
+    for (const p of pendientes()) (await aplicarPropuesta(p)) ? ok++ : mal++;
+    if (ok || mal) toast(mal ? `Aplicadas ${ok}, con error ${mal}` : `✓ ${ok === 1 ? "Cambio aplicado" : ok + " cambios aplicados"}`);
+    return { ok, mal };
+  }
+  function descartarPendientes() { pendientes().forEach(p => { p.estado = "descartada"; }); IA.rev++; guardarIA(); pintarIA(); }
+
+  async function enviarIA(texto, opciones) {
+    opciones = opciones || {};
+    texto = String(texto || "").trim();
+    const imagenes = IA.adjuntos.splice(0);
+    if (!texto && !imagenes.length) return null;
+    IA.mensajes.push({ rol: "yo", texto, imagenes: imagenes.map(i => i.url), t: Date.now() });
+    IA.cargando = true; IA.rev++; pintarIA();
+    let resp;
+    try {
+      resp = await B.asistente({ mensaje: texto, imagenes: imagenes.map(i => ({ tipo: i.tipo, datos: i.datos })), pendientes: pendientes().length });
+      const m = { rol: "ia", texto: resp.texto || "", nota: resp.nota || "", propuestas: (resp.propuestas || []).map(p => ({ ...p, estado: "pendiente" })), t: Date.now() };
+      if (resp.descartar) descartarPendientes();
+      IA.mensajes.push(m);
+      if (resp.confirmar) { IA.cargando = false; await aplicarPendientes(); }
+    } catch (er) {
+      IA.mensajes.push({ rol: "ia", error: true, texto: er.message, t: Date.now() });
+      resp = { texto: er.message, error: true };
+    }
+    IA.cargando = false; IA.rev++; guardarIA(); pintarIA();
+    if (!opciones.vivo && (opciones.voz || IA.leer) && resp && resp.texto) Voz.hablar(resp.texto);
+    return resp;
+  }
+
+  // Foto (por ejemplo, de una planilla nueva): se achica antes de mandarla.
+  function achicarImagen(archivo) {
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(archivo), img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, 1600 / Math.max(img.width, img.height));
+        const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        const d = c.toDataURL("image/jpeg", 0.86); URL.revokeObjectURL(url);
+        res({ tipo: "image/jpeg", datos: d.split(",")[1], url: d });
+      };
+      img.onerror = () => rej(new Error("No pude abrir la imagen."));
+      img.src = url;
+    });
+  }
+
+  function formatoIA(t) { return esc(t).replace(/\n/g, "<br>"); }
+  function htmlPropuesta(p, i, mi) {
+    const est = { pendiente: "", aplicando: '<span class="pill pend"><span class="spin"></span>Aplicando…</span>', aplicada: '<span class="pill ok">✓ Aplicada</span>', descartada: '<span class="pill">Descartada</span>', error: `<span class="pill bad">✕ ${esc(p.error || "Error")}</span>` }[p.estado] || "";
+    return `<div class="prop ${p.estado}"><div class="prop-ico">${p.tipo === "aviso" ? "📢" : p.tipo === "cambio_turno" ? "🔁" : p.tipo.includes("planilla") ? "📋" : p.tipo === "feriado" ? "📅" : p.tipo === "borrar_empleado" ? "🗑" : "⚙️"}</div>
+      <div class="grow"><div>${esc(p.descripcion)}</div>${(p.advertencias || []).map(a => `<div class="muted">⚠ ${esc(a)}</div>`).join("")}
+      ${p.estado === "pendiente" ? `<div class="row" style="margin-top:8px"><button class="btn sm acc" data-ap="${mi}:${i}">Aplicar</button><button class="btn sm" data-de="${mi}:${i}">Descartar</button></div>` : `<div style="margin-top:6px">${est}</div>`}</div></div>`;
+  }
+  function pintarIA() {
+    const box = $("iaMsgs"); if (!box || IA.pintado === IA.rev) return;
+    IA.pintado = IA.rev;
+    const n = pendientes().length;
+    box.innerHTML = (IA.mensajes.length ? "" : `<div class="ia-hola"><div class="ia-orbe chico"></div><h3>Asistente de horarios</h3>
+        <p class="muted">Pedime consultas o cambios escribiendo o hablando. También podés mandarme una foto de una planilla nueva y la cargo. Nada se aplica hasta que lo confirmes.</p></div>`) +
+      IA.mensajes.map((m, mi) => m.rol === "yo"
+        ? `<div class="burb yo">${(m.imagenes && m.imagenes.length ? (Array.isArray(m.imagenes) ? m.imagenes.map(u => `<img src="${esc(u)}" alt="">`).join("") : `<div class="muted">📷 ${m.imagenes} foto(s)</div>`) : "")}${formatoIA(m.texto)}</div>`
+        : `<div class="burb ia ${m.error ? "err" : ""}">${formatoIA(m.texto)}${m.nota ? `<div class="muted" style="margin-top:6px">${esc(m.nota)}</div>` : ""}
+            ${(m.propuestas || []).length ? `<div class="props">${m.propuestas.map((p, i) => htmlPropuesta(p, i, mi)).join("")}</div>` : ""}</div>`).join("") +
+      (IA.cargando ? `<div class="burb ia pensando"><span></span><span></span><span></span></div>` : "");
+    $("iaSug").classList.toggle("oculto", IA.mensajes.length > 0);
+    $("iaTodo").classList.toggle("oculto", n < 2);
+    $("iaTodo").textContent = `Aplicar todo (${n})`;
+    $("iaAdj").innerHTML = IA.adjuntos.map((a, i) => `<div class="adj"><img src="${a.url}" alt=""><button data-qa="${i}" aria-label="Quitar">✕</button></div>`).join("");
+    $("iaAdj").querySelectorAll("[data-qa]").forEach(b => b.onclick = () => { IA.adjuntos.splice(+b.dataset.qa, 1); IA.rev++; pintarIA(); });
+    box.querySelectorAll("[data-ap]").forEach(b => b.onclick = () => { const [mi, i] = b.dataset.ap.split(":").map(Number); aplicarPropuesta(IA.mensajes[mi].propuestas[i]).then(ok => ok && toast("✓ Aplicado")); });
+    box.querySelectorAll("[data-de]").forEach(b => b.onclick = () => { const [mi, i] = b.dataset.de.split(":").map(Number); IA.mensajes[mi].propuestas[i].estado = "descartada"; IA.rev++; guardarIA(); pintarIA(); });
+    requestAnimationFrame(() => box.lastElementChild && box.lastElementChild.scrollIntoView({ behavior: "smooth", block: "end" }));
+    if ($("vivo") && !$("vivo").classList.contains("oculto")) pintarVivo();
+  }
+
+  function renderIA() {
+    const v = $("v-ia");
+    if (!$("iaMsgs")) {
+      if (!IA.cargado || IA.cargado !== st.user.usuario) { cargarIA(); IA.cargado = st.user.usuario; }
+      v.innerHTML = `<div class="ia-vista">
+        <div class="ia-top"><div class="ia-orbe mini"></div><div class="grow"><b>Asistente IA</b><div class="muted">${B.online ? "Consultas y cambios por texto, voz o foto" : "Necesita el modo online"}</div></div>
+          <button class="iconbtn ${IA.leer ? "on" : ""}" id="iaLeer" title="Leer respuestas en voz alta" aria-label="Leer respuestas en voz alta">🔊</button>
+          <button class="iconbtn" id="iaNueva" title="Nueva conversación" aria-label="Nueva conversación">＋</button></div>
+        <div class="ia-msgs" id="iaMsgs"></div>
+        <div class="ia-sug" id="iaSug">${SUGERENCIAS.map(t => `<button class="chip2">${esc(t)}</button>`).join("")}</div>
+        <button class="btn acc" id="iaTodo" style="margin:6px 0">Aplicar todo</button>
+        <div class="ia-adj" id="iaAdj"></div>
+        <div class="ia-bar">
+          <button class="iconbtn" id="iaFoto" title="Mandar foto de una planilla" aria-label="Adjuntar foto">📷</button>
+          <textarea id="iaTxt" rows="1" placeholder="Escribile al asistente…"></textarea>
+          <button class="iconbtn mic" id="iaMic" title="Dictar" aria-label="Dictar">🎙</button>
+          <button class="iconbtn env" id="iaEnv" title="Enviar" aria-label="Enviar">➤</button>
+          <input type="file" id="iaArch" accept="image/*" multiple class="oculto">
+        </div>
+        <button class="ia-vivo" id="iaVivo"><span class="ia-orbe mini"></span> Conversación en vivo</button>
+      </div>`;
+      const txt = $("iaTxt");
+      const enviar = () => { const t = txt.value; txt.value = ""; txt.style.height = ""; enviarIA(t); };
+      txt.oninput = () => { txt.style.height = "auto"; txt.style.height = Math.min(140, txt.scrollHeight) + "px"; };
+      txt.onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviar(); } };
+      $("iaEnv").onclick = enviar;
+      $("iaSug").querySelectorAll(".chip2").forEach(b => b.onclick = () => enviarIA(b.textContent));
+      $("iaTodo").onclick = () => aplicarPendientes();
+      $("iaNueva").onclick = async () => {
+        if (!confirm("¿Empezar una conversación nueva? Se borra este historial.")) return;
+        IA.mensajes = []; IA.rev++; guardarIA(); pintarIA();
+        try { await B.asistente({ mensaje: "", nueva: true }); } catch (e) {}
+      };
+      $("iaLeer").onclick = () => { IA.leer = !IA.leer; $("iaLeer").classList.toggle("on", IA.leer); guardarIA(); if (!IA.leer) Voz.callar(); toast(IA.leer ? "Voy a leer las respuestas en voz alta" : "Lectura en voz alta apagada"); };
+      $("iaFoto").onclick = () => $("iaArch").click();
+      $("iaArch").onchange = async () => {
+        for (const f of [...$("iaArch").files].slice(0, 4 - IA.adjuntos.length)) { try { IA.adjuntos.push(await achicarImagen(f)); } catch (e) { toast(e.message); } }
+        $("iaArch").value = ""; IA.rev++; pintarIA();
+      };
+      $("iaMic").onclick = () => {
+        if (Voz.escuchando()) { Voz.detener(); $("iaMic").classList.remove("on"); return; }
+        if (!Voz.puedeEscuchar()) return toast("Este dispositivo no permite dictar.");
+        Voz.callar(); $("iaMic").classList.add("on"); const antes = txt.value;
+        Voz.escuchar({
+          onParcial: t => { txt.value = (antes + " " + t).trim(); },
+          onFinal: t => { $("iaMic").classList.remove("on"); txt.value = ""; enviarIA((antes + " " + t).trim(), { voz: true }); },
+          onError: m => { $("iaMic").classList.remove("on"); toast(m); },
+        });
+      };
+      $("iaVivo").onclick = abrirVivo;
+    }
+    pintarIA();
+  }
+
+  /* ---------- conversación en vivo (manos libres) ---------- */
+  const VIVO = { activo: false, estado: "", parcial: "", ultimo: "", fallos: 0 };
+  function pintarVivo() {
+    const v = $("vivo"); if (!v) return;
+    const n = pendientes().length;
+    v.querySelector(".vivo-orbe").dataset.estado = VIVO.estado;
+    v.querySelector(".vivo-estado").textContent = { escuchando: "Te escucho…", pensando: "Pensando…", hablando: "Hablando… (tocá para interrumpir)", pausa: "En pausa. Tocá el círculo para seguir." }[VIVO.estado] || "";
+    v.querySelector(".vivo-dice").textContent = VIVO.parcial;
+    v.querySelector(".vivo-resp").textContent = VIVO.ultimo;
+    const ap = v.querySelector(".vivo-aplicar"); ap.classList.toggle("oculto", !n); ap.textContent = n === 1 ? "✓ Aplicar el cambio" : `✓ Aplicar ${n} cambios`;
+  }
+  function cicloVivo() {
+    if (!VIVO.activo) return;
+    VIVO.estado = "escuchando"; VIVO.parcial = ""; pintarVivo();
+    Voz.escuchar({
+      onParcial: t => { VIVO.parcial = t; pintarVivo(); },
+      onFinal: async t => {
+        VIVO.fallos = 0; VIVO.parcial = t;
+        if (/^(terminar|terminá|salir|chau|listo gracias|nada más|eso es todo)\.?$/i.test(t.trim())) { VIVO.ultimo = "¡Hasta luego!"; Voz.hablar("Hasta luego."); return cerrarVivo(); }
+        VIVO.estado = "pensando"; pintarVivo();
+        const r = await enviarIA(t, { vivo: true });
+        if (!VIVO.activo) return;
+        VIVO.ultimo = r && r.texto || ""; VIVO.estado = "hablando"; pintarVivo();
+        Voz.hablar(VIVO.ultimo, () => { if (VIVO.activo && VIVO.estado === "hablando") cicloVivo(); });
+      },
+      onError: m => {
+        if (!VIVO.activo) return;
+        VIVO.fallos++;
+        if (VIVO.fallos <= 2 && /No te escuché/.test(m)) return cicloVivo();
+        VIVO.estado = "pausa"; VIVO.ultimo = m; pintarVivo();
+      },
+    });
+  }
+  function abrirVivo() {
+    if (!Voz.puedeEscuchar()) return toast("Este dispositivo no permite hablar con el asistente. Escribile.");
+    if (!$("vivo")) {
+      const d = document.createElement("div"); d.id = "vivo"; d.className = "vivo oculto";
+      d.innerHTML = `<button class="vivo-x" aria-label="Terminar">✕</button>
+        <div class="vivo-centro"><button class="vivo-orbe" aria-label="Hablar / interrumpir"><i></i><i></i><i></i></button>
+        <div class="vivo-estado"></div><div class="vivo-dice"></div><div class="vivo-resp"></div>
+        <button class="btn acc vivo-aplicar oculto"></button></div>
+        <div class="vivo-pie muted">Decí “terminar” para salir</div>`;
+      document.body.appendChild(d);
+      d.querySelector(".vivo-x").onclick = cerrarVivo;
+      d.querySelector(".vivo-orbe").onclick = () => {
+        if (VIVO.estado === "hablando") { Voz.callar(); cicloVivo(); }
+        else if (VIVO.estado === "pausa") { VIVO.fallos = 0; cicloVivo(); }
+        else if (VIVO.estado === "escuchando") { Voz.detener(); VIVO.estado = "pausa"; pintarVivo(); }
+      };
+      d.querySelector(".vivo-aplicar").onclick = async () => { Voz.callar(); const r = await aplicarPendientes(); VIVO.ultimo = r.mal ? "Algunos cambios dieron error." : "Listo, aplicado."; pintarVivo(); Voz.hablar(VIVO.ultimo, () => VIVO.activo && cicloVivo()); };
+    }
+    VIVO.activo = true; VIVO.ultimo = ""; VIVO.fallos = 0;
+    $("vivo").classList.remove("oculto"); requestAnimationFrame(() => $("vivo").classList.add("on"));
+    Voz.hablar("Hola, te escucho.", () => cicloVivo());
+  }
+  function cerrarVivo() {
+    VIVO.activo = false; Voz.detener(); Voz.callar();
+    const v = $("vivo"); if (v) { v.classList.remove("on"); setTimeout(() => v.classList.add("oculto"), 300); }
+  }
 
   /* ============================== APERTURA ============================== */
   (function apertura() {

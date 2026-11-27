@@ -76,6 +76,7 @@
     async salir() { this._sesion(null); },
     sesionNativa() { return null; },
     async registrarToken() {}, async borrarToken() {},
+    async asistente() { const e = new Error("El asistente de IA necesita el modo online (Firebase). Ver GUIA_FIREBASE.md."); e.codigo = "local"; throw e; },
     async ocupadas() { return new Set(Object.values(this._db().empleados || {}).map(e => keyPersona(e.persona))); },
     async guardarDatos(d) { const db = this._db(); db.datos = { ...d, actualizado: Date.now() }; this._save(db); this._all("datos"); },
     async borrarEmpleado(id) { const db = this._db(); delete (db.empleados || {})[id]; this._save(db); this._all("empleados"); },
@@ -228,6 +229,18 @@
       const b = this.db.batch();
       ids.forEach(id => b.update(this.db.collection("cambios").doc(id), { estado, respuesta: respuesta || "", respondido: Date.now() }));
       await b.commit();
+    },
+    /** Asistente de IA (solo administradores): manda el mensaje y devuelve respuesta + propuestas. */
+    async asistente(payload) {
+      if (!this._fn) {
+        this._fn = firebase.app().functions("southamerica-east1");
+        if (G.FIREBASE_CONFIG.emulador) this._fn.useEmulator(G.FIREBASE_CONFIG.emulador, 5001);
+      }
+      try { return (await this._fn.httpsCallable("asistente", { timeout: 300000 })(payload)).data; }
+      catch (e) {
+        const m = e.code === "functions/unavailable" || /network|internal$/i.test(e.code || "") && !e.message ? "Sin conexión con el asistente." : (e.message || "El asistente no respondió.");
+        throw err(e.code || "asistente", m);
+      }
     },
     // dispositivo que recibe notificaciones push (lo usa el servidor)
     async registrarToken(token, plataforma) {

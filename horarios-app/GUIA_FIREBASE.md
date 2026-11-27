@@ -75,6 +75,33 @@ uso queda dentro de la cuota gratuita, así que en la práctica cuesta $0, pero 
      ícono e ingresar (requiere iOS 16.4 o más nuevo). Desde Safari "suelto" Apple no permite notificaciones.
    - **PC:** abrir la versión web en Chrome o Edge y aceptar las notificaciones.
 
+## 7. Asistente de IA para administradores
+Lezana y julianpz tienen una pestaña **IA** (✨) para consultar y modificar horarios escribiendo,
+hablando, mandando una foto de una planilla o en **conversación en vivo**. La IA **prepara** los cambios
+y el administrador los confirma (botón *Aplicar* o diciendo "sí"); nada se aplica solo.
+
+Usa Claude (modelo Claude Opus 5.5) a través de **Claude Managed Agents** de Anthropic: Anthropic aloja el
+agente y guarda el historial de cada conversación. Requiere los pasos 1 a 6 (Firebase con plan Blaze) y:
+
+1. **Cuenta y clave de Anthropic:** entrá a https://console.anthropic.com, creá una cuenta, cargá crédito
+   (*Billing*, por ejemplo US$ 10) y en **API Keys → Create Key** creá una clave (empieza con `sk-ant-`).
+   **No la mandes por chat ni la pegues en el código**: se guarda como secreto en el paso siguiente.
+2. **Guardarla como secreto** en Cloud Shell (dentro de `Kesyzegarra/horarios-app/firebase`):
+   ```bash
+   npx -y firebase-tools@13.29.1 functions:secrets:set ANTHROPIC_API_KEY --project ID-DEL-PROYECTO
+   ./desplegar.sh ID-DEL-PROYECTO
+   ```
+   El primer comando pide la clave (pegala y Enter; no se muestra). El segundo vuelve a subir las funciones.
+3. Listo: en la app, pestaña **IA**. La primera pregunta tarda un poco más porque se crea el agente.
+
+**Costos aproximados (se pagan a Anthropic):** una consulta o un cambio típico cuesta entre US$ 0,01 y 0,10;
+cargar una planilla completa desde una foto, algo más. Cada conversación tiene un tope de **US$ 5**: al
+llegar, la siguiente pregunta empieza una conversación nueva. Se puede poner un límite mensual en
+console.anthropic.com → *Limits*.
+
+**Voz:** en Android usa el dictado y la voz del teléfono (pide permiso de micrófono la primera vez);
+en PC funciona con Chrome o Edge; en iPhone, con Safari.
+
 ## Seguridad
 - Las reglas permiten que cada empleado vea solo su propia cuenta. Los horarios, los cambios y
   los avisos los ven todos los empleados registrados.
@@ -84,5 +111,9 @@ uso queda dentro de la cuota gratuita, así que en la práctica cuesta $0, pero 
   un administrador la borra o la reasigna desde **Panel → Empleados**.
 - Los dispositivos registrados para notificaciones solo los lee el servidor; cada usuario solo puede
   registrar o borrar los suyos. Al cerrar sesión, ese dispositivo deja de recibir notificaciones.
+- El asistente de IA solo responde a las cuentas de Lezana y julianpz (lo verifica el servidor). La clave de
+  Anthropic queda como secreto en Google Cloud y nunca llega a los teléfonos. Las preguntas, las fotos y los
+  datos de horarios que la IA consulta se envían a Anthropic para responder; el historial de cada
+  conversación queda guardado en Anthropic (Managed Agents).
 - Para cambiar la clave de un administrador: Authentication → Usuarios → ⋮ → Restablecer contraseña
   (o borrarlo y crearlo de nuevo con la clave nueva).

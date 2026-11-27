@@ -35,6 +35,10 @@ seguí [GUIA_FIREBASE.md](GUIA_FIREBASE.md).
 - `node test/logic.test.js` — pruebas de los cálculos.
 - `./gradlew assembleRelease` — genera el APK (necesita el SDK de Android en `local.properties`).
 - `firebase/` — reglas de seguridad de Firestore, configuración del emulador y `desplegar.sh`.
+- `firebase/functions/asistente.js` — asistente de IA de los administradores (Claude, Managed Agents):
+  herramientas de consulta y de propuestas; `web/acciones.js` valida y aplica las propuestas (servidor y app).
+  `web/voz.js` = dictado y lectura en voz alta. Prueba sin gastar: `node functions/test/asistente.test.js`
+  (con el emulador de Firestore; usa un Claude simulado).
 - `firebase/functions/` — funciones del servidor que envían las notificaciones push (cambios, respuestas,
   planilla nueva y resumen semanal de los domingos 20 hs). Usan el mismo `logic.js` de la app.
   Prueba: `firebase emulators:exec --only auth,firestore,functions --project demo-mishorarios "npm --prefix functions test"`.

@@ -5,6 +5,8 @@
 //  - resumenSemanal:   domingos 20 hs                     -> a cada empleado con su semana
 const { onDocumentCreated, onDocumentUpdated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { defineSecret } = require("firebase-functions/params");
 const { setGlobalOptions, logger } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const H = require("./horarios");
@@ -151,3 +153,35 @@ async function enviarResumenSemanal() {
 }
 exports.resumenSemanal = onSchedule({ schedule: "0 20 * * 0", timeZone: "America/Argentina/Buenos_Aires" }, enviarResumenSemanal);
 exports._enviarResumenSemanal = enviarResumenSemanal; // para pruebas
+
+/* ---------------- 5) asistente de IA para administradores ---------------- */
+// La clave se guarda como secreto:  firebase functions:secrets:set ANTHROPIC_API_KEY
+const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
+const NOMBRES_ADMIN = { "lezana@admin.mishorarios.app": "Lezana", "julianpz@admin.mishorarios.app": "julianpz" };
+
+exports.asistente = onCall({ secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 300, memory: "512MiB", maxInstances: 2 }, async req => {
+  const email = req.auth && req.auth.token && req.auth.token.email;
+  if (!email || !ADMINS.includes(email)) throw new HttpsError("permission-denied", "Solo los administradores pueden usar el asistente.");
+  const d = req.data || {};
+  const mensaje = String(d.mensaje || "").slice(0, 8000);
+  const imagenes = (Array.isArray(d.imagenes) ? d.imagenes : []).slice(0, 4).filter(im =>
+    im && /^image\/(jpeg|png|webp|gif)$/.test(im.tipo) && typeof im.datos === "string" && im.datos.length < 7000000);
+  if (!mensaje.trim() && !imagenes.length && !d.nueva) throw new HttpsError("invalid-argument", "El mensaje está vacío.");
+  const Anthropic = require("@anthropic-ai/sdk");
+  const anthropic = new (Anthropic.default || Anthropic)({ apiKey: ANTHROPIC_API_KEY.value() });
+  const A = require("./asistente");
+  try {
+    if (!mensaje.trim() && !imagenes.length) {  // solo "nueva conversación"
+      await db.doc("iaSesiones/" + req.auth.uid).set({ renovar: true }, { merge: true });
+      return { texto: "Listo, empezamos de nuevo. ¿Qué necesitás?", propuestas: [] };
+    }
+    return await A.conversar({ anthropic, db, uid: req.auth.uid, admin: NOMBRES_ADMIN[email] || "Administrador",
+      mensaje, imagenes, nueva: !!d.nueva, pendientes: +d.pendientes || 0 });
+  } catch (e) {
+    logger.error("asistente", e);
+    const st = e && e.status;
+    if (st === 401) throw new HttpsError("failed-precondition", "La clave de Anthropic no es válida. Revisá el secreto ANTHROPIC_API_KEY.");
+    if (st === 429) throw new HttpsError("resource-exhausted", "Demasiados pedidos seguidos al asistente. Esperá unos segundos.");
+    throw new HttpsError("internal", "El asistente no pudo responder: " + (e.message || e));
+  }
+});
