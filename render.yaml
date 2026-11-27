@@ -25,3 +25,10 @@ services:
       name: sernova-data
       mountPath: /var/data
       sizeGB: 1
+
+  # La Esquina · Planillas (app estática para el celular)
+  - type: web
+    name: la-esquina
+    runtime: static
+    buildCommand: echo "sin build"
+    staticPublishPath: la-esquina
