@@ -1,10 +1,10 @@
-# La Esquina · APK de Android
+# Belgrano · APK de Android
 
 Empaqueta la app web de `../la-esquina` como aplicación Android con [Capacitor](https://capacitorjs.com).
-El APK listo está en `../la-esquina/descargas/LaEsquina.apk`.
+El APK listo está en `../la-esquina/descargas/Belgrano.apk`.
 
 ## Instalar en el celular
-1. Pasar `LaEsquina.apk` al teléfono (WhatsApp, Drive, cable…) y abrirlo.
+1. Pasar `Belgrano.apk` al teléfono (WhatsApp, Drive, cable…) y abrirlo.
 2. Android pide permitir "instalar apps desconocidas" para esa app: aceptar.
 3. La primera vez que se saca una foto, permitir el acceso a la cámara.
 

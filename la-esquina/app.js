@@ -1,4 +1,4 @@
-/* La Esquina · Planillas
+/* Belgrano · Planillas
  * Foto → lectura de código de barras → planilla de Pedidos o Vencidos
  * → recordatorio en Google Calendar → PDF para WhatsApp / Gmail.
  * Todo queda guardado en el teléfono (localStorage). */
@@ -92,7 +92,7 @@
     f.classList.toggle('pedidos', d === 'pedidos');
     f.classList.toggle('vencidos', d === 'vencidos');
     $('#fVence').required = d === 'vencidos';
-    $('#btnGuardar').textContent = d === 'pedidos' ? 'Guardar en Pedidos' : 'Guardar en Vencidos';
+    $('#btnGuardar').textContent = d === 'pedidos' ? 'Guardar en Pedidos' : 'Guardar en A vencer';
   }
   $$('.seg').forEach(s => s.addEventListener('click', () => setDest(s.dataset.dest)));
 
@@ -118,7 +118,7 @@
       const r = await Filesystem.writeFile({ path: f.name, data: await aBase64(f), directory: 'CACHE' });
       uris.push(r.uri);
     }
-    try { await Share.share({ title: 'La Esquina · Planillas', text: texto, files: uris, dialogTitle: 'Enviar por…' }); }
+    try { await Share.share({ title: 'Belgrano · Planillas', text: texto, files: uris, dialogTitle: 'Enviar por…' }); }
     catch (e) { if (!/cancel/i.test(String(e && e.message))) throw e; }
   }
 
@@ -519,7 +519,7 @@
     $('#rafagaPanel').hidden = m !== 'rafaga';
     $('#itemForm').hidden = m === 'rafaga';
     $('#rafagaPanel').classList.toggle('v', S.dest === 'vencidos');
-    $('#rafagaDest').textContent = S.dest === 'pedidos' ? 'Pedidos' : 'Vencidos';
+    $('#rafagaDest').textContent = S.dest === 'pedidos' ? 'Pedidos' : 'A vencer';
     if (Cam.activa && Cam.pausada) reanudar();
     else if (Cam.activa) pill(m === 'rafaga' ? 'Ráfaga: pasá los productos' : 'Apuntá al código de barras');
   }
@@ -631,7 +631,7 @@
       else { item = { id: uid(), codigo, nombre, cantidad, vence, fecha: isoHoy(), cal: false }; S.vencidos.push(item); }
       guardar();
       if (S.cfg.autoCal && !item.cal) recordatorio(item, true);
-      else toast('Guardado en Vencidos ✓', { label: 'Ver planilla', fn: () => ir('vencidos') });
+      else toast('Guardado en A vencer ✓', { label: 'Ver planilla', fn: () => ir('vencidos') });
     }
     limpiarForm();
     render();
@@ -789,7 +789,7 @@
   function textoEvento(v) {
     return {
       titulo: `⚠ Vence: ${v.nombre} (${v.cantidad} u.)`,
-      detalle: `Producto: ${v.nombre}\nCódigo de barras: ${v.codigo}\nCantidad: ${v.cantidad}\nVencimiento: ${fmt(v.vence)}\n${S.cfg.sucursal ? 'Local: ' + S.cfg.sucursal + '\n' : ''}— La Esquina · siempre de tu lado`
+      detalle: `Producto: ${v.nombre}\nCódigo de barras: ${v.codigo}\nCantidad: ${v.cantidad}\nVencimiento: ${fmt(v.vence)}\n${S.cfg.sucursal ? 'Local: ' + S.cfg.sucursal + '\n' : ''}— Belgrano · siempre de tu lado`
     };
   }
   function urlGoogleCalendar(v) {
@@ -859,7 +859,7 @@
     }
     // Sin API: abre Google Calendar con el evento armado (tocar "Guardar")
     const w = abrirExterno(urlGoogleCalendar(v));
-    if (w) { marcar(); if (alGuardar) toast('Guardado en Vencidos ✓ · confirmá el evento en Calendar'); }
+    if (w) { marcar(); if (alGuardar) toast('Guardado en A vencer ✓ · confirmá el evento en Calendar'); }
     else toast('Guardado ✓', { label: 'Crear recordatorio', fn: () => { abrirExterno(urlGoogleCalendar(v)); marcar(); } });
   }
 
@@ -877,7 +877,7 @@
         'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${icsEsc(titulo)}`, `TRIGGER:-P${dias}DT15H`, 'END:VALARM',
         'END:VEVENT'].join('\r\n');
     });
-    const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//La Esquina//Vencidos//ES', 'CALSCALE:GREGORIAN', ...ev, 'END:VCALENDAR'].join('\r\n');
+    const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Belgrano//Vencidos//ES', 'CALSCALE:GREGORIAN', ...ev, 'END:VCALENDAR'].join('\r\n');
     descargar(new Blob([ics], { type: 'text/calendar' }), `vencimientos-${isoHoy()}.ics`);
     toast('Abrí el archivo para agregarlo a Google Calendar');
   });
@@ -899,18 +899,18 @@
     const W = doc.internal.pageSize.getWidth();
     const verde = [152, 184, 40], tinta = [37, 48, 10];
     const logo = await logoData();
-    const titulo = tipo === 'pedidos' ? 'Planilla de Pedidos' : 'Planilla de Vencidos';
+    const titulo = tipo === 'pedidos' ? 'Planilla de Pedidos' : 'Planilla A vencer';
     const hoy = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
     const encabezado = () => {
       doc.setFillColor(...verde); doc.rect(0, 0, W, 30, 'F');
       doc.setFillColor(234, 221, 18); doc.rect(0, 30, W, 1.4, 'F');
-      if (logo) doc.addImage(logo, 'PNG', 12, 6, 40, 19.2);
+      if (logo) doc.addImage(logo, 'PNG', 12, 4.5, 44, 21.8);
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold'); doc.setFontSize(17);
       doc.text(titulo, W - 12, 14, { align: 'right' });
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
-      doc.text([S.cfg.sucursal || 'La Esquina', hoy.charAt(0).toUpperCase() + hoy.slice(1)], W - 12, 20, { align: 'right' });
+      doc.text([S.cfg.sucursal || 'Belgrano', hoy.charAt(0).toUpperCase() + hoy.slice(1)], W - 12, 20, { align: 'right' });
     };
 
     let filas, columnas, estilosCol;
@@ -966,10 +966,10 @@
       const H = doc.internal.pageSize.getHeight();
       doc.setDrawColor(...verde); doc.setLineWidth(.4); doc.line(12, H - 12, W - 12, H - 12);
       doc.setFont('helvetica', 'italic'); doc.setFontSize(8.5); doc.setTextColor(120, 130, 95);
-      doc.text('La Esquina · siempre de tu lado', 12, H - 7);
+      doc.text('Belgrano · siempre de tu lado', 12, H - 7);
       doc.text(`Página ${i} de ${n}`, W - 12, H - 7, { align: 'right' });
     }
-    const nombre = `${tipo === 'pedidos' ? 'Pedidos' : 'Vencidos'}_LaEsquina_${isoHoy()}.pdf`;
+    const nombre = `${tipo === 'pedidos' ? 'Pedidos' : 'AVencer'}_Belgrano_${isoHoy()}.pdf`;
     return new File([doc.output('blob')], nombre, { type: 'application/pdf' });
   }
 
@@ -986,7 +986,7 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   }
 
-  const mensaje = tipos => `Hola! Te paso ${tipos.length > 1 ? 'las planillas' : 'la planilla'} de ${tipos.map(t => t === 'pedidos' ? 'Pedidos' : 'Vencidos').join(' y ')} de ${S.cfg.sucursal || 'La Esquina'} (${fmt(isoHoy())}).`;
+  const mensaje = tipos => `Hola! Te paso ${tipos.length > 1 ? 'las planillas' : 'la planilla'} de ${tipos.map(t => t === 'pedidos' ? 'Pedidos' : 'A vencer').join(' y ')} de ${S.cfg.sucursal || 'Belgrano'} (${fmt(isoHoy())}).`;
 
   async function compartir(tipos, via) {
     tipos = tipos.filter(t => S[t].length);
@@ -1002,7 +1002,7 @@
     }
     // 1) Menú de compartir del teléfono (WhatsApp, Gmail…) con el PDF adjunto
     if (navigator.canShare && navigator.canShare({ files })) {
-      try { await navigator.share({ files, title: 'La Esquina · Planillas', text: texto }); return; }
+      try { await navigator.share({ files, title: 'Belgrano · Planillas', text: texto }); return; }
       catch (e) { if (e.name === 'AbortError') return; }
     }
     // 2) Sin soporte: descarga el PDF y abre la app elegida para adjuntarlo
@@ -1011,7 +1011,7 @@
       const num = (S.cfg.wa || '').replace(/\D/g, '');
       abrirExterno(`https://wa.me/${num}?text=${encodeURIComponent(texto + ' (adjunto el PDF)')}`, '_blank');
     } else if (via === 'gmail') {
-      const p = new URLSearchParams({ view: 'cm', fs: '1', to: S.cfg.mail || '', su: `La Esquina · ${tipos.map(t => t === 'pedidos' ? 'Pedidos' : 'Vencidos').join(' y ')} ${fmt(isoHoy())}`, body: texto + '\n\nAdjunto el PDF.' });
+      const p = new URLSearchParams({ view: 'cm', fs: '1', to: S.cfg.mail || '', su: `Belgrano · ${tipos.map(t => t === 'pedidos' ? 'Pedidos' : 'A vencer').join(' y ')} ${fmt(isoHoy())}`, body: texto + '\n\nAdjunto el PDF.' });
       abrirExterno('https://mail.google.com/mail/?' + p.toString());
     }
     toast('PDF descargado ✓ adjuntalo en el mensaje');
@@ -1034,7 +1034,7 @@
     if (cl) {
       const t = cl.dataset.clear;
       if (!S[t].length) return toast('Ya está vacía');
-      if (!confirm(`¿Vaciar la planilla de ${t === 'pedidos' ? 'Pedidos' : 'Vencidos'}? (${S[t].length} productos)`)) return;
+      if (!confirm(`¿Vaciar la planilla de ${t === 'pedidos' ? 'Pedidos' : 'A vencer'}? (${S[t].length} productos)`)) return;
       const copia = S[t]; S[t] = []; guardar(); render();
       toast('Planilla vaciada', { label: 'Deshacer', fn: () => { S[t] = copia; guardar(); render(); } });
     }

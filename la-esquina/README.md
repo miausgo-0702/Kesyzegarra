@@ -1,23 +1,23 @@
-# La Esquina · Planillas
+# Belgrano · Planillas
 
 App para el celular (se instala como aplicación, funciona sin internet) que:
 
 1. **Escanea en vivo**: con la cámara abierta, el código se reconoce solo al instante (también acepta foto o galería).
    - *Uno por uno*: lee el código y completás los datos; al guardar sigue escaneando solo.
-   - *Ráfaga*: cada lectura suma 1 unidad a la planilla (ideal para contar). En Vencidos se elige antes el vencimiento del lote.
+   - *Ráfaga*: cada lectura suma 1 unidad a la planilla (ideal para contar). En A vencer se elige antes el vencimiento del lote.
    - Linterna y zoom si el teléfono lo permite.
 2. **Reconoce el código de barras** (EAN-13, EAN-8, UPC, Code128, Code39, ITF, QR…).
 3. Lo pasa a una de **2 planillas**:
    - **Pedidos**: código de barras + nombre del producto (cantidad opcional).
-   - **Vencidos**: código de barras + nombre + cantidad + vencimiento.
-4. Por cada vencido crea un **recordatorio en Google Calendar** (N días antes, configurable en Ajustes).
+   - **A vencer**: código de barras + nombre + cantidad + vencimiento.
+4. Por cada producto a vencer crea un **recordatorio en Google Calendar** (N días antes, configurable en Ajustes).
 5. Arma los **PDF** con el logo y los códigos de barra dibujados, listos para **WhatsApp o Gmail**.
 
 El nombre del producto se completa solo si ya se cargó antes o si figura en Open Food Facts; si no, se escribe una vez y la app lo recuerda.
 
 ## APK de Android
 
-El instalador está en [`descargas/LaEsquina.apk`](descargas/LaEsquina.apk) (si la web está publicada, también se baja desde `https://<tu-sitio>/descargas/LaEsquina.apk`). Cómo se compila: `../la-esquina-android/README.md`.
+El instalador está en [`descargas/Belgrano.apk`](descargas/Belgrano.apk) (si la web está publicada, también se baja desde `https://<tu-sitio>/descargas/Belgrano.apk`). Cómo se compila: `../la-esquina-android/README.md`.
 
 ## Cómo usarla como web
 

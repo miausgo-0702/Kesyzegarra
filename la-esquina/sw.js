@@ -1,5 +1,5 @@
 // Funciona sin internet: guarda la app en el teléfono.
-const CACHE = 'la-esquina-v2';
+const CACHE = 'la-esquina-v3';
 const ARCHIVOS = [
   './', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest',
   'img/icono.png', 'img/logo-verde.png', 'img/logo-blanco.png', 'img/icon-192.png', 'img/icon-512.png',

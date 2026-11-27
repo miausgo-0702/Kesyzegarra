@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">La Esquina</string>
-    <string name="title_activity_main">La Esquina</string>
+    <string name="app_name">Belgrano</string>
+    <string name="title_activity_main">Belgrano</string>
     <string name="package_name">ar.laesquina.planillas</string>
     <string name="custom_url_scheme">ar.laesquina.planillas</string>
 </resources>

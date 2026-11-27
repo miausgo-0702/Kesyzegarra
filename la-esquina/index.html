@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>La Esquina · Planillas</title>
+  <title>Belgrano · Planillas</title>
   <meta name="theme-color" content="#98B828">
   <meta name="description" content="Escaneo de códigos de barra, planillas de pedidos y vencidos, recordatorios y PDF para compartir.">
   <link rel="manifest" href="manifest.webmanifest">
@@ -16,12 +16,12 @@
 </head>
 <body>
   <!-- Pantalla de inicio -->
-  <div class="splash" id="splash" role="img" aria-label="La Esquina, siempre de tu lado">
+  <div class="splash" id="splash" role="img" aria-label="Belgrano, siempre de tu lado">
     <div class="sp-rings" aria-hidden="true"><span></span><span></span><span></span></div>
     <div class="sp-center">
       <div class="sp-icon"><img src="img/icono.png" alt=""></div>
-      <div class="sp-logo"><img src="img/logo-blanco.png" alt="La Esquina"></div>
-      <p class="sp-app">Planillas · Pedidos y Vencidos</p>
+      <div class="sp-logo"><img src="img/logo-blanco.png" alt="Belgrano"></div>
+      <p class="sp-app">Planillas · Pedidos y A vencer</p>
     </div>
     <div class="sp-bottom">
       <div class="sp-bar"><span></span></div>
@@ -40,7 +40,7 @@
   </svg>
 
   <header class="topbar">
-    <img src="img/logo-verde.png" alt="La Esquina" class="brand">
+    <img src="img/logo-verde.png" alt="Belgrano" class="brand">
     <button class="icon-btn" id="btnAjustes" aria-label="Ajustes">
       <svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
     </button>
@@ -56,11 +56,11 @@
       </div>
       <button class="cta" data-go="escanear">
         <span class="cta-ico"><svg viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M8 8v8M11 8v8M14 8v8M17 8v8"/></svg></span>
-        <span><b>Escanear en vivo</b><small>Apuntá y se lee solo · Pedidos o vencidos</small></span>
+        <span><b>Escanear en vivo</b><small>Apuntá y se lee solo · Pedidos o a vencer</small></span>
       </button>
       <div class="stats">
         <button class="stat" data-go="pedidos"><span class="stat-n" id="stPedidos">0</span><span class="stat-l">Pedidos</span></button>
-        <button class="stat" data-go="vencidos"><span class="stat-n" id="stVencidos">0</span><span class="stat-l">Vencidos / a vencer</span></button>
+        <button class="stat" data-go="vencidos"><span class="stat-n" id="stVencidos">0</span><span class="stat-l">A vencer</span></button>
         <button class="stat warn" data-go="vencidos"><span class="stat-n" id="stSemana">0</span><span class="stat-l">Vencen en 7 días</span></button>
         <button class="stat bad" data-go="vencidos"><span class="stat-n" id="stYa">0</span><span class="stat-l">Ya vencidos</span></button>
       </div>
@@ -80,7 +80,7 @@
 
       <div class="dest-toggle" role="tablist" aria-label="Planilla destino">
         <button class="seg on" data-dest="pedidos" role="tab">Pedidos</button>
-        <button class="seg" data-dest="vencidos" role="tab">Vencidos</button>
+        <button class="seg" data-dest="vencidos" role="tab">A vencer</button>
         <span class="seg-bg"></span>
       </div>
 
@@ -176,10 +176,10 @@
     </section>
 
     <!-- VENCIDOS -->
-    <section class="view" id="view-vencidos" data-title="Vencidos">
+    <section class="view" id="view-vencidos" data-title="A vencer">
       <div class="hero">
         <p class="eyebrow"><span class="dot"></span><span id="cntVencidos">0 productos</span></p>
-        <h1>Vencidos</h1>
+        <h1>A vencer</h1>
         <p class="sub">Código, producto, cantidad y vencimiento, con recordatorio en Google Calendar.</p>
       </div>
       <div class="toolbar">
@@ -192,7 +192,7 @@
           <thead><tr><th>Código</th><th>Producto</th><th class="num">Cant.</th><th>Vence</th><th></th></tr></thead>
           <tbody id="tbVencidos"></tbody>
         </table>
-        <p class="empty" id="emptyVencidos">La planilla de vencidos está vacía.</p>
+        <p class="empty" id="emptyVencidos">La planilla A vencer está vacía.</p>
       </div>
     </section>
 
@@ -215,7 +215,7 @@
         </div>
         <div class="card share-card">
           <div class="share-ico vencidos"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M12 14v3"/></svg></div>
-          <h3>Planilla de Vencidos</h3>
+          <h3>Planilla A vencer</h3>
           <p class="muted" id="shVencidos">0 productos</p>
           <div class="share-actions">
             <button class="btn primary" data-share="vencidos">Compartir PDF</button>
@@ -235,7 +235,7 @@
         <div class="card-h"><h3>Después de enviar</h3></div>
         <div class="share-actions">
           <button class="btn ghost" data-clear="pedidos">Vaciar Pedidos</button>
-          <button class="btn ghost" data-clear="vencidos">Vaciar Vencidos</button>
+          <button class="btn ghost" data-clear="vencidos">Vaciar A vencer</button>
         </div>
       </div>
     </section>
@@ -248,7 +248,7 @@
       <button class="tab active" data-go="inicio" data-color="#98B828"><svg viewBox="0 0 24 24"><path d="M3 11 12 4l9 7v8a2 2 0 0 1-2 2h-4v-6H9v6H5a2 2 0 0 1-2-2v-8Z"/></svg><span>Inicio</span></button>
       <button class="tab" data-go="pedidos" data-color="#B3BB06"><svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg><span>Pedidos</span></button>
       <button class="tab" data-go="escanear" data-color="#7FA019"><svg viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M8 8v8M11 8v8M14 8v8M17 8v8"/></svg><span>Escanear</span></button>
-      <button class="tab" data-go="vencidos" data-color="#E0B81A"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M12 14v3"/></svg><span>Vencidos</span></button>
+      <button class="tab" data-go="vencidos" data-color="#E0B81A"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M12 14v3"/></svg><span>A vencer</span></button>
       <button class="tab" data-go="compartir" data-color="#5E7A12"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg><span>Compartir</span></button>
     </div>
   </nav>
@@ -273,9 +273,9 @@
   <dialog id="dlgAjustes" class="sheet-dlg">
     <form method="dialog">
       <h3>Ajustes</h3>
-      <label class="fld"><span>Sucursal / Local (sale en el PDF)</span><input id="aSucursal" placeholder="Ej: La Esquina · Sucursal Centro"></label>
+      <label class="fld"><span>Sucursal / Local (sale en el PDF)</span><input id="aSucursal" placeholder="Ej: Belgrano · Sucursal Centro"></label>
       <label class="fld"><span>Avisar en el calendario … días antes del vencimiento</span><input id="aDias" type="number" min="0" max="28" value="3"></label>
-      <label class="chk"><input type="checkbox" id="aAutoCal" checked> Crear recordatorio al guardar un producto en Vencidos</label>
+      <label class="chk"><input type="checkbox" id="aAutoCal" checked> Crear recordatorio al guardar un producto en A vencer</label>
       <label class="fld"><span>WhatsApp destino (opcional, con código de país, ej: 5491122334455)</span><input id="aWa" inputmode="tel"></label>
       <label class="fld"><span>Email destino (opcional)</span><input id="aMail" type="email"></label>
       <details class="adv">
