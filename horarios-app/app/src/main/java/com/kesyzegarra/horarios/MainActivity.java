@@ -63,6 +63,10 @@ public class MainActivity extends Activity {
         s.setDomStorageEnabled(true);
         s.setDatabaseEnabled(true);
         s.setAllowFileAccess(false);
+        // fluidez: dibujar con la placa gráfica y preparar la pantalla aunque esté tapada
+        web.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null);
+        if (Build.VERSION.SDK_INT >= 23) s.setOffscreenPreRaster(true);
+        web.setOverScrollMode(android.view.View.OVER_SCROLL_NEVER);
         s.setAllowContentAccess(false);
         web.setWebViewClient(new WebViewClient() {
             @Override

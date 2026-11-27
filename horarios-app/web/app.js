@@ -72,7 +72,7 @@
   document.querySelectorAll(".glinks .chip").forEach(c => c.onclick = () => setModo(c.dataset.modo));
 
   async function llenarRegistro() {
-    const secs = L.getData().SECTORES;
+    const secs = L.datos().SECTORES;
     $("rgSector").innerHTML = secs.map((s, i) => `<option value="${i}">${esc(s.nombre)}</option>`).join("");
     const ocup = await B.ocupadas().catch(() => new Set());
     const pers = () => {
@@ -155,17 +155,19 @@
     if (st.animando) { st.pendiente = u; return; }
     aplicarUsuario(u, aviso);
   });
+  let renderPendiente = 0;
+  function renderPronto() { if (renderPendiente || !st.user) return; renderPendiente = requestAnimationFrame(() => { renderPendiente = 0; if (st.user) render(); }); }
   B.on("datos", d => {
     st.datosCargados = true;
     st.datos = d;
-    L.setData(d || SEED);
+    L.setData(d || SEED); olvidar();
     if (!d && st.user && st.user.tipo === "admin" && B.online) B.guardarDatos(SEED).catch(() => {});
-    if (st.user) render();
+    renderPronto();
   });
   B.on("ofertas", l => Ofertas.setLista(l));
-  B.on("cambios", c => { st.cambios = c || []; if (st.user) { render(); procesarNotifs(); } });
-  B.on("avisos", a => { st.avisos = a || []; if (st.user) render(); });
-  B.on("empleados", e => { st.empleados = (e || []).sort((a, b) => (a.persona || "").localeCompare(b.persona || "")); if (st.user) render(); });
+  B.on("cambios", c => { st.cambios = c || []; olvidar(); if (st.user) { renderPronto(); procesarNotifs(); } });
+  B.on("avisos", a => { st.avisos = a || []; renderPronto(); });
+  B.on("empleados", e => { st.empleados = (e || []).sort((a, b) => (a.persona || "").localeCompare(b.persona || "")); renderPronto(); });
   $("bSalir").onclick = async () => {
     if (!confirm("¿Cerrar sesión?")) return;
     Notif.sesion(null); cerrarVivo(); IA.cargado = null; IA.perfil = null;
@@ -220,12 +222,12 @@
   }
   function irA(v) {
     if (v === st.vista) return;
-    st.vista = v; render(); window.scrollTo({ top: 0 });
+    st.vista = v; render(); if (window.scrollY > 0) window.scrollTo(0, 0);
   }
   function moverGota(animar) {
-    const b = $("nav").querySelector(`button[data-v="${st.vista}"]`);
-    if (!b) return;
-    Gota.ir(b.offsetLeft + b.offsetWidth / 2, !animar);
+    const x = Gota.centro(st.vista);
+    if (x == null) return;
+    Gota.ir(x, !animar);
     const nav = $("nav"), ink = st.vista === "equipo" || st.vista === "ia" || st.vista === "ofertas" ? "#fff" : "#1d2100";
     nav.style.setProperty("--bead", COLOR[st.vista]); nav.style.setProperty("--bead-ink", ink);
     $("side").style.setProperty("--bead-ink", ink);
@@ -271,7 +273,11 @@
       else { x = meta; v = 0; dibujar(); raf = 0; ult = 0; }
     }
     const correr = () => { if (!raf) { ult = 0; raf = requestAnimationFrame(paso); } };
-    function medir() { W = nav.clientWidth; H = nav.clientHeight; $("navSvg").setAttribute("viewBox", `0 0 ${W} ${H}`); }
+    let centros = {};
+    function medir() {
+      W = nav.clientWidth; H = nav.clientHeight; $("navSvg").setAttribute("viewBox", `0 0 ${W} ${H}`);
+      centros = {}; nav.querySelectorAll("button[data-v]").forEach(b => { centros[b.dataset.v] = b.offsetLeft + b.offsetWidth / 2; });
+    }
     function cercano(px) {
       let mejor = null, d = 1e9;
       nav.querySelectorAll("button[data-v]").forEach(b => { const c = b.offsetLeft + b.offsetWidth / 2; if (Math.abs(c - px) < d) { d = Math.abs(c - px); mejor = b; } });
@@ -301,11 +307,11 @@
       bead.onpointerup = soltar; bead.onpointercancel = soltar;
     }
     function ir(px, sinAnim) {
-      medir(); meta = px;
+      meta = px;
       if (sinAnim || RED || !ult && x === 0) { x = px; v = 0; dibujar(); return; }
       correr();
     }
-    return { iniciar, ir, medir: () => { if (nav) { medir(); dibujar(); } } };
+    return { iniciar, ir, medir: () => { if (nav) { medir(); dibujar(); } }, centro: v => { if (!W) medir(); return centros[v]; } };
   })();
   window.addEventListener("resize", () => { if (st.user) { Gota.medir(); moverGota(false); } });
 
@@ -315,10 +321,18 @@
     const k = ymd(d), n = norm(nombre);
     return st.cambios.filter(c => c.fecha === k && norm(c.persona) === n && c.estado !== "rechazado").sort((a, b) => b.creado - a.creado)[0] || null;
   }
+  // Memoria: el horario de cada persona y día se calcula una sola vez hasta que cambian los datos.
+  const memoEstado = new Map();
+  const olvidar = () => memoEstado.clear();
   function estado(nombre, d) {
+    const k = nombre + "|" + ymd(d);
+    if (memoEstado.has(k)) return memoEstado.get(k);
+    const r = estadoCalc(nombre, d); memoEstado.set(k, r); return r;
+  }
+  function estadoCalc(nombre, d) {
     const u = L.ubicar(nombre); if (!u) return null;
     const c = cambioDe(nombre, d);
-    const r = L.estadoDia(L.getData().SECTORES[u.si], u.pi, d, c ? { manual: { t: !!c.t, h: c.h } } : {});
+    const r = L.estadoDia(L.datos().SECTORES[u.si], u.pi, d, c ? { manual: { t: !!c.t, h: c.h } } : {});
     if (c) r.cambio = c;
     return r;
   }
@@ -394,7 +408,7 @@
       ? `Trabajás con el Grupo ${s.grupo}, pero no figurás en su planilla: confirmá el horario.`
       : "Te toca trabajar este feriado (uno sí, uno no). No figurás en la planilla del feriado: confirmá el horario.");
     if (s.feriado && s.feriado.tipo === "puente" && !s.manual) notas.push("Día no laborable (puente turístico): se trabaja normal y no cuenta en el “uno sí, uno no”.");
-    if (s.tipo === "finde" && s.trabaja && L.getData().FINDE[s.grupo].obs) notas.push("Obs.: " + esc(L.getData().FINDE[s.grupo].obs));
+    if (s.tipo === "finde" && s.trabaja && L.datos().FINDE[s.grupo].obs) notas.push("Obs.: " + esc(L.datos().FINDE[s.grupo].obs));
     const min = s.trabaja ? L.minutos(s.h) : null;
     return `<div class="card ${hero ? "hero" : ""}">
       <div class="lbl">${esHoy ? "Hoy · " : ""}${fechaLarga(d)}</div>
@@ -465,7 +479,7 @@
     }).join("");
   }
   function filasSemanas(nombre) {
-    const u = L.ubicar(nombre), sec = L.getData().SECTORES[u.si], lun0 = lunesDe(hoy());
+    const u = L.ubicar(nombre), sec = L.datos().SECTORES[u.si], lun0 = lunesDe(hoy());
     let r = "";
     for (let j = 0; j < 8; j++) {
       const l = addDays(lun0, 7 * j);
@@ -513,7 +527,7 @@
   }
   function filasFeriados(nombre, y) {
     const fs = L.feriadosAnio(y);
-    const sinP = !(L.getData().PUENTES || {})[y];
+    const sinP = !(L.datos().PUENTES || {})[y];
     return Object.keys(fs).sort().map(k => {
       const x = parseYMD(k), f = fs[k], s = estado(nombre, x);
       const que = f.tipo === "puente" ? "Día normal" : L.finde(x) ? (s.trabaja ? "Trabajás (finde)" : "Franco (finde)") : (s.trabaja ? "Trabajás" : "Descansás");
@@ -530,7 +544,7 @@
     return html || `<tr><td class="empty">Sin planilla.</td></tr>`;
   }
   function renderEquipo(nombre) {
-    const d = st.fecha, D = L.getData();
+    const d = st.fecha, D = L.datos();
     let titulo, nota, html;
     if (L.finde(d)) {
       const f = L.listaFinde(d);
@@ -680,7 +694,7 @@
     B_sab: "Grupo B · sábado", B_dom: "Grupo B · domingo", feriado: "Feriado",
   };
   function cargarPlan(plan) {
-    const D = L.getData();
+    const D = L.datos();
     let rows;
     if (plan === "semana") { rows = []; D.SECTORES.forEach(s => s.personas.forEach(p => rows.push({ sector: s.nombre, n: p.n, h: p.h, fijo: !!p.fijo }))); }
     else if (plan === "feriado") rows = D.FERIADO_PLANILLA.B.lista.map(r => ({ sector: r[0], n: r[1], h: r[2], fijo: !!r[3] }));
@@ -696,7 +710,7 @@
 
   function admPlanillas(root) {
     if (!st.ed) cargarPlan("semana");
-    const e = st.ed, D = L.getData();
+    const e = st.ed, D = L.datos();
     const esFinde = e.plan.includes("_"), g = e.plan.split("_")[0];
     const lblFecha = e.plan === "semana" ? "Lunes de la semana de esta planilla" : e.plan === "feriado" ? "Fecha del feriado de esta planilla" : `Sábado del finde de esta planilla (vale para sábado y domingo del Grupo ${g})`;
     root.innerHTML = `<div class="card">
@@ -793,7 +807,7 @@
   }
 
   function admPersonas(root) {
-    const D = L.getData(), ps = L.personas();
+    const D = L.datos(), ps = L.personas();
     const gf = D.GRUPO_FIJO || {}, tf = D.TRABAJO_FERIADO_BASE || {};
     const puentes = [];
     Object.entries(D.PUENTES || {}).forEach(([y, l]) => l.forEach(x => puentes.push(x + " puente")));
@@ -996,7 +1010,7 @@
     p.estado = "aplicando"; IA.rev++; pintarIA();
     try {
       const r = Acciones.aplicar(L.getData(), { tipo: p.tipo, datos: p.datos }, { empleados: st.empleados });
-      if (r.datos) { await B.guardarDatos(r.datos); L.setData(r.datos); }
+      if (r.datos) { await B.guardarDatos(r.datos); L.setData(r.datos); olvidar(); }
       for (const op of r.ops) {
         if (op.tipo === "cambios") {
           const lote = "L" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -1152,10 +1166,9 @@
       };
       $("iaVivo").onclick = abrirVivo;
       // la cara del asistente
-      IA.caras = [
-        LiveOrb.mount($("iaOrbeTop"), { size: 36, variant: "webgl", colors: PALETA_IA, interactive: false, label: "Asistente" }),
-        LiveOrb.mount($("iaOrbeHola"), { size: 148, variant: "webgl", colors: PALETA_IA, label: "Cara del asistente de IA" }),
-      ];
+      $("iaOrbeTop").innerHTML = '<span class="cara-mini" aria-hidden="true"><i></i><i></i></span>';
+      IA.caras = [];
+      setTimeout(() => { if ($("iaOrbeHola") && IA.caras) IA.caras.push(LiveOrb.mount($("iaOrbeHola"), { size: 148, variant: "webgl", colors: PALETA_IA, label: "Cara del asistente de IA" })); }, 120);
       $("iaNombreF").onsubmit = async e => {
         e.preventDefault();
         const n = $("iaNombre").value.replace(/\s+/g, " ").trim();

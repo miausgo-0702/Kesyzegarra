@@ -276,7 +276,8 @@ void main() {
     const resize = () => {
       const parent = canvas.parentElement;
       if (!parent) return false;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      // resolución máxima 1,5x: casi igual de nítido y mucho más liviano para el teléfono
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       const w = parent.clientWidth, h = parent.clientHeight;
       if (w <= 0 || h <= 0) return false;
       const width = Math.max(1, Math.floor(w * dpr)), height = Math.max(1, Math.floor(h * dpr));

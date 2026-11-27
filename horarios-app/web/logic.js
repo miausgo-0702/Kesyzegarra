@@ -4,7 +4,13 @@
   const L = {};
 
   // Reemplaza los datos (planillas) en uso, p. ej. cuando un administrador los edita.
-  L.setData = d => { Object.keys(d).forEach(k => { G[k] = d[k]; }); Object.keys(cache).forEach(k => delete cache[k]); };
+  L.setData = d => { Object.keys(d).forEach(k => { G[k] = d[k]; }); Object.keys(cache).forEach(k => delete cache[k]); memo.personas = null; memo.feriadoK.clear(); memo.ubicar.clear(); };
+  // Lectura directa (sin copiar) de las planillas en uso: para leer, no para modificar.
+  L.datos = () => ({ BASE_LUNES: G.BASE_LUNES, SECTORES: G.SECTORES, FINDE_BASE_SABADO: G.FINDE_BASE_SABADO, FINDE_BASE_GRUPO: G.FINDE_BASE_GRUPO,
+    GRUPO_FIJO: G.GRUPO_FIJO, FINDE: G.FINDE, FERIADO_PLANILLA: G.FERIADO_PLANILLA, FERIADO_BASE: G.FERIADO_BASE,
+    TRABAJO_FERIADO_BASE: G.TRABAJO_FERIADO_BASE, PUENTES: G.PUENTES, FERIADOS_EXTRA: G.FERIADOS_EXTRA, FERIADOS_QUITAR: G.FERIADOS_QUITAR });
+  // resultados que se repiten mucho (se borran cuando cambian las planillas)
+  const memo = { personas: null, feriadoK: new Map(), ubicar: new Map(), norm: new Map() };
   L.getData = () => JSON.parse(JSON.stringify({
     BASE_LUNES: G.BASE_LUNES, SECTORES: G.SECTORES, FINDE_BASE_SABADO: G.FINDE_BASE_SABADO, FINDE_BASE_GRUPO: G.FINDE_BASE_GRUPO,
     GRUPO_FIJO: G.GRUPO_FIJO, FINDE: G.FINDE, FERIADO_PLANILLA: G.FERIADO_PLANILLA, FERIADO_BASE: G.FERIADO_BASE,
@@ -34,7 +40,11 @@
   L.mod = (a, n) => ((a % n) + n) % n;
   // diferencia en días calendario, inmune a cambios de horario
   L.dias = (a, b) => Math.round((Date.UTC(b.getFullYear(), b.getMonth(), b.getDate()) - Date.UTC(a.getFullYear(), a.getMonth(), a.getDate())) / DAY);
-  L.norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+  L.norm = s => {
+    let r = memo.norm.get(s);
+    if (r === undefined) { r = String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim(); if (memo.norm.size > 5000) memo.norm.clear(); memo.norm.set(s, r); }
+    return r;
+  };
   L.finde = d => d.getDay() === 0 || d.getDay() === 6;
 
   /* ---------- feriados de Argentina (Ley 27.399) ---------- */
@@ -76,6 +86,11 @@
   L.feriadoAlterna = d => { const f = L.feriado(d); return !!f && f.tipo === "feriado" && !L.finde(d); };
   // Índice de un feriado de lunes a viernes contando desde el de referencia (0 = 23-11-26).
   L.feriadoK = d => {
+    const clave = L.ymd(d);
+    if (memo.feriadoK.has(clave)) return memo.feriadoK.get(clave);
+    const v = feriadoKCalc(d); memo.feriadoK.set(clave, v); return v;
+  };
+  const feriadoKCalc = d => {
     const base = L.parseYMD(G.FERIADO_BASE);
     const contar = (y) => Object.keys(L.feriadosAnio(y)).sort().filter(s => L.feriadoAlterna(L.parseYMD(s)));
     let k = 0;
@@ -142,8 +157,15 @@
     ? !!G.TRABAJO_FERIADO_BASE[nombre] : L.feriadoPlanilla(nombre);
   L.feriadoPlanilla = nombre => !!buscar(G.FERIADO_PLANILLA.B.lista, nombre);
   // lista de todas las personas de la planilla semanal
-  L.personas = () => { const r = []; G.SECTORES.forEach((s, si) => s.personas.forEach((p, pi) => r.push({ n: p.n, sector: s.nombre, si, pi }))); return r; };
-  L.ubicar = nombre => L.personas().find(x => L.norm(x.n) === L.norm(nombre)) || null;
+  L.personas = () => {
+    if (!memo.personas) { const r = []; G.SECTORES.forEach((s, si) => s.personas.forEach((p, pi) => r.push({ n: p.n, sector: s.nombre, si, pi }))); memo.personas = r; }
+    return memo.personas.slice();
+  };
+  L.ubicar = nombre => {
+    const k = L.norm(nombre);
+    if (!memo.ubicar.has(k)) memo.ubicar.set(k, L.personas().find(x => L.norm(x.n) === k) || null);
+    return memo.ubicar.get(k);
+  };
 
   /* ---------- qué le toca a una persona un día ----------
      pref = { grupo: "A"|"B"|"AB"|""|undefined, ferBase: true|false|undefined, manual: {t,h}|undefined } */

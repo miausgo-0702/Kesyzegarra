@@ -78,7 +78,7 @@ select.gin option{color:#222}
 .side{display:none}
 .main{flex:1;min-width:0;padding:0 0 calc(84px + env(safe-area-inset-bottom))}
 .top{display:flex;align-items:center;gap:12px;padding:calc(14px + env(safe-area-inset-top)) 16px 10px;position:sticky;top:0;z-index:5;
-  background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+  background:var(--bg)}
 .avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;flex:0 0 auto;
   background:linear-gradient(135deg,var(--dark2),var(--acc))}
 .logo-img{width:42px;height:42px;border-radius:50%;flex:0 0 auto;display:block}
@@ -169,11 +169,13 @@ tr.link{cursor:pointer}
 
 /* navegación inferior (celular): "gota" que se mueve y la barra que se derrite a su alrededor */
 .nav{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:10;display:flex;height:64px;padding:0 34px;
-  --bead:#b3bb06;filter:drop-shadow(0 10px 22px rgba(40,44,8,.35))}
+  --bead:#b3bb06}
+/* sombra fija (no se recalcula en cada cuadro de la animación) */
+.nav::before{content:"";position:absolute;left:8px;right:8px;top:10px;bottom:0;border-radius:24px;box-shadow:0 12px 26px rgba(40,44,8,.32);pointer-events:none}
 .nav .nav-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .nav-svg path{fill:var(--dark)}
 .nav-glow{position:absolute;left:0;top:-30px;width:180px;height:120px;border-radius:50%;pointer-events:none;will-change:transform;
-  background:radial-gradient(closest-side,var(--bead),transparent);opacity:.3;filter:blur(18px);transition:background .5s}
+  background:radial-gradient(closest-side,color-mix(in srgb,var(--bead) 55%,transparent),transparent);opacity:.55;transition:background .5s}
 .bead{position:absolute;left:0;top:-26px;width:54px;height:54px;z-index:2;touch-action:none;cursor:grab;will-change:transform}
 .bead-in{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;color:var(--bead-ink,#1d2100);background:var(--bead);will-change:transform;
   box-shadow:0 8px 18px color-mix(in srgb,var(--bead) 55%,transparent),inset 0 -3px 0 rgba(0,0,0,.12),inset 0 2px 0 rgba(255,255,255,.35);
@@ -188,9 +190,9 @@ tr.link{cursor:pointer}
 .nav button.on svg{opacity:0;transform:translateY(-14px) scale(.6)}
 .nav button.on span{opacity:1;transform:none;transition-delay:.18s}
 /* entrada de cada pestaña */
-.vista.entra{animation:entra .5s cubic-bezier(.2,.8,.2,1) both}
-@keyframes entra{from{opacity:0;transform:translateX(calc(var(--dir,0) * 28px)) translateY(calc((1 - var(--dir,0) * var(--dir,0)) * 14px)) scale(.985);filter:blur(8px)}
-  to{opacity:1;transform:none;filter:blur(0)}}
+.vista.entra{animation:entra .34s cubic-bezier(.2,.8,.2,1) both}
+@keyframes entra{from{opacity:0;transform:translate3d(calc(var(--dir,0) * 24px),calc((1 - var(--dir,0) * var(--dir,0)) * 10px),0)}
+  to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){ .vista.entra{animation:none} }
 .nav button svg,.bead-in svg,.side svg{width:22px;height:22px}
 
@@ -481,3 +483,23 @@ html.dark .pill.pend{background:#3a2037;color:#e2b3dc}
 .of-ed-campos .in{padding:8px 9px;font-size:14px}
 .of-ed-prev .flyer{animation:none}.of-ed-prev .fl-acc{display:none}
 @media (max-width:560px){ .of-ed-it{grid-template-columns:1fr} .of-ed-prev{max-width:210px;margin:0 auto} }
+
+/* ================= fluidez ================= */
+html{touch-action:manipulation;-webkit-text-size-adjust:100%}
+body{overscroll-behavior-y:none}
+/* respuesta inmediata al tocar */
+.btn,.iconbtn,.chip,.chip2,.seg button,.nav button,.side button,.cal .d,tr.link,.gbtn,.ia-vivo{transition:transform .12s ease,background-color .2s,color .2s,border-color .2s,opacity .2s}
+.btn:active,.iconbtn:active,.chip:active,.chip2:active,.seg button:active,.gbtn:active,.ia-vivo:active{transform:scale(.96)}
+.cal .d:active,tr.link:active{transform:scale(.97)}
+.nav button:active{transform:scale(.92)}
+/* lo que no está en pantalla no se dibuja */
+.of-feed .flyer{content-visibility:auto;contain-intrinsic-size:auto 360px}
+.card{contain:layout paint}
+.hero,.ia-hola,.flyer{contain:none}
+/* cara mini del asistente (sin WebGL) */
+.cara-mini{position:relative;display:block;width:36px;height:36px;border-radius:50%;
+  background:radial-gradient(circle at 30% 28%,#ffffff66 0 10%,transparent 32%),conic-gradient(from 200deg,#7a3a72,#b3bb06,#eadd12,#7a3a72)}
+.cara-mini i{position:absolute;top:34%;width:13%;height:28%;border-radius:99px;background:#0c0c10;animation:parpadeo 5s infinite}
+.cara-mini i:first-child{left:31%}.cara-mini i:last-child{left:56%}
+@keyframes parpadeo{0%,94%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+.live-orb{animation:aparece .45s ease both}
