@@ -35,7 +35,9 @@ seguí [GUIA_FIREBASE.md](GUIA_FIREBASE.md).
 - `node test/logic.test.js` — pruebas de los cálculos.
 - `./gradlew assembleRelease` — genera el APK (necesita el SDK de Android en `local.properties`).
 - `firebase/` — reglas de seguridad de Firestore, configuración del emulador y `desplegar.sh`.
-- `firebase/functions/asistente.js` — asistente de IA de los administradores (Claude, Managed Agents):
+- `firebase/functions/gemini.js` y `asistente-gemini.js` — la IA con Gemini (Google): cambio automático de modelo,
+  ciclo de herramientas propio e historial en Firestore. Prueba: `node functions/test/gemini.test.js`.
+- `firebase/functions/asistente.js` — asistente de IA de los administradores con Claude (Managed Agents):
   herramientas de consulta y de propuestas; `web/acciones.js` valida y aplica las propuestas (servidor y app).
   `web/voz.js` = dictado y lectura en voz alta. Prueba sin gastar: `node functions/test/asistente.test.js`
   (con el emulador de Firestore; usa un Claude simulado).

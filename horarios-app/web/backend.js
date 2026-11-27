@@ -80,6 +80,7 @@
     async borrarOferta(id) { const db = this._db(); delete (db.ofertas || {})[id]; this._save(db); this._all("ofertas"); },
     async ofertasIA() { const e = new Error("Cargar ofertas con IA necesita el modo online (Firebase)."); e.codigo = "local"; throw e; },
     async guardarClaveImagenes() { const e = new Error("Necesita el modo online."); e.codigo = "local"; throw e; },
+    async guardarClaveIA() { const e = new Error("La IA necesita el modo online (Firebase). Ver GUIA_FIREBASE.md."); e.codigo = "local"; throw e; },
     async leerPerfil(clave) { try { return JSON.parse(localStorage.getItem("mh_perfil_" + clave)) || {}; } catch (e) { return {}; } },
     async guardarPerfil(clave, perfil) { localStorage.setItem("mh_perfil_" + clave, JSON.stringify(perfil)); },
     async registrarToken() {}, async borrarToken() {},
@@ -264,6 +265,8 @@
     },
     // clave del buscador de imágenes: se escribe, pero ningún teléfono la puede leer (solo el servidor)
     async guardarClaveImagenes(cfg) { await this.db.collection("secretos").doc("imagenes").set(cfg); },
+    // claves de IA (Gemini / Claude): se escriben pero no se pueden volver a leer desde la app
+    async guardarClaveIA(cfg) { await this.db.collection("secretos").doc("ia").set(cfg, { merge: true }); },
     // perfil del administrador (nombre y apellido para el saludo del asistente)
     async leerPerfil(clave) {
       const u = this.auth.currentUser; if (!u) return {};

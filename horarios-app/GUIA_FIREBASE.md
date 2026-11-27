@@ -75,29 +75,29 @@ uso queda dentro de la cuota gratuita, así que en la práctica cuesta $0, pero 
      ícono e ingresar (requiere iOS 16.4 o más nuevo). Desde Safari "suelto" Apple no permite notificaciones.
    - **PC:** abrir la versión web en Chrome o Edge y aceptar las notificaciones.
 
-## 7. Asistente de IA para administradores
-Lezana y julianpz tienen una pestaña **IA** (✨) para consultar y modificar horarios escribiendo,
-hablando, mandando una foto de una planilla o en **conversación en vivo**. La IA **prepara** los cambios
-y el administrador los confirma (botón *Aplicar* o diciendo "sí"); nada se aplica solo.
+## 7. Inteligencia artificial (asistente y ofertas)
+Lezana y julianpz tienen una pestaña **IA** (✨) para consultar y modificar horarios escribiendo, hablando,
+mandando una foto de una planilla o en **conversación en vivo**, y la carga de **ofertas con IA** (sección 8).
+La IA **prepara** los cambios y el administrador los confirma (botón *Aplicar* o diciendo "sí"); nada se aplica solo.
 
-Usa Claude (modelo Claude Opus 5.5) a través de **Claude Managed Agents** de Anthropic: Anthropic aloja el
-agente y guarda el historial de cada conversación. Requiere los pasos 1 a 6 (Firebase con plan Blaze) y:
+Funciona con **Gemini (Google)** o con **Claude (Anthropic)**. Requiere los pasos 1 a 6 (Firebase con plan Blaze).
 
-1. **Cuenta y clave de Anthropic:** entrá a https://console.anthropic.com, creá una cuenta, cargá crédito
-   (*Billing*, por ejemplo US$ 10) y en **API Keys → Create Key** creá una clave (empieza con `sk-ant-`).
-   **No la mandes por chat ni la pegues en el código**: se guarda como secreto en el paso siguiente.
-2. **Guardarla como secreto** en Cloud Shell (dentro de `Kesyzegarra/horarios-app/firebase`):
-   ```bash
-   npx -y firebase-tools@13.29.1 functions:secrets:set ANTHROPIC_API_KEY --project ID-DEL-PROYECTO
-   ./desplegar.sh ID-DEL-PROYECTO
-   ```
-   El primer comando pide la clave (pegala y Enter; no se muestra). El segundo vuelve a subir las funciones.
-3. Listo: en la app, pestaña **IA**. La primera pregunta tarda un poco más porque se crea el agente.
+1. **Conseguir la clave:**
+   - **Gemini:** https://aistudio.google.com → *Get API key* → *Create API key*.
+   - **Claude (opcional):** https://console.anthropic.com → cargá crédito → *API Keys* → *Create Key*.
+2. **Cargarla en la app:** entrá como administrador → **Panel → Inteligencia artificial**, elegí el proveedor,
+   pegá la clave y tocá **Guardar**. Queda guardada en el servidor (Firestore `secretos/ia`): **ningún teléfono la
+   puede volver a leer**, ni siquiera el de un administrador. Para cambiarla, pegá la nueva.
+   **Nunca la pegues en el código ni en archivos del repositorio** (es público): cualquiera podría usarla a tu costo.
+3. Listo: pestaña **IA**. Si cambiaste las funciones del servidor, volvé a correr `./desplegar.sh` (sección 6).
 
-**Costos aproximados (se pagan a Anthropic):** una consulta o un cambio típico cuesta entre US$ 0,01 y 0,10;
-cargar una planilla completa desde una foto, algo más. Cada conversación tiene un tope de **US$ 5**: al
-llegar, la siguiente pregunta empieza una conversación nueva. Se puede poner un límite mensual en
-console.anthropic.com → *Limits*.
+**Gemini:** la app usa `gemini-3.5-flash` y, si está saturado o sin cuota, prueba sola con otros modelos
+(`gemini-flash-latest`, `gemini-3.8-flash`, versiones *lite*). Con la cuenta gratuita de Google AI Studio hay un límite
+de pedidos por minuto y por día; si se agota, la app avisa y alcanza con esperar. La **búsqueda en Google** (para las
+fotos de las ofertas) necesita la **facturación activa** en Google AI Studio.
+
+**Claude:** usa Claude Opus 5.5 con Claude Managed Agents (Anthropic aloja el agente y el historial). Una consulta
+típica cuesta entre US$ 0,01 y 0,10 y cada conversación tiene un tope de US$ 5.
 
 **Voz:** en Android usa el dictado y la voz del teléfono (pide permiso de micrófono la primera vez);
 en PC funciona con Chrome o Edge; en iPhone, con Safari.
@@ -107,10 +107,14 @@ Todos ven la pestaña **Ofertas** (🏷️): un feed de mini flyers con foto, de
 condiciones y vigencia, que se pueden compartir como imagen (WhatsApp, Instagram, etc.).
 
 Los administradores tocan **✨ Cargar ofertas con IA** y suben **fotos**, un **Excel** (.xlsx, .xls, .csv), un **PDF**
-o un **Word** (.docx). La IA (Claude, con la misma clave de la sección 7) arma una oferta por producto, se busca la
+o un **Word** (.docx). La IA (Gemini o Claude, sección 7) arma una oferta por producto, se busca la
 foto de cada uno en **Google Imágenes**, y el administrador revisa, corrige y publica.
 
-**Buscador de imágenes de Google** (opcional, para que las fotos se busquen solas):
+**Buscador de imágenes de Google** (opcional, para que las fotos se busquen solas). En **Panel → Inteligencia
+artificial → Fotos de los productos** elegí:
+- **Gemini con búsqueda de Google:** usa la clave de Gemini, sin otra cuenta. Necesita la facturación activa en
+  Google AI Studio.
+- **Serper.dev** o la **búsqueda programable de Google**:
 1. Creá una cuenta en https://serper.dev (2.500 búsquedas gratis; cada producto usa 1) y copiá tu **API key**.
    Alternativa: la búsqueda programable de Google (clave de API + ID del buscador "cx" con búsqueda de imágenes activada).
 2. En la app: **Ofertas → ✨ Cargar ofertas con IA → Buscador de imágenes de Google**, pegá la clave y **Guardar clave**.
@@ -129,8 +133,8 @@ promoción de la farmacia suele no haber problema, pero si alguna marca lo pide,
   un administrador la borra o la reasigna desde **Panel → Empleados**.
 - Los dispositivos registrados para notificaciones solo los lee el servidor; cada usuario solo puede
   registrar o borrar los suyos. Al cerrar sesión, ese dispositivo deja de recibir notificaciones.
-- El asistente de IA solo responde a las cuentas de Lezana y julianpz (lo verifica el servidor). La clave de
-  Anthropic queda como secreto en Google Cloud y nunca llega a los teléfonos. Las preguntas, las fotos y los
+- El asistente de IA solo responde a las cuentas de Lezana y julianpz (lo verifica el servidor). Las claves de IA
+  y del buscador quedan en el servidor y nunca llegan a los teléfonos. Las preguntas, las fotos y los
   datos de horarios que la IA consulta se envían a Anthropic para responder; el historial de cada
   conversación queda guardado en Anthropic (Managed Agents).
 - Para cambiar la clave de un administrador: Authentication → Usuarios → ⋮ → Restablecer contraseña

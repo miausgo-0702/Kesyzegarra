@@ -76,6 +76,30 @@ async function extraer(anthropic, archivos, nota) {
   return out;
 }
 
+/** Lo mismo con Gemini (formato fijo con responseJsonSchema). */
+async function extraerGemini(clave, archivos, nota, opciones) {
+  const G = require("./gemini");
+  const hoy = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Argentina/Buenos_Aires" });
+  const parts = [];
+  for (const a of archivos) {
+    if (a.tipo === "imagen") parts.push({ inlineData: { mimeType: a.media, data: a.datos } });
+    else if (a.tipo === "pdf") parts.push({ inlineData: { mimeType: "application/pdf", data: a.datos } });
+    else if (a.tipo === "texto") parts.push({ text: `Archivo "${a.nombre || "sin nombre"}":\n${String(a.contenido).slice(0, 150000)}` });
+  }
+  parts.push({ text: INSTRUCCIONES(hoy, nota) });
+  const { respuesta } = await G.generar(clave, {
+    contents: [{ role: "user", parts }],
+    generationConfig: { responseMimeType: "application/json", responseJsonSchema: ESQUEMA, temperature: 0.2 },
+  }, Object.assign({ plazo: 120000 }, opciones));   // leer documentos puede tardar más
+  const fin = respuesta.candidates[0].finishReason;
+  if (fin === "MAX_TOKENS") throw new Error("Son demasiadas ofertas juntas. Probá subiendo los archivos de a uno.");
+  let out;
+  try { out = JSON.parse(G.textoDe(respuesta)); } catch (e) { throw new Error("La IA devolvió un formato inesperado. Probá de nuevo."); }
+  out.ofertas = (out.ofertas || []).slice(0, 60).map(normalizar);
+  out.advertencias = out.advertencias || []; out.resumen = out.resumen || "";
+  return out;
+}
+
 const redondo = n => n == null || !isFinite(n) ? null : Math.round(n * 100) / 100;
 function normalizar(o) {
   const x = { ...o, precio_antes: redondo(o.precio_antes), precio_ahora: redondo(o.precio_ahora), descuento_pct: o.descuento_pct == null ? null : Math.round(o.descuento_pct) };
@@ -108,6 +132,39 @@ async function buscarImagenes(q, cfg) {
   return (j.images || []).map(i => ({ url: i.imageUrl, miniatura: i.thumbnailUrl, fuente: i.domain || i.source, titulo: i.title }));
 }
 
+/**
+ * Fotos con Gemini + búsqueda de Google: Gemini busca la página del producto y de cada página se
+ * toma la foto principal (og:image). Requiere la facturación activa en Google AI Studio.
+ */
+async function buscarImagenesGemini(q, clave, opciones) {
+  const G = require("./gemini");
+  let respuesta;
+  try {
+    ({ respuesta } = await G.generar(clave, {
+      contents: [{ role: "user", parts: [{ text: `Buscá en Google páginas de farmacias online, laboratorios o tiendas de Argentina que muestren el producto "${q}". Respondé solo con una lista corta de las páginas.` }] }],
+      tools: [{ google_search: {} }],
+    }, opciones));
+  } catch (e) {
+    if (e.codigo === "cuota") throw new Error("La búsqueda de Google con Gemini necesita la facturación activa en Google AI Studio (o usá Serper.dev).");
+    throw e;
+  }
+  const chunks = ((respuesta.candidates[0].groundingMetadata || {}).groundingChunks || []).map(c => c.web).filter(Boolean).slice(0, 6);
+  const fetchFn = (opciones && opciones.fetch) || fetch;
+  const res = await Promise.all(chunks.map(async w => {
+    try {
+      const r = await fetchFn(w.uri, { redirect: "follow", signal: AbortSignal.timeout(8000), headers: { "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124 Mobile Safari/537.36", Accept: "text/html" } });
+      if (!r.ok) return null;
+      const html = (await r.text()).slice(0, 400000);
+      const m = html.match(/<meta[^>]+(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image)["'][^>]*content=["']([^"']+)["']/i)
+        || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:image|twitter:image)["']/i);
+      if (!m) return null;
+      const url = new URL(m[1].replace(/&amp;/g, "&"), r.url || w.uri).href;
+      return { url, fuente: w.title || new URL(r.url || w.uri).hostname, titulo: w.title };
+    } catch (e) { return null; }
+  }));
+  return res.filter(Boolean);
+}
+
 /** Descarga una imagen (para que la app la pueda achicar y guardar). Devuelve { media, datos } en base64. */
 async function descargarImagen(url) {
   let u;
@@ -125,4 +182,4 @@ async function descargarImagen(url) {
   return { media, datos: buf.toString("base64") };
 }
 
-module.exports = { extraer, buscarImagenes, descargarImagen, normalizar, ESQUEMA };
+module.exports = { extraer, extraerGemini, buscarImagenes, buscarImagenesGemini, descargarImagen, normalizar, ESQUEMA, INSTRUCCIONES };

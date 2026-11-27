@@ -6,7 +6,6 @@
 const { onDocumentCreated, onDocumentUpdated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { defineSecret } = require("firebase-functions/params");
 const { setGlobalOptions, logger } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const H = require("./horarios");
@@ -155,11 +154,31 @@ exports.resumenSemanal = onSchedule({ schedule: "0 20 * * 0", timeZone: "America
 exports._enviarResumenSemanal = enviarResumenSemanal; // para pruebas
 
 /* ---------------- 5) asistente de IA para administradores ---------------- */
-// La clave se guarda como secreto:  firebase functions:secrets:set ANTHROPIC_API_KEY
-const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
+// Las claves de IA las carga un administrador desde la app (Panel → Inteligencia artificial) y
+// quedan en secretos/ia, que ningún teléfono puede leer (ver firestore.rules).
+//   { proveedor: "gemini" | "claude", gemini: "...", anthropic: "..." }
 const NOMBRES_ADMIN = { "lezana@admin.mishorarios.app": "Lezana", "julianpz@admin.mishorarios.app": "julianpz" };
 
-exports.asistente = onCall({ secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 300, memory: "512MiB", maxInstances: 2 }, async req => {
+async function configIA() {
+  const c = (await db.doc("secretos/ia").get()).data() || {};
+  const proveedor = c.proveedor === "claude" && c.anthropic ? "claude" : c.gemini ? "gemini" : c.anthropic ? "claude" : null;
+  if (!proveedor) throw new HttpsError("failed-precondition", "Falta configurar la IA: un administrador tiene que cargar la clave en Panel → Inteligencia artificial.");
+  return { ...c, proveedor };
+}
+function clienteClaude(clave) {
+  const Anthropic = require("@anthropic-ai/sdk");
+  return new (Anthropic.default || Anthropic)({ apiKey: clave });
+}
+function errorIA(e, quien) {
+  if (e instanceof HttpsError) return e;
+  logger.warn(quien, e && e.message);
+  const st = e && e.status;
+  if (st === 401 || (e && e.codigo === "clave")) return new HttpsError("failed-precondition", e.codigo === "clave" ? e.message : "La clave de la IA no es válida. Revisala en Panel → Inteligencia artificial.");
+  if (st === 429 || st === 503) return new HttpsError("resource-exhausted", e.message || "La IA está ocupada. Probá en unos segundos.");
+  return new HttpsError("internal", (e && e.message) || String(e));
+}
+
+exports.asistente = onCall({ timeoutSeconds: 300, memory: "512MiB", maxInstances: 2 }, async req => {
   const email = req.auth && req.auth.token && req.auth.token.email;
   if (!email || !ADMINS.includes(email)) throw new HttpsError("permission-denied", "Solo los administradores pueden usar el asistente.");
   const d = req.data || {};
@@ -167,29 +186,23 @@ exports.asistente = onCall({ secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 300, 
   const imagenes = (Array.isArray(d.imagenes) ? d.imagenes : []).slice(0, 4).filter(im =>
     im && /^image\/(jpeg|png|webp|gif)$/.test(im.tipo) && typeof im.datos === "string" && im.datos.length < 7000000);
   if (!mensaje.trim() && !imagenes.length && !d.nueva) throw new HttpsError("invalid-argument", "El mensaje está vacío.");
-  const Anthropic = require("@anthropic-ai/sdk");
-  const anthropic = new (Anthropic.default || Anthropic)({ apiKey: ANTHROPIC_API_KEY.value() });
-  const A = require("./asistente");
   try {
     if (!mensaje.trim() && !imagenes.length) {  // solo "nueva conversación"
       await db.doc("iaSesiones/" + req.auth.uid).set({ renovar: true }, { merge: true });
+      await db.doc("iaGemini/" + req.auth.uid).delete().catch(() => {});
       return { texto: "Listo, empezamos de nuevo. ¿Qué necesitás?", propuestas: [] };
     }
+    const cfg = await configIA();
     const usuario = NOMBRES_ADMIN[email] || "Administrador";
     const nombre = String(d.nombre || "").replace(/[\[\]\n\r]/g, " ").trim().slice(0, 80);
-    return await A.conversar({ anthropic, db, uid: req.auth.uid, admin: nombre ? `${nombre} (usuario ${usuario})` : usuario,
-      mensaje, imagenes, nueva: !!d.nueva, pendientes: +d.pendientes || 0 });
-  } catch (e) {
-    logger.error("asistente", e);
-    const st = e && e.status;
-    if (st === 401) throw new HttpsError("failed-precondition", "La clave de Anthropic no es válida. Revisá el secreto ANTHROPIC_API_KEY.");
-    if (st === 429) throw new HttpsError("resource-exhausted", "Demasiados pedidos seguidos al asistente. Esperá unos segundos.");
-    throw new HttpsError("internal", "El asistente no pudo responder: " + (e.message || e));
-  }
+    const datos = { db, uid: req.auth.uid, admin: nombre ? `${nombre} (usuario ${usuario})` : usuario, mensaje, imagenes, nueva: !!d.nueva, pendientes: +d.pendientes || 0 };
+    if (cfg.proveedor === "gemini") return await require("./asistente-gemini").conversarGemini({ clave: cfg.gemini, ...datos });
+    return await require("./asistente").conversar({ anthropic: clienteClaude(cfg.anthropic), ...datos });
+  } catch (e) { throw errorIA(e, "asistente"); }
 });
 
 /* ---------------- 6) ofertas: la IA arma los flyers a partir de fotos, Excel, Word o PDF ---------------- */
-exports.ofertasIA = onCall({ secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 300, memory: "512MiB", maxInstances: 3 }, async req => {
+exports.ofertasIA = onCall({ timeoutSeconds: 300, memory: "512MiB", maxInstances: 3 }, async req => {
   const email = req.auth && req.auth.token && req.auth.token.email;
   if (!email || !ADMINS.includes(email)) throw new HttpsError("permission-denied", "Solo los administradores pueden cargar ofertas.");
   const d = req.data || {};
@@ -201,24 +214,24 @@ exports.ofertasIA = onCall({ secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 300, 
          (a.tipo === "pdf" && typeof a.datos === "string" && a.datos.length < 9e6) ||
          (a.tipo === "texto" && typeof a.contenido === "string")));
       if (!archivos.length) throw new HttpsError("invalid-argument", "Subí al menos una foto, Excel, Word o PDF.");
-      const Anthropic = require("@anthropic-ai/sdk");
-      const anthropic = new (Anthropic.default || Anthropic)({ apiKey: ANTHROPIC_API_KEY.value() });
-      const r = await O.extraer(anthropic, archivos, String(d.nota || "").slice(0, 1000));
-      const cfg = (await db.doc("secretos/imagenes").get()).data();
-      r.conBuscador = !!(cfg && cfg.clave);
+      const cfg = await configIA(), nota = String(d.nota || "").slice(0, 1000);
+      const r = cfg.proveedor === "gemini" ? await O.extraerGemini(cfg.gemini, archivos, nota) : await O.extraer(clienteClaude(cfg.anthropic), archivos, nota);
+      const img = (await db.doc("secretos/imagenes").get()).data();
+      r.conBuscador = !!(img && (img.clave || (img.proveedor === "gemini" && cfg.gemini)));
       return r;
     }
     if (d.accion === "buscar") {
-      const cfg = (await db.doc("secretos/imagenes").get()).data();
-      if (!cfg || !cfg.clave) return { imagenes: [], sinBuscador: true };
-      return { imagenes: await O.buscarImagenes(String(d.q || "").slice(0, 200), cfg) };
+      const img = (await db.doc("secretos/imagenes").get()).data();
+      const q = String(d.q || "").slice(0, 200);
+      if (img && img.proveedor === "gemini") {
+        const ia = (await db.doc("secretos/ia").get()).data() || {};
+        if (!ia.gemini) return { imagenes: [], sinBuscador: true };
+        return { imagenes: await O.buscarImagenesGemini(q, ia.gemini) };
+      }
+      if (!img || !img.clave) return { imagenes: [], sinBuscador: true };
+      return { imagenes: await O.buscarImagenes(q, img) };
     }
     if (d.accion === "imagen") return await O.descargarImagen(String(d.url || ""));
     throw new HttpsError("invalid-argument", "Acción desconocida.");
-  } catch (e) {
-    if (e instanceof HttpsError) throw e;
-    logger.warn("ofertasIA", e.message);
-    if (e && e.status === 401) throw new HttpsError("failed-precondition", "La clave de Anthropic no es válida.");
-    throw new HttpsError("internal", e.message || String(e));
-  }
+  } catch (e) { throw errorIA(e, "ofertasIA"); }
 });

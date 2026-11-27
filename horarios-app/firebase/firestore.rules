@@ -68,6 +68,8 @@ service cloud.firestore {
       allow read: if false;
       allow write: if admin();
     }
+    // Historial del asistente con Gemini: solo lo usa el servidor.
+    match /iaGemini/{d} { allow read, write: if false; }
     // Uso interno de las funciones del servidor.
     match /notifEnviadas/{d} { allow read, write: if false; }
     match /_pruebaEnvios/{d} { allow read, write: if false; }

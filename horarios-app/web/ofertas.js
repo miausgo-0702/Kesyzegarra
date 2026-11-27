@@ -139,17 +139,17 @@
       <div class="muted" id="ofMsg" style="min-height:18px"></div>
       <button class="btn acc" id="ofProcesar" style="width:100%">✨ Armar ofertas</button>
       <details style="margin-top:14px"><summary class="muted">Buscador de imágenes de Google</summary>
-        <p class="muted">Para que la IA busque las fotos en Google Imágenes hace falta una clave de <b>Serper.dev</b> (2.500 búsquedas gratis) o de la búsqueda programable de Google. La clave queda guardada en el servidor y no se puede volver a leer desde la app.</p>
-        <div class="row"><select class="in f" id="ofProv"><option value="serper">Serper.dev (Google Imágenes)</option><option value="google">Google Programmable Search</option></select></div>
-        <div class="row" style="margin-top:6px"><input class="in f" id="ofClave" placeholder="Clave (API key)" autocomplete="off"><input class="in f oculto" id="ofCx" placeholder="ID del buscador (cx)"></div>
+        <p class="muted">Las fotos se pueden buscar en Google con <b>Gemini</b> (usa la clave de IA; necesita la facturación activa en Google AI Studio), con <b>Serper.dev</b> (2.500 búsquedas gratis) o con la búsqueda programable de Google. La clave queda guardada en el servidor y no se puede volver a leer desde la app.</p>
+        <div class="row"><select class="in f" id="ofProv"><option value="gemini">Gemini con búsqueda de Google (usa la clave de IA)</option><option value="serper">Serper.dev (Google Imágenes)</option><option value="google">Google Programmable Search</option></select></div>
+        <div class="row" style="margin-top:6px"><input class="in f oculto" id="ofClave" placeholder="Clave (API key)" autocomplete="off"><input class="in f oculto" id="ofCx" placeholder="ID del buscador (cx)"></div>
         <button class="btn" id="ofGuardarClave" style="margin-top:8px">Guardar clave</button>
       </details>`);
     const pintarLista = () => { $("ofLista").innerHTML = archivos.map((f, i) => `<div class="it"><span>${f.type.startsWith("image/") ? "🖼️" : /\.pdf$/i.test(f.name) ? "📕" : /\.docx?$/i.test(f.name) ? "📘" : "📗"}</span><div class="grow">${esc(f.name)} <span class="muted">${Math.round(f.size / 1024)} KB</span></div><button class="btn sm" data-q="${i}">Quitar</button></div>`).join(""); $("ofLista").querySelectorAll("[data-q]").forEach(x => x.onclick = () => { archivos.splice(+x.dataset.q, 1); pintarLista(); }); };
     $("ofArch").onchange = () => { [...$("ofArch").files].forEach(f => archivos.length < 10 && archivos.push(f)); $("ofArch").value = ""; pintarLista(); };
-    $("ofProv").onchange = () => $("ofCx").classList.toggle("oculto", $("ofProv").value !== "google");
+    $("ofProv").onchange = () => { const v = $("ofProv").value; $("ofCx").classList.toggle("oculto", v !== "google"); $("ofClave").classList.toggle("oculto", v === "gemini"); };
     $("ofGuardarClave").onclick = async () => {
       const cfg = { proveedor: $("ofProv").value, clave: $("ofClave").value.trim() }; if ($("ofProv").value === "google") cfg.cx = $("ofCx").value.trim();
-      if (!cfg.clave) return G.MH.toast("Pegá la clave");
+      if (cfg.proveedor === "gemini") delete cfg.clave; else if (!cfg.clave) return G.MH.toast("Pegá la clave");
       try { await G.MH.B.guardarClaveImagenes(cfg); $("ofClave").value = ""; G.MH.toast("✓ Clave guardada"); } catch (e) { G.MH.toast(e.message); }
     };
     $("ofProcesar").onclick = async () => {

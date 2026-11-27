@@ -577,12 +577,12 @@
 
   /* ============================== ADMINISTRACIÓN ============================== */
   function renderAdmin() {
-    const tabs = { empleados: "Empleados", cambios: "Cambios y francos", avisos: "Avisos", planillas: "Planillas", personas: "Grupos y feriados" };
+    const tabs = { empleados: "Empleados", cambios: "Cambios y francos", avisos: "Avisos", planillas: "Planillas", personas: "Grupos y feriados", ia: "Inteligencia artificial" };
     $("v-admin").innerHTML = `<div class="grid">
       <div class="seg" id="segAdm">${Object.entries(tabs).map(([k, v]) => `<button data-t="${k}" class="${st.adminTab === k ? "on" : ""}">${v}</button>`).join("")}</div>
       <div id="admBody" class="grid"></div></div>`;
     $("segAdm").querySelectorAll("button").forEach(b => b.onclick = () => { st.adminTab = b.dataset.t; render(); });
-    ({ empleados: admEmpleados, cambios: admCambios, avisos: admAvisos, planillas: admPlanillas, personas: admPersonas })[st.adminTab]($("admBody"));
+    ({ empleados: admEmpleados, cambios: admCambios, avisos: admAvisos, planillas: admPlanillas, personas: admPersonas, ia: admIA })[st.adminTab]($("admBody"));
   }
 
   function opcionesPersonas(sel) { return L.personas().map(p => `<option ${p.n === sel ? "selected" : ""}>${esc(p.n)}</option>`).join(""); }
@@ -803,6 +803,38 @@
       }
       try { await B.guardarDatos(D); e.cambiado = false; $("edMsg").style.color = ""; $("edMsg").textContent = "✓ Planilla guardada. Ya la ven todos."; toast("Planilla guardada"); }
       catch (er) { $("edMsg").textContent = er.message; }
+    };
+  }
+
+  // Claves de IA: se guardan en el servidor y no se pueden volver a leer desde la app.
+  function admIA(root) {
+    root.innerHTML = `<div class="card"><h3>Proveedor de inteligencia artificial</h3>
+        <p class="muted" style="margin-top:0">Lo usan el asistente (pestaña IA) y la carga de ofertas. Las claves quedan guardadas en el servidor: nadie las puede volver a ver desde la app (para cambiar una, pegá la nueva).</p>
+        <div class="seg" id="iaProv"><button data-p="gemini" class="on">Gemini (Google)</button><button data-p="claude">Claude (Anthropic)</button></div>
+        <div class="field" style="margin-top:10px"><label>Clave de Gemini (Google AI Studio)</label><input class="in" id="iaKG" type="password" autocomplete="off" placeholder="Pegá la clave (AIza… o AQ.…)"></div>
+        <div class="field"><label>Clave de Anthropic (opcional)</label><input class="in" id="iaKA" type="password" autocomplete="off" placeholder="sk-ant-…"></div>
+        <div class="muted" id="iaMsg2"></div>
+        <button class="btn pri" id="iaGuardar">Guardar</button></div>
+      <div class="card"><h3>Fotos de los productos (Ofertas)</h3>
+        <p class="muted" style="margin-top:0">Cómo se buscan en Google las fotos de los productos con descuento.</p>
+        <select class="in" id="imgProv"><option value="gemini">Gemini con búsqueda de Google (usa la clave de Gemini; requiere facturación activa)</option><option value="serper">Serper.dev (Google Imágenes, 2.500 búsquedas gratis)</option><option value="google">Google Programmable Search</option><option value="ninguno">No buscar: subo las fotos a mano</option></select>
+        <div class="row" style="margin-top:8px"><input class="in f oculto" id="imgClave" type="password" autocomplete="off" placeholder="Clave del buscador"><input class="in f oculto" id="imgCx" placeholder="ID del buscador (cx)"></div>
+        <button class="btn pri" id="imgGuardar" style="margin-top:8px">Guardar</button></div>`;
+    let prov = "gemini";
+    $("iaProv").querySelectorAll("button").forEach(b => b.onclick = () => { prov = b.dataset.p; $("iaProv").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); });
+    $("iaGuardar").onclick = async () => {
+      const cfg = { proveedor: prov }, g = $("iaKG").value.trim(), a = $("iaKA").value.trim();
+      if (g) cfg.gemini = g; if (a) cfg.anthropic = a;
+      try { await B.guardarClaveIA(cfg); $("iaKG").value = $("iaKA").value = ""; $("iaMsg2").textContent = `✓ Guardado. Proveedor: ${prov === "gemini" ? "Gemini" : "Claude"}.`; toast("✓ Configuración de IA guardada"); }
+      catch (e) { toast(e.message); }
+    };
+    const vis = () => { const v = $("imgProv").value; $("imgClave").classList.toggle("oculto", v !== "serper" && v !== "google"); $("imgCx").classList.toggle("oculto", v !== "google"); };
+    $("imgProv").onchange = vis; vis();
+    $("imgGuardar").onclick = async () => {
+      const v = $("imgProv").value, cfg = { proveedor: v };
+      if (v === "serper" || v === "google") { cfg.clave = $("imgClave").value.trim(); if (!cfg.clave) return toast("Pegá la clave del buscador"); }
+      if (v === "google") { cfg.cx = $("imgCx").value.trim(); if (!cfg.cx) return toast("Falta el ID del buscador (cx)"); }
+      try { await B.guardarClaveImagenes(cfg); $("imgClave").value = ""; toast("✓ Buscador de fotos guardado"); } catch (e) { toast(e.message); }
     };
   }
 
