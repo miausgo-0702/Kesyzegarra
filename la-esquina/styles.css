@@ -204,3 +204,6 @@ main{max-width:760px;margin:0 auto;padding:0 16px}
   .tbl .acts{grid-column:2;text-align:left;margin-top:4px}
   .mini{margin:0 6px 0 0}
 }
+
+/* En el APK: la API de Google (OAuth) no funciona dentro de apps, se usa Calendar directo */
+.nativo .adv{display:none}

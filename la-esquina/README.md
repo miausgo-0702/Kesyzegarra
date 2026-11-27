@@ -12,7 +12,11 @@ App para el celular (se instala como aplicación, funciona sin internet) que:
 
 El nombre del producto se completa solo si ya se cargó antes o si figura en Open Food Facts; si no, se escribe una vez y la app lo recuerda.
 
-## Cómo usarla
+## APK de Android
+
+El instalador está en [`descargas/LaEsquina.apk`](descargas/LaEsquina.apk) (si la web está publicada, también se baja desde `https://<tu-sitio>/descargas/LaEsquina.apk`). Cómo se compila: `../la-esquina-android/README.md`.
+
+## Cómo usarla como web
 
 Tiene que abrirse desde una dirección **https** (para usar la cámara e instalarla):
 

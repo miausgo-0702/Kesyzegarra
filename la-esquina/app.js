@@ -96,6 +96,31 @@
   $$('.seg').forEach(s => s.addEventListener('click', () => setDest(s.dataset.dest)));
 
   // ---------- Lectura de códigos ----------
+  // ---------- App nativa (APK) ----------
+  const CAP = window.Capacitor;
+  const NATIVO = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
+  if (NATIVO) document.documentElement.classList.add('nativo');
+  // En el APK los links externos se abren en su app (Calendar, WhatsApp, Gmail)
+  function abrirExterno(url) {
+    if (!NATIVO) return window.open(url, '_blank');
+    const a = document.createElement('a');
+    a.href = url; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+    return true;
+  }
+  const aBase64 = blob => new Promise((ok, mal) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1]); fr.onerror = mal; fr.readAsDataURL(blob); });
+  async function compartirNativo(files, texto) {
+    const Filesystem = CAP.Plugins.Filesystem || CAP.registerPlugin('Filesystem');
+    const Share = CAP.Plugins.Share || CAP.registerPlugin('Share');
+    const uris = [];
+    for (const f of files) {
+      const r = await Filesystem.writeFile({ path: f.name, data: await aBase64(f), directory: 'CACHE' });
+      uris.push(r.uri);
+    }
+    try { await Share.share({ title: 'La Esquina · Planillas', text: texto, files: uris, dialogTitle: 'Enviar por…' }); }
+    catch (e) { if (!/cancel/i.test(String(e && e.message))) throw e; }
+  }
+
   const ZX = window.ZXing;
   const zxHints = (() => {
     if (!ZX) return null;
@@ -525,15 +550,15 @@
 
   function recordatorio(v, alGuardar) {
     const marcar = () => { v.cal = true; guardar(); render(); };
-    if (S.cfg.clientId) {
+    if (S.cfg.clientId && !NATIVO) {
       crearEventoAPI(v).then(() => { marcar(); toast('Recordatorio creado en Google Calendar ✓'); })
-        .catch(() => toast('No se pudo crear automático', { label: 'Abrir Calendar', fn: () => { window.open(urlGoogleCalendar(v), '_blank'); marcar(); } }));
+        .catch(() => toast('No se pudo crear automático', { label: 'Abrir Calendar', fn: () => { abrirExterno(urlGoogleCalendar(v)); marcar(); } }));
       return;
     }
     // Sin API: abre Google Calendar con el evento armado (tocar "Guardar")
-    const w = window.open(urlGoogleCalendar(v), '_blank');
+    const w = abrirExterno(urlGoogleCalendar(v));
     if (w) { marcar(); if (alGuardar) toast('Guardado en Vencidos ✓ · confirmá el evento en Calendar'); }
-    else toast('Guardado ✓', { label: 'Crear recordatorio', fn: () => { window.open(urlGoogleCalendar(v), '_blank'); marcar(); } });
+    else toast('Guardado ✓', { label: 'Crear recordatorio', fn: () => { abrirExterno(urlGoogleCalendar(v)); marcar(); } });
   }
 
   // Exportar todos los recordatorios (.ics) — se importa en Google Calendar
@@ -647,6 +672,11 @@
   }
 
   function descargar(blob, nombre) {
+    if (NATIVO) {
+      const f = blob instanceof File ? blob : new File([blob], nombre, { type: blob.type });
+      compartirNativo([f], nombre).catch(() => toast('No se pudo abrir el archivo'));
+      return;
+    }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = nombre;
@@ -664,6 +694,10 @@
     try { files = await Promise.all(tipos.map(armarPDF)); }
     catch (e) { console.error(e); return toast('No se pudo armar el PDF'); }
     const texto = mensaje(tipos);
+    if (NATIVO) {
+      try { await compartirNativo(files, texto); } catch { toast('No se pudo compartir'); }
+      return;
+    }
     // 1) Menú de compartir del teléfono (WhatsApp, Gmail…) con el PDF adjunto
     if (navigator.canShare && navigator.canShare({ files })) {
       try { await navigator.share({ files, title: 'La Esquina · Planillas', text: texto }); return; }
@@ -673,10 +707,10 @@
     files.forEach(f => descargar(f, f.name));
     if (via === 'whatsapp') {
       const num = (S.cfg.wa || '').replace(/\D/g, '');
-      window.open(`https://wa.me/${num}?text=${encodeURIComponent(texto + ' (adjunto el PDF)')}`, '_blank');
+      abrirExterno(`https://wa.me/${num}?text=${encodeURIComponent(texto + ' (adjunto el PDF)')}`, '_blank');
     } else if (via === 'gmail') {
       const p = new URLSearchParams({ view: 'cm', fs: '1', to: S.cfg.mail || '', su: `La Esquina · ${tipos.map(t => t === 'pedidos' ? 'Pedidos' : 'Vencidos').join(' y ')} ${fmt(isoHoy())}`, body: texto + '\n\nAdjunto el PDF.' });
-      window.open('https://mail.google.com/mail/?' + p.toString(), '_blank');
+      abrirExterno('https://mail.google.com/mail/?' + p.toString());
     }
     toast('PDF descargado ✓ adjuntalo en el mensaje');
   }
@@ -738,7 +772,7 @@
   const inicial = location.hash.slice(1);
   requestAnimationFrame(() => ir($(`#view-${inicial}`) ? inicial : 'inicio'));
 
-  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  if (!NATIVO && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 })();

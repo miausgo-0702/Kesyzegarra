@@ -1,0 +1,20 @@
+{
+  "name": "la-esquina-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "APK de La Esquina · Planillas (Capacitor)",
+  "scripts": {
+    "web": "rm -rf www && mkdir www && cp -r ../la-esquina/. www/ && rm -rf www/descargas www/README.md",
+    "sync": "npm run web && npx cap sync android",
+    "apk": "npm run sync && cd android && ./gradlew assembleRelease"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.6.11",
+    "@capacitor/core": "^7.6.11",
+    "@capacitor/filesystem": "^7.1.9",
+    "@capacitor/share": "^7.0.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.6.11"
+  }
+}
