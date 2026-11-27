@@ -9,8 +9,8 @@ try {
   }
 } catch (e) { /* sin push: la app sigue funcionando */ }
 
-const CACHE = "mh-v10";
-const ARCHIVOS = ["./", "index.html", "styles.css", "app.js", "logic.js", "backend.js", "notif.js", "acciones.js", "voz.js", "data.js", "config.js",
+const CACHE = "mh-v11";
+const ARCHIVOS = ["./", "index.html", "styles.css", "app.js", "logic.js", "backend.js", "notif.js", "acciones.js", "voz.js", "components/ui/live-orb.js", "components/ui/sun-moon-theme-toggle.js", "data.js", "config.js",
   "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png", "img/logo.svg", "img/la-esquina.png", "img/la-esquina-blanco.png", "img/belgrano.png", "img/belgrano-blanco.png",
   "vendor/firebase-app-compat.js", "vendor/firebase-auth-compat.js", "vendor/firebase-firestore-compat.js", "vendor/firebase-messaging-compat.js", "vendor/firebase-functions-compat.js"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS))); self.skipWaiting(); });

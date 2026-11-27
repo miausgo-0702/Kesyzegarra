@@ -144,6 +144,7 @@
       const ps = L.personas(); st.ver = st.ver && L.ubicar(st.ver) ? st.ver : (ps[0] && ps[0].n);
       if (B.online && st.datosCargados && !st.datos) B.guardarDatos(SEED).catch(() => {});
     }
+    if (u.tipo === "admin" && !IA.perfil) B.leerPerfil(u.clave).then(p => { if (p && p.nombreCompleto) { IA.perfil = p; if (st.user) render(); } }).catch(() => {});
     armarNav(); render();
     if (u.tipo === "empleado") Notif.sesion(B.sesionNativa(u.persona)); else Notif.sesion(null);
     if (B.online) setTimeout(async () => { await Notif.pedir(); registrarPush(); }, 2500);
@@ -166,7 +167,9 @@
   B.on("empleados", e => { st.empleados = (e || []).sort((a, b) => (a.persona || "").localeCompare(b.persona || "")); if (st.user) render(); });
   $("bSalir").onclick = async () => {
     if (!confirm("¿Cerrar sesión?")) return;
-    Notif.sesion(null); cerrarVivo(); IA.cargado = null; if ($("v-ia")) $("v-ia").innerHTML = "";
+    Notif.sesion(null); cerrarVivo(); IA.cargado = null; IA.perfil = null;
+    (IA.caras || []).forEach(c => c && c.destroy()); IA.caras = null;
+    if ($("v-ia")) $("v-ia").innerHTML = "";
     if (st.token) { await B.borrarToken(st.token).catch(() => {}); st.token = null; }
     B.salir();
   };
@@ -191,7 +194,15 @@
   // Color de la "gota" de cada pestaña (colores de la marca)
   const COLOR = { inicio: "#b3bb06", calendario: "#eadd12", equipo: "#a3509a", admin: "#d6dd3c", ia: "#65265d" };
   let navItems = [];
+  function montarTema() {
+    if (st.tema || !$("temaSlot")) return;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    st.tema = SunMoonThemeToggle.create({ size: 40, storageKey: "mh_tema", duration: 1400,
+      onThemeChange: t => { if (meta) meta.content = t === "dark" ? "#121409" : "#3a4108"; } });
+    $("temaSlot").appendChild(st.tema.el);
+  }
   function armarNav() {
+    montarTema();
     navItems = ["inicio", "calendario", "equipo"].concat(st.user.tipo === "admin" ? ["ia", "admin"] : []);
     $("nav").innerHTML = `<div class="nav-glow" id="navGlow"></div>
       <svg class="nav-svg" id="navSvg" aria-hidden="true"><path id="navPath"/></svg>
@@ -326,9 +337,8 @@
     }
     const nombre = personaActual();
     $("avatar").innerHTML = esAdmin ? '<img class="logo-img" src="img/logo.svg" alt="">' : esc(iniciales(nombre));
-    const h = new Date().getHours();
-    $("saludo").textContent = (h < 12 ? "Buen día" : h < 20 ? "Buenas tardes" : "Buenas noches") + (esAdmin ? " · Administrador" : "");
-    $("quien").textContent = esAdmin ? st.user.usuario : nombre;
+    $("saludo").textContent = saludoHora().slice(1) + (esAdmin ? " · Administrador" : "");
+    $("quien").textContent = esAdmin ? (nombreAdmin() || st.user.usuario) : nombre;
 
     // selector "ver como" (solo administradores)
     $("verComo").classList.toggle("oculto", !esAdmin || st.vista === "admin" || st.vista === "ia");
@@ -1016,7 +1026,7 @@
     IA.cargando = true; IA.rev++; pintarIA();
     let resp;
     try {
-      resp = await B.asistente({ mensaje: texto, imagenes: imagenes.map(i => ({ tipo: i.tipo, datos: i.datos })), pendientes: pendientes().length });
+      resp = await B.asistente({ mensaje: texto, imagenes: imagenes.map(i => ({ tipo: i.tipo, datos: i.datos })), pendientes: pendientes().length, nombre: nombreAdmin() });
       const m = { rol: "ia", texto: resp.texto || "", nota: resp.nota || "", propuestas: (resp.propuestas || []).map(p => ({ ...p, estado: "pendiente" })), t: Date.now() };
       if (resp.descartar) descartarPendientes();
       IA.mensajes.push(m);
@@ -1057,14 +1067,14 @@
     const box = $("iaMsgs"); if (!box || IA.pintado === IA.rev) return;
     IA.pintado = IA.rev;
     const n = pendientes().length;
-    box.innerHTML = (IA.mensajes.length ? "" : `<div class="ia-hola"><div class="ia-orbe chico"></div><h3>Asistente de horarios</h3>
-        <p class="muted">Pedime consultas o cambios escribiendo o hablando. También podés mandarme una foto de una planilla nueva y la cargo. Nada se aplica hasta que lo confirmes.</p></div>`) +
-      IA.mensajes.map((m, mi) => m.rol === "yo"
+    box.innerHTML = IA.mensajes.map((m, mi) => m.rol === "yo"
         ? `<div class="burb yo">${(m.imagenes && m.imagenes.length ? (Array.isArray(m.imagenes) ? m.imagenes.map(u => `<img src="${esc(u)}" alt="">`).join("") : `<div class="muted">📷 ${m.imagenes} foto(s)</div>`) : "")}${formatoIA(m.texto)}</div>`
         : `<div class="burb ia ${m.error ? "err" : ""}">${formatoIA(m.texto)}${m.nota ? `<div class="muted" style="margin-top:6px">${esc(m.nota)}</div>` : ""}
             ${(m.propuestas || []).length ? `<div class="props">${m.propuestas.map((p, i) => htmlPropuesta(p, i, mi)).join("")}</div>` : ""}</div>`).join("") +
       (IA.cargando ? `<div class="burb ia pensando"><span></span><span></span><span></span></div>` : "");
     $("iaSug").classList.toggle("oculto", IA.mensajes.length > 0);
+    caraPensando(IA.cargando);
+    $("iaHola").classList.toggle("compacto", IA.mensajes.length > 0);
     $("iaTodo").classList.toggle("oculto", n < 2);
     $("iaTodo").textContent = `Aplicar todo (${n})`;
     $("iaAdj").innerHTML = IA.adjuntos.map((a, i) => `<div class="adj"><img src="${a.url}" alt=""><button data-qa="${i}" aria-label="Quitar">✕</button></div>`).join("");
@@ -1080,9 +1090,15 @@
     if (!$("iaMsgs")) {
       if (!IA.cargado || IA.cargado !== st.user.usuario) { cargarIA(); IA.cargado = st.user.usuario; }
       v.innerHTML = `<div class="ia-vista">
-        <div class="ia-top"><div class="ia-orbe mini"></div><div class="grow"><b>Asistente IA</b><div class="muted">${B.online ? "Consultas y cambios por texto, voz o foto" : "Necesita el modo online"}</div></div>
+        <div class="ia-top"><div class="orbe-slot" id="iaOrbeTop"></div><div class="grow"><b>Asistente IA</b><div class="muted">${B.online ? "Consultas y cambios por texto, voz o foto" : "Necesita el modo online"}</div></div>
           <button class="iconbtn ${IA.leer ? "on" : ""}" id="iaLeer" title="Leer respuestas en voz alta" aria-label="Leer respuestas en voz alta">🔊</button>
           <button class="iconbtn" id="iaNueva" title="Nueva conversación" aria-label="Nueva conversación">＋</button></div>
+        <div class="ia-hola" id="iaHola">
+          <div class="orbe-slot" id="iaOrbeHola"></div>
+          <h3 id="iaSaludo" aria-live="polite"></h3>
+          <p class="muted" id="iaIntro"></p>
+          <form class="row oculto" id="iaNombreF" autocomplete="off"><input class="in f" id="iaNombre" maxlength="80" placeholder="Nombre y apellido"><button class="btn pri">Listo</button></form>
+        </div>
         <div class="ia-msgs" id="iaMsgs"></div>
         <div class="ia-sug" id="iaSug">${SUGERENCIAS.map(t => `<button class="chip2">${esc(t)}</button>`).join("")}</div>
         <button class="btn acc" id="iaTodo" style="margin:6px 0">Aplicar todo</button>
@@ -1125,8 +1141,54 @@
         });
       };
       $("iaVivo").onclick = abrirVivo;
+      // la cara del asistente
+      IA.caras = [
+        LiveOrb.mount($("iaOrbeTop"), { size: 36, variant: "webgl", colors: PALETA_IA, interactive: false, label: "Asistente" }),
+        LiveOrb.mount($("iaOrbeHola"), { size: 148, variant: "webgl", colors: PALETA_IA, label: "Cara del asistente de IA" }),
+      ];
+      $("iaNombreF").onsubmit = async e => {
+        e.preventDefault();
+        const n = $("iaNombre").value.replace(/\s+/g, " ").trim();
+        if (n.split(" ").length < 2) { toast("Escribí tu nombre y apellido"); return $("iaNombre").focus(); }
+        IA.perfil = { nombreCompleto: n };
+        try { await B.guardarPerfil(st.user.clave, IA.perfil); } catch (er) {}
+        saludar(true); $("quien").textContent = n;
+      };
+      saludar(false);
+      B.leerPerfil(st.user.clave).then(p => { if (p && p.nombreCompleto && p.nombreCompleto !== nombreAdmin()) { IA.perfil = p; saludar(false); $("quien").textContent = p.nombreCompleto; } }).catch(() => {});
     }
     pintarIA();
+  }
+
+  /* ---------- la cara: saludo con nombre y apellido ---------- */
+  const PALETA_IA = ["#7a3a72", "#b3bb06", "#eadd12"];   // violeta, verde lima y amarillo de la marca
+  const nombreAdmin = () => (IA.perfil && IA.perfil.nombreCompleto) || ((G_ADMINS()[st.user.clave] || {}).nombreCompleto) || "";
+  function G_ADMINS() { return window.ADMINS || {}; }
+  const primerNombre = () => nombreAdmin().split(" ")[0] || "";
+  function saludoHora() { const h = new Date().getHours(); return h < 6 ? "¡Buenas noches" : h < 13 ? "¡Buen día" : h < 20 ? "¡Buenas tardes" : "¡Buenas noches"; }
+  function escribir(el, texto, ms) {
+    clearInterval(el._t);
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { el.textContent = texto; return; }
+    let i = 0; el.textContent = "";
+    el._t = setInterval(() => { i++; el.textContent = texto.slice(0, i); if (i >= texto.length) clearInterval(el._t); }, ms || 32);
+  }
+  function saludar(nuevo) {
+    if (!$("iaSaludo")) return;
+    const n = nombreAdmin();
+    $("iaNombreF").classList.toggle("oculto", !!n);
+    if (n) {
+      escribir($("iaSaludo"), `${saludoHora()}, ${n}!`);
+      $("iaIntro").textContent = nuevo ? "Encantado. Ya me acuerdo de tu nombre. ¿En qué te ayudo?"
+        : "Soy tu asistente de horarios de La Esquina y Belgrano. Pedime consultas o cambios escribiendo, hablando o con una foto de la planilla. Nada se aplica hasta que lo confirmes.";
+    } else {
+      escribir($("iaSaludo"), "¡Hola! Soy tu asistente de horarios.");
+      $("iaIntro").textContent = "Antes de empezar, ¿cómo es tu nombre y apellido?";
+      setTimeout(() => $("iaNombre") && $("iaNombre").focus(), 300);
+    }
+  }
+  // mientras piensa, la cara mira hacia arriba y el color se mueve más rápido
+  function caraPensando(si) {
+    (IA.caras || []).forEach(c => c && c.setOptions({ lookAt: si ? { x: 0.45, y: 0.6 } : null, speed: si ? 1.8 : 0.55 }));
   }
 
   /* ---------- conversación en vivo (manos libres) ---------- */
@@ -1135,6 +1197,10 @@
     const v = $("vivo"); if (!v) return;
     const n = pendientes().length;
     v.querySelector(".vivo-orbe").dataset.estado = VIVO.estado;
+    if (VIVO.cara) VIVO.cara.setOptions({
+      lookAt: VIVO.estado === "pensando" ? { x: 0.45, y: 0.6 } : VIVO.estado === "escuchando" ? { x: 0, y: 0.05 } : VIVO.estado === "pausa" ? { x: 0, y: -0.5 } : null,
+      speed: VIVO.estado === "pensando" ? 1.8 : VIVO.estado === "hablando" ? 1.1 : 0.55,
+    });
     v.querySelector(".vivo-estado").textContent = { escuchando: "Te escucho…", pensando: "Pensando…", hablando: "Hablando… (tocá para interrumpir)", pausa: "En pausa. Tocá el círculo para seguir." }[VIVO.estado] || "";
     v.querySelector(".vivo-dice").textContent = VIVO.parcial;
     v.querySelector(".vivo-resp").textContent = VIVO.ultimo;
@@ -1167,7 +1233,7 @@
     if (!$("vivo")) {
       const d = document.createElement("div"); d.id = "vivo"; d.className = "vivo oculto";
       d.innerHTML = `<button class="vivo-x" aria-label="Terminar">✕</button>
-        <div class="vivo-centro"><button class="vivo-orbe" aria-label="Hablar / interrumpir"><i></i><i></i><i></i></button>
+        <div class="vivo-centro"><button class="vivo-orbe" aria-label="Hablar / interrumpir"><i></i><i></i><i></i><span class="vivo-cara"></span></button>
         <div class="vivo-estado"></div><div class="vivo-dice"></div><div class="vivo-resp"></div>
         <button class="btn acc vivo-aplicar oculto"></button></div>
         <div class="vivo-pie muted">Decí “terminar” para salir</div>`;
@@ -1182,10 +1248,14 @@
     }
     VIVO.activo = true; VIVO.ultimo = ""; VIVO.fallos = 0;
     $("vivo").classList.remove("oculto"); requestAnimationFrame(() => $("vivo").classList.add("on"));
-    Voz.hablar("Hola, te escucho.", () => cicloVivo());
+    if (!VIVO.cara) VIVO.cara = LiveOrb.mount($("vivo").querySelector(".vivo-cara"), { size: 180, variant: "webgl", colors: PALETA_IA, label: "Cara del asistente" });
+    const pn = primerNombre();
+    VIVO.ultimo = pn ? `Hola, ${pn}. Te escucho.` : "Hola, te escucho."; pintarVivo();
+    Voz.hablar(VIVO.ultimo, () => cicloVivo());
   }
   function cerrarVivo() {
     VIVO.activo = false; Voz.detener(); Voz.callar();
+    if (VIVO.cara) { const c = VIVO.cara; VIVO.cara = null; setTimeout(() => c.destroy(), 320); }
     const v = $("vivo"); if (v) { v.classList.remove("on"); setTimeout(() => v.classList.add("oculto"), 300); }
   }
 

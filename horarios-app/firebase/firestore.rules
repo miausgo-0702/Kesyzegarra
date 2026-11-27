@@ -51,6 +51,13 @@ service cloud.firestore {
       allow delete: if logueado() && resource.data.uid == request.auth.uid;
       allow read: if false;
     }
+    // Perfil de cada administrador (nombre y apellido para el saludo del asistente de IA).
+    match /perfiles/{uid} {
+      allow read: if admin() && request.auth.uid == uid;
+      allow write: if admin() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['nombreCompleto'])
+        && request.resource.data.nombreCompleto is string && request.resource.data.nombreCompleto.size() <= 80;
+    }
     // Uso interno de las funciones del servidor.
     match /notifEnviadas/{d} { allow read, write: if false; }
     match /_pruebaEnvios/{d} { allow read, write: if false; }

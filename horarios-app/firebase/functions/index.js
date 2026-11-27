@@ -175,7 +175,9 @@ exports.asistente = onCall({ secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 300, 
       await db.doc("iaSesiones/" + req.auth.uid).set({ renovar: true }, { merge: true });
       return { texto: "Listo, empezamos de nuevo. ¿Qué necesitás?", propuestas: [] };
     }
-    return await A.conversar({ anthropic, db, uid: req.auth.uid, admin: NOMBRES_ADMIN[email] || "Administrador",
+    const usuario = NOMBRES_ADMIN[email] || "Administrador";
+    const nombre = String(d.nombre || "").replace(/[\[\]\n\r]/g, " ").trim().slice(0, 80);
+    return await A.conversar({ anthropic, db, uid: req.auth.uid, admin: nombre ? `${nombre} (usuario ${usuario})` : usuario,
       mensaje, imagenes, nueva: !!d.nueva, pendientes: +d.pendientes || 0 });
   } catch (e) {
     logger.error("asistente", e);

@@ -10,8 +10,8 @@ android {
         applicationId 'com.kesyzegarra.horarios'
         minSdk 21
         targetSdk 34
-        versionCode 8
-        versionName '6.0'
+        versionCode 9
+        versionName '6.1'
     }
     buildTypes {
         release {

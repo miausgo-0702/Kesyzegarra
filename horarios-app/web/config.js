@@ -14,8 +14,9 @@ self.FIREBASE_CONFIG = null;
 // las claves NO se guardan en el código.
 // En modo local (sin Firebase) la clave se valida con admins.local.js, que no se sube al repositorio.
 self.ADMINS = {
-  lezana:   { nombre: "Lezana",   email: "lezana@admin.mishorarios.app" },
-  julianpz: { nombre: "julianpz", email: "julianpz@admin.mishorarios.app" },
+  // nombreCompleto: para el saludo del asistente de IA. Si falta, la IA lo pregunta la primera vez.
+  lezana:   { nombre: "Lezana",   email: "lezana@admin.mishorarios.app",   nombreCompleto: null },
+  julianpz: { nombre: "julianpz", email: "julianpz@admin.mishorarios.app", nombreCompleto: "Julián Pacheco" },
 };
 self.DOMINIO_EMPLEADOS = "empleados.mishorarios.app";
 

@@ -48,7 +48,7 @@
         if (!e) { localStorage.removeItem("mh_sesion"); return userCb(null); }
         return userCb({ tipo: "empleado", id: s.id, dni: e.dni, persona: e.persona });
       }
-      userCb(s && s.tipo === "admin" ? { tipo: "admin", usuario: G.ADMINS[s.usuario].nombre } : null);
+      userCb(s && s.tipo === "admin" ? { tipo: "admin", usuario: G.ADMINS[s.usuario].nombre, clave: s.usuario } : null);
     },
     async ingresar(dni, pin) {
       const db = this._db();
@@ -75,6 +75,8 @@
     },
     async salir() { this._sesion(null); },
     sesionNativa() { return null; },
+    async leerPerfil(clave) { try { return JSON.parse(localStorage.getItem("mh_perfil_" + clave)) || {}; } catch (e) { return {}; } },
+    async guardarPerfil(clave, perfil) { localStorage.setItem("mh_perfil_" + clave, JSON.stringify(perfil)); },
     async registrarToken() {}, async borrarToken() {},
     async asistente() { const e = new Error("El asistente de IA necesita el modo online (Firebase). Ver GUIA_FIREBASE.md."); e.codigo = "local"; throw e; },
     async ocupadas() { return new Set(Object.values(this._db().empleados || {}).map(e => keyPersona(e.persona))); },
@@ -116,7 +118,7 @@
       if (!u) { const m = this._aviso; this._aviso = null; return userCb(null, m); }
       const adm = this._esAdmin(u);
       let perfil;
-      if (adm) perfil = { tipo: "admin", usuario: G.ADMINS[adm].nombre };
+      if (adm) perfil = { tipo: "admin", usuario: G.ADMINS[adm].nombre, clave: adm };
       else {
         const doc = await this.db.collection("empleados").doc(u.uid).get().catch(() => null);
         if (!doc || !doc.exists) { await this.auth.signOut(); return userCb(null, "Tu cuenta fue dada de baja. Registrate de nuevo o hablá con un administrador."); }
@@ -241,6 +243,17 @@
         const m = e.code === "functions/unavailable" || /network|internal$/i.test(e.code || "") && !e.message ? "Sin conexión con el asistente." : (e.message || "El asistente no respondió.");
         throw err(e.code || "asistente", m);
       }
+    },
+    // perfil del administrador (nombre y apellido para el saludo del asistente)
+    async leerPerfil(clave) {
+      const u = this.auth.currentUser; if (!u) return {};
+      try { const d = await this.db.collection("perfiles").doc(u.uid).get(); return d.exists ? d.data() : {}; }
+      catch (e) { try { return JSON.parse(localStorage.getItem("mh_perfil_" + clave)) || {}; } catch (er) { return {}; } }
+    },
+    async guardarPerfil(clave, perfil) {
+      try { localStorage.setItem("mh_perfil_" + clave, JSON.stringify(perfil)); } catch (e) {}
+      const u = this.auth.currentUser; if (!u) return;
+      await this.db.collection("perfiles").doc(u.uid).set({ nombreCompleto: String(perfil.nombreCompleto || "").slice(0, 80) });
     },
     // dispositivo que recibe notificaciones push (lo usa el servidor)
     async registrarToken(token, plataforma) {
