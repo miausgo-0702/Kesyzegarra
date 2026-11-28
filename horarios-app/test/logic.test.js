@@ -25,20 +25,22 @@ t("feriados 2027 por regla", () => {
 });
 
 // --- Semana: rotación ---
-t("Pacheco semana base y siguiente", () => {
-  assert.strictEqual(est("Ventas","Pacheco Julian","2026-11-25").h, "15:30 a 23:30");
-  assert.strictEqual(est("Ventas","Pacheco Julian","2026-12-02").h, "16 a 00");
+t("Pacheco semana base (30/11) y siguiente", () => {
+  assert.strictEqual(est("Ventas","Pacheco Julian","2026-12-02").h, "16:30 a 00:30");
+  assert.strictEqual(est("Ventas","Pacheco Julian","2026-12-09").h, "10 a 13:30 · 20 a 00:30");   // toma el de Suárez
+  assert.strictEqual(est("Ventas","Pacheco Julian","2026-11-25").h, "16 a 23");                   // semana anterior (hacia atrás)
 });
 t("el último pasa al primero, negrita fija", () => {
-  assert.strictEqual(est("Ventas","Carabajal Jimena","2026-12-01").h, "7:30 a 15:30");
+  assert.strictEqual(est("Ventas","Daverio Daniela","2026-12-09").h, "7 a 15");          // último -> primero (Carabajal)
   assert.strictEqual(est("Ventas","Ferreyra Sebastian","2027-03-03").h, "7 a 15");
-  assert.strictEqual(est("Ventas","Banegas Fabian","2027-03-03").h, "23 a 07");
+  assert.strictEqual(est("Ventas","Banegas Fabian","2027-03-03").h, "8 a 16");
+  assert.strictEqual(est("Ventas","Lugones Maximiliano","2027-03-03").h, "23 a 07");
 });
 t("vuelta completa (9 semanas) vuelve al mismo horario", () => {
-  assert.strictEqual(est("Ventas","Pacheco Julian","2027-01-27").h, "15:30 a 23:30");
+  assert.strictEqual(est("Ventas","Pacheco Julian","2027-02-03").h, "16:30 a 00:30");
 });
 t("todos los horarios de la semana base coinciden con la planilla", () => {
-  W.SECTORES.forEach(s => s.personas.forEach((p, i) => { if (!/^Sin/.test(p.h)) assert.strictEqual(L.estadoDia(s, i, D("2026-11-24")).h, p.h, p.n); }));
+  W.SECTORES.forEach(s => s.personas.forEach((p, i) => { if (!/^Sin/.test(p.h)) assert.strictEqual(L.estadoDia(s, i, D("2026-12-01")).h, p.h, p.n); }));
 });
 t("en cada semana nadie repite horario y no se pierde ninguno", () => {
   for (let w = 0; w < 30; w++) W.SECTORES.forEach(s => {
@@ -57,7 +59,7 @@ t("grupos alternados", () => {
 t("planillas originales se reproducen", () => {
   assert.strictEqual(est("Ventas","Juan Renzo","2026-11-14").h, "10 a 14 · 19:30 a 00:30");
   assert.strictEqual(est("Ventas","Suarez Nahiara","2026-11-21").h, "14 a 23");
-  assert.strictEqual(est("Ventas","Peralta Alejandro","2026-11-22").h, "17 a 01");
+  assert.strictEqual(est("Solo fines de semana","Peralta Alejandro","2026-11-22").h, "17 a 01");
 });
 t("findes rotan un puesto cada vez que trabaja el grupo", () => {
   // B sábado ventas (sin Lugones): Zerda, Vallejos, Maguna, Juan Renzo, Daverio, Mitre
@@ -84,7 +86,7 @@ t("Pacheco: descansó 23/11, trabaja 8/12, descansa 25/12, trabaja 1/1", () => {
 });
 t("puente 7/12 es día normal", () => {
   const r = est("Ventas","Pacheco Julian","2026-12-07");
-  assert.strictEqual(r.tipo, "semana"); assert.strictEqual(r.h, "10 a 13:30 · 19:30 a 00");
+  assert.strictEqual(r.tipo, "semana"); assert.strictEqual(r.h, "10 a 13:30 · 20 a 00:30");
 });
 t("equipo del 23/11: planilla original y luego alterna", () => {
   assert.strictEqual(est("Ventas","Juan Renzo","2026-11-23").h, "9:30 a 12:30 · 18:30 a 23:30");
@@ -130,8 +132,8 @@ t("planilla de finde nueva cargada por un administrador", () => {
 });
 t("planilla semanal nueva", () => {
   const orig = L.getData(), D = L.getData();
-  D.BASE_LUNES = "2026-11-30"; L.setData(D);
-  assert.strictEqual(est("Ventas","Pacheco Julian","2026-12-01").h, "15:30 a 23:30");
+  D.BASE_LUNES = "2026-12-07"; L.setData(D);
+  assert.strictEqual(est("Ventas","Pacheco Julian","2026-12-09").h, "16:30 a 00:30");
   L.setData(orig);
 });
 t("ajuste manual de grupo y feriado por persona", () => {
@@ -159,5 +161,11 @@ t("Silva Virginia es solo del Grupo A", () => {
   assert(!est("Ventas","Silva Virginia","2026-11-29").trabaja);
   assert(est("Ventas","Silva Virginia","2026-12-05").trabaja);
   assert(est("Ventas","Daverio Daniela","2026-11-29").trabaja);
+});
+t("planilla del 30/11: negritas fijas y Peralta solo findes", () => {
+  const v = W.SECTORES.find(x => x.nombre === "Ventas").personas;
+  assert.strictEqual(JSON.stringify(v.filter(p => p.fijo).map(p => p.n)), JSON.stringify(["Ferreyra Sebastian", "Banegas Fabian", "Lugones Maximiliano"]));
+  assert.strictEqual(est("Solo fines de semana","Peralta Alejandro","2026-12-02").trabaja, false);
+  assert(est("Solo fines de semana","Peralta Alejandro","2026-12-05").trabaja);
 });
 console.log("OK:", ok, "pruebas");

@@ -71,7 +71,7 @@ async function esperarEnvios(desde, n, ms = 15000) {
   await db.doc("config/datos").set({ json: JSON.stringify(H.SEED), actualizado: 1 });
   await espera(3000);
   t = Date.now();
-  const d2 = JSON.parse(JSON.stringify(H.SEED)); d2.BASE_LUNES = "2026-11-30";
+  const d2 = JSON.parse(JSON.stringify(H.SEED)); d2.BASE_LUNES = "2026-12-07";
   await db.doc("config/datos").set({ json: JSON.stringify(d2), actualizado: 2 });
   await esperarEnvios(t, 3); await espera(2000);
   e = await envios(t);
