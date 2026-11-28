@@ -5,13 +5,14 @@ const fs = require("fs"), path = require("path"), vm = require("vm");
 const ctx = { console };
 ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx;
 vm.createContext(ctx);
-for (const f of ["data.js", "logic.js", "acciones.js"]) {
+for (const f of ["data.js", "logic.js", "acciones.js", "ia-herramientas.js"]) {
   const local = path.join(__dirname, "compartido", f);
   const fuente = fs.existsSync(local) ? local : path.join(__dirname, "../../web", f);
   vm.runInContext(fs.readFileSync(fuente, "utf8"), ctx, { filename: f });
 }
 const L = ctx.L;
 const Acciones = ctx.Acciones;
+const IA = ctx.IA;
 const SEED = L.getData();
 
 const DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
@@ -57,4 +58,4 @@ function textoCambio(cs) {
   return { cuando, que };
 }
 
-module.exports = { L, Acciones, SEED, usarDatos, estado, resumenSemana, textoCambio, hoy, corto };
+module.exports = { L, Acciones, IA, SEED, usarDatos, estado, resumenSemana, textoCambio, hoy, corto };

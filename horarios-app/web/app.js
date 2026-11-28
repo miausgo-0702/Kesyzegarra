@@ -806,8 +806,29 @@
     };
   }
 
+  // Modo local: la clave de Gemini se guarda solo en este dispositivo y el teléfono habla directo con Gemini.
+  function admIALocal(root) {
+    const lista = B.iaLista();
+    root.innerHTML = `<div class="card"><h3>Inteligencia artificial (Gemini)</h3>
+        <p class="muted" style="margin-top:0">La usan el asistente (pestaña IA) y la carga de ofertas. Como la app está en modo local, este teléfono habla directo con Gemini y la clave queda guardada <b>solo en este dispositivo</b> (no se sube a ningún lado). Cada administrador la pega en su propio teléfono.</p>
+        <div class="muted" id="iaMsg2" style="margin-bottom:8px">${lista ? "✓ Hay una clave guardada en este teléfono." : "Todavía no hay clave en este teléfono."}</div>
+        <div class="field"><label>Clave de Gemini (Google AI Studio)</label><input class="in" id="iaKG" type="password" autocomplete="off" placeholder="Pegá la clave (AIza… o AQ.…)"></div>
+        <div class="row"><button class="btn pri" id="iaGuardar">Probar y guardar</button>${lista ? '<button class="btn" id="iaBorrarK">Quitar clave</button>' : ""}</div>
+        <p class="muted" style="margin-bottom:0">¿No tenés clave? Se saca gratis en aistudio.google.com → Get API key.</p></div>
+      <div class="card"><h3>Fotos de los productos (Ofertas)</h3>
+        <p class="muted" style="margin:0">En modo local la app no busca fotos en Google: subí la foto del producto desde el teléfono (en la carga de ofertas o adjuntándola en el chat del asistente).</p></div>`;
+    $("iaGuardar").onclick = async () => {
+      const g = $("iaKG").value.trim(); if (!g) return toast("Pegá la clave de Gemini");
+      $("iaGuardar").disabled = true; $("iaMsg2").textContent = "Probando la clave…";
+      try { await B.guardarClaveIA({ proveedor: "gemini", gemini: g }); $("iaKG").value = ""; toast("✓ Clave de Gemini guardada en este teléfono"); admIALocal(root); }
+      catch (e) { $("iaMsg2").textContent = "✕ " + e.message; $("iaGuardar").disabled = false; }
+    };
+    if ($("iaBorrarK")) $("iaBorrarK").onclick = () => { if (!confirm("¿Quitar la clave de Gemini de este teléfono?")) return; IALocal.guardarClave(""); toast("Clave quitada"); admIALocal(root); };
+  }
+
   // Claves de IA: se guardan en el servidor y no se pueden volver a leer desde la app.
   function admIA(root) {
+    if (!B.online) return admIALocal(root);
     root.innerHTML = `<div class="card"><h3>Proveedor de inteligencia artificial</h3>
         <p class="muted" style="margin-top:0">Lo usan el asistente (pestaña IA) y la carga de ofertas. Las claves quedan guardadas en el servidor: nadie las puede volver a ver desde la app (para cambiar una, pegá la nueva).</p>
         <div class="seg" id="iaProv"><button data-p="gemini" class="on">Gemini (Google)</button><button data-p="claude">Claude (Anthropic)</button></div>
@@ -1055,6 +1076,8 @@
           const e = st.empleados.find(x => norm(x.persona) === norm(op.persona));
           if (!e) throw new Error(`${op.persona} no tiene cuenta registrada.`);
           await B.borrarEmpleado(e.id);
+        } else if (op.tipo === "oferta") {
+          await B.guardarOferta({ ...op.oferta, imagen: p.foto || null, creado: Date.now(), por: st.user.usuario });
         } else if (op.tipo === "reasignarEmpleado") {
           const e = st.empleados.find(x => norm(x.persona) === norm(op.de));
           if (e) await B.reasignarEmpleado(e.id, op.a);
@@ -1076,18 +1099,27 @@
   async function enviarIA(texto, opciones) {
     opciones = opciones || {};
     texto = String(texto || "").trim();
+    if (!texto && !IA.adjuntos.length) return null;
+    if (!B.iaLista()) { mostrarClaveIA(true); toast("Primero pegá la clave de Gemini"); if ($("iaTxt") && !$("iaTxt").value) $("iaTxt").value = texto; return null; }
     const imagenes = IA.adjuntos.splice(0);
-    if (!texto && !imagenes.length) return null;
     IA.mensajes.push({ rol: "yo", texto, imagenes: imagenes.map(i => i.url), t: Date.now() });
     IA.cargando = true; IA.rev++; pintarIA();
     let resp;
     try {
       resp = await B.asistente({ mensaje: texto, imagenes: imagenes.map(i => ({ tipo: i.tipo, datos: i.datos })), pendientes: pendientes().length, nombre: nombreAdmin() });
       const m = { rol: "ia", texto: resp.texto || "", nota: resp.nota || "", propuestas: (resp.propuestas || []).map(p => ({ ...p, estado: "pendiente" })), t: Date.now() };
+      // ofertas: la foto adjunta va al flyer (achicada)
+      const ofs = m.propuestas.filter(p => p.tipo === "oferta");
+      for (const p of ofs) {
+        let i = Number(p.datos && p.datos.foto_adjunta) - 1;
+        if (!(i >= 0) && ofs.length === 1 && imagenes.length === 1) i = 0;
+        if (imagenes[i]) { try { p.foto = await achicarURL(imagenes[i].url, 720); p.advertencias = (p.advertencias || []).filter(a => !/^Sin foto/.test(a)); } catch (e) {} }
+      }
       if (resp.descartar) descartarPendientes();
       IA.mensajes.push(m);
       if (resp.confirmar) { IA.cargando = false; await aplicarPendientes(); }
     } catch (er) {
+      if (er.codigo === "sinClave") mostrarClaveIA(true);
       IA.mensajes.push({ rol: "ia", error: true, texto: er.message, t: Date.now() });
       resp = { texto: er.message, error: true };
     }
@@ -1112,11 +1144,34 @@
     });
   }
 
+  function achicarURL(url, max) {
+    return new Promise((res, rej) => {
+      const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height);
+        res(c.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = () => rej(new Error("No pude abrir la imagen."));
+      img.src = url;
+    });
+  }
+
+  // Modo local sin clave: tarjeta para pegar la clave de Gemini ahí mismo, en el chat.
+  function mostrarClaveIA(si) {
+    const c = $("iaClave"); if (!c) return;
+    c.classList.toggle("oculto", !si);
+    const sub = $("iaSub"); if (sub) sub.textContent = subtituloIA();
+    if (si) setTimeout(() => $("iaClaveIn") && $("iaClaveIn").focus(), 200);
+  }
+  const subtituloIA = () => B.online ? "Consultas y cambios por texto, voz o foto" : B.iaLista() ? "Con Gemini, directo desde este teléfono" : "Falta pegar la clave de Gemini";
+
   function formatoIA(t) { return esc(t).replace(/\n/g, "<br>"); }
   function htmlPropuesta(p, i, mi) {
     const est = { pendiente: "", aplicando: '<span class="pill pend"><span class="spin"></span>Aplicando…</span>', aplicada: '<span class="pill ok">✓ Aplicada</span>', descartada: '<span class="pill">Descartada</span>', error: `<span class="pill bad">✕ ${esc(p.error || "Error")}</span>` }[p.estado] || "";
-    return `<div class="prop ${p.estado}"><div class="prop-ico">${p.tipo === "aviso" ? "📢" : p.tipo === "cambio_turno" ? "🔁" : p.tipo.includes("planilla") ? "📋" : p.tipo === "feriado" ? "📅" : p.tipo === "borrar_empleado" ? "🗑" : "⚙️"}</div>
-      <div class="grow"><div>${esc(p.descripcion)}</div>${(p.advertencias || []).map(a => `<div class="muted">⚠ ${esc(a)}</div>`).join("")}
+    return `<div class="prop ${p.estado}"><div class="prop-ico">${p.tipo === "aviso" ? "📢" : p.tipo === "cambio_turno" ? "🔁" : p.tipo.includes("planilla") ? "📋" : p.tipo === "feriado" ? "📅" : p.tipo === "borrar_empleado" ? "🗑" : p.tipo === "oferta" ? "🏷" : "⚙️"}</div>
+      <div class="grow">${p.foto ? `<img class="prop-foto" src="${esc(p.foto)}" alt="">` : ""}<div>${esc(p.descripcion)}</div>${(p.advertencias || []).map(a => `<div class="muted">⚠ ${esc(a)}</div>`).join("")}
       ${p.estado === "pendiente" ? `<div class="row" style="margin-top:8px"><button class="btn sm acc" data-ap="${mi}:${i}">Aplicar</button><button class="btn sm" data-de="${mi}:${i}">Descartar</button></div>` : `<div style="margin-top:6px">${est}</div>`}</div></div>`;
   }
   function pintarIA() {
@@ -1146,7 +1201,7 @@
     if (!$("iaMsgs")) {
       if (!IA.cargado || IA.cargado !== st.user.usuario) { cargarIA(); IA.cargado = st.user.usuario; }
       v.innerHTML = `<div class="ia-vista">
-        <div class="ia-top"><div class="orbe-slot" id="iaOrbeTop"></div><div class="grow"><b>Asistente IA</b><div class="muted">${B.online ? "Consultas y cambios por texto, voz o foto" : "Necesita el modo online"}</div></div>
+        <div class="ia-top"><div class="orbe-slot" id="iaOrbeTop"></div><div class="grow"><b>Asistente IA</b><div class="muted" id="iaSub">${subtituloIA()}</div></div>
           <button class="iconbtn ${IA.leer ? "on" : ""}" id="iaLeer" title="Leer respuestas en voz alta" aria-label="Leer respuestas en voz alta">🔊</button>
           <button class="iconbtn" id="iaNueva" title="Nueva conversación" aria-label="Nueva conversación">＋</button></div>
         <div class="ia-hola" id="iaHola">
@@ -1155,6 +1210,12 @@
           <p class="muted" id="iaIntro"></p>
           <form class="row oculto" id="iaNombreF" autocomplete="off"><input class="in f" id="iaNombre" maxlength="80" placeholder="Nombre y apellido"><button class="btn pri">Listo</button></form>
         </div>
+        <form class="card ia-clave ${B.iaLista() ? "oculto" : ""}" id="iaClave" autocomplete="off">
+          <b>🔑 Activar el asistente</b>
+          <p class="muted">Pegá tu clave de Gemini una sola vez. Queda guardada <b>solo en este teléfono</b> y el asistente habla directo con Google. Se saca gratis en aistudio.google.com → Get API key.</p>
+          <div class="row"><input class="in f" id="iaClaveIn" type="password" placeholder="Clave de Gemini (AIza… o AQ.…)"><button class="btn pri" id="iaClaveOk">Activar</button></div>
+          <div class="muted" id="iaClaveMsg"></div>
+        </form>
         <div class="ia-msgs" id="iaMsgs"></div>
         <div class="ia-sug" id="iaSug">${SUGERENCIAS.map(t => `<button class="chip2">${esc(t)}</button>`).join("")}</div>
         <button class="btn acc" id="iaTodo" style="margin:6px 0">Aplicar todo</button>
@@ -1196,7 +1257,18 @@
           onError: m => { $("iaMic").classList.remove("on"); toast(m); },
         });
       };
-      $("iaVivo").onclick = abrirVivo;
+      $("iaVivo").onclick = () => { if (!B.iaLista()) { mostrarClaveIA(true); return toast("Primero pegá la clave de Gemini"); } abrirVivo(); };
+      $("iaClave").onsubmit = async e => {
+        e.preventDefault();
+        const k = $("iaClaveIn").value.trim(); if (!k) return $("iaClaveIn").focus();
+        $("iaClaveOk").disabled = true; $("iaClaveMsg").textContent = "Probando la clave…";
+        try {
+          await B.guardarClaveIA({ proveedor: "gemini", gemini: k });
+          $("iaClaveIn").value = ""; $("iaClaveMsg").textContent = ""; mostrarClaveIA(false); toast("✓ Asistente activado");
+          if ($("iaTxt").value.trim()) { const t = $("iaTxt").value; $("iaTxt").value = ""; enviarIA(t); }
+        } catch (er) { $("iaClaveMsg").textContent = "✕ " + er.message; }
+        $("iaClaveOk").disabled = false;
+      };
       // la cara del asistente
       $("iaOrbeTop").innerHTML = '<span class="cara-mini" aria-hidden="true"><i></i><i></i></span>';
       IA.caras = [];

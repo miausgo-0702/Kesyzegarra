@@ -76,6 +76,10 @@ uso queda dentro de la cuota gratuita, así que en la práctica cuesta $0, pero 
    - **PC:** abrir la versión web en Chrome o Edge y aceptar las notificaciones.
 
 ## 7. Inteligencia artificial (asistente y ofertas)
+
+> **Sin Firebase también funciona.** En modo local, cada administrador abre la pestaña **IA** y pega su
+> clave de Gemini en "Activar el asistente" (se saca gratis en aistudio.google.com → Get API key). La clave
+> queda guardada solo en ese teléfono y la app habla directo con Gemini. Lo que sigue es para el modo online.
 Lezana y julianpz tienen una pestaña **IA** (✨) para consultar y modificar horarios escribiendo, hablando,
 mandando una foto de una planilla o en **conversación en vivo**, y la carga de **ofertas con IA** (sección 8).
 La IA **prepara** los cambios y el administrador los confirma (botón *Aplicar* o diciendo "sí"); nada se aplica solo.

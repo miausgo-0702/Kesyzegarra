@@ -78,13 +78,41 @@
     sesionNativa() { return null; },
     async guardarOferta(o) { const db = this._db(); db.ofertas = db.ofertas || {}; const id = o.id || "o" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); const x = { ...o }; delete x.id; db.ofertas[id] = { ...(db.ofertas[id] || {}), ...x }; this._save(db); this._all("ofertas"); return id; },
     async borrarOferta(id) { const db = this._db(); delete (db.ofertas || {})[id]; this._save(db); this._all("ofertas"); },
-    async ofertasIA() { const e = new Error("Cargar ofertas con IA necesita el modo online (Firebase)."); e.codigo = "local"; throw e; },
-    async guardarClaveImagenes() { const e = new Error("Necesita el modo online."); e.codigo = "local"; throw e; },
-    async guardarClaveIA() { const e = new Error("La IA necesita el modo online (Firebase). Ver GUIA_FIREBASE.md."); e.codigo = "local"; throw e; },
+    // IA en modo local: el teléfono habla directo con Gemini (ia-local.js); la clave queda solo en este dispositivo.
+    async ofertasIA(p) {
+      if (!G.IALocal) throw err("local", "Falta ia-local.js.");
+      p = p || {};
+      if (p.accion === "extraer") return G.IALocal.extraerOfertas(p.archivos, p.nota);
+      if (p.accion === "buscar") return { imagenes: [], nota: "En modo local la app no puede buscar fotos en Google: subí la foto del producto desde el teléfono." };
+      throw err("local", "En modo local subí la foto del producto desde el teléfono.");
+    },
+    async guardarClaveImagenes() { const e = new Error("En modo local no se usa buscador de fotos: subí la foto del producto desde el teléfono."); e.codigo = "local"; throw e; },
+    async guardarClaveIA(cfg) {
+      if (!G.IALocal) throw err("local", "Falta ia-local.js.");
+      cfg = cfg || {};
+      if (cfg.proveedor === "claude" && !cfg.gemini) throw err("local", "En modo local la IA funciona con Gemini. Pegá la clave de Gemini.");
+      if (cfg.gemini) { await G.IALocal.probarClave(cfg.gemini); G.IALocal.guardarClave(cfg.gemini); }
+      else if (!G.IALocal.tieneClave()) throw err("sinClave", "Pegá la clave de Gemini.");
+    },
+    iaLista() { return !!(G.IALocal && G.IALocal.tieneClave()); },
     async leerPerfil(clave) { try { return JSON.parse(localStorage.getItem("mh_perfil_" + clave)) || {}; } catch (e) { return {}; } },
     async guardarPerfil(clave, perfil) { localStorage.setItem("mh_perfil_" + clave, JSON.stringify(perfil)); },
     async registrarToken() {}, async borrarToken() {},
-    async asistente() { const e = new Error("El asistente de IA necesita el modo online (Firebase). Ver GUIA_FIREBASE.md."); e.codigo = "local"; throw e; },
+    async asistente(p) {
+      if (!G.IALocal) throw err("local", "Falta ia-local.js.");
+      if (!G.IALocal.tieneClave()) throw err("sinClave", "Para usar el asistente pegá tu clave de Gemini (una sola vez, queda guardada en este teléfono).");
+      const db = this._db(), s = (() => { try { return JSON.parse(localStorage.getItem("mh_sesion")) || {}; } catch (e) { return {}; } })();
+      if (s.tipo !== "admin") throw err("permiso", "Solo para administradores.");
+      if (p && p.nueva) G.IALocal.borrarHistorial(s.usuario);
+      return G.IALocal.conversar({
+        uid: s.usuario, admin: p.nombre || G.ADMINS[s.usuario].nombre, mensaje: p.mensaje, imagenes: p.imagenes, pendientes: p.pendientes,
+        ctx: {
+          datos: db.datos || G.L.getData(),
+          cambios: Object.entries(db.cambios || {}).map(([id, c]) => ({ id, ...c })),
+          empleados: Object.entries(db.empleados || {}).map(([id, e]) => ({ id, dni: e.dni, persona: e.persona, creado: e.creado })),
+        },
+      });
+    },
     async ocupadas() { return new Set(Object.values(this._db().empleados || {}).map(e => keyPersona(e.persona))); },
     async guardarDatos(d) { const db = this._db(); db.datos = { ...d, actualizado: Date.now() }; this._save(db); this._all("datos"); },
     async borrarEmpleado(id) { const db = this._db(); delete (db.empleados || {})[id]; this._save(db); this._all("empleados"); },
@@ -258,6 +286,7 @@
       return (await this.db.collection("ofertas").add(x)).id;
     },
     async borrarOferta(id) { await this.db.collection("ofertas").doc(id).delete(); },
+    iaLista() { return true; },
     async ofertasIA(payload) {
       if (!this._fn) { this._fn = firebase.app().functions("southamerica-east1"); if (G.FIREBASE_CONFIG.emulador) this._fn.useEmulator(G.FIREBASE_CONFIG.emulador, 5001); }
       try { return (await this._fn.httpsCallable("ofertasIA", { timeout: 300000 })(payload)).data; }

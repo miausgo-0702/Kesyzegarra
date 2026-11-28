@@ -3,50 +3,8 @@
 // fijo (structured outputs). Después se busca la foto de cada producto en Google Imágenes.
 const MODELO = "claude-opus-5-5";
 
-const NUM_O_NULL = { type: ["number", "null"] };
-const STR_O_NULL = { type: ["string", "null"] };
-const ESQUEMA = {
-  type: "object",
-  additionalProperties: false,
-  required: ["ofertas", "resumen", "advertencias"],
-  properties: {
-    resumen: { type: "string", description: "Una frase: cuántas ofertas encontraste y de qué." },
-    advertencias: { type: "array", items: { type: "string" }, description: "Datos dudosos, ilegibles o faltantes." },
-    ofertas: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["producto", "presentacion", "marca", "categoria", "precio_antes", "precio_ahora", "descuento_pct", "condicion", "vigencia_desde", "vigencia_hasta", "busqueda_imagen"],
-        properties: {
-          producto: { type: "string", description: "Nombre comercial del producto, por ejemplo 'Ibupirac 400'." },
-          presentacion: STR_O_NULL,
-          marca: STR_O_NULL,
-          categoria: { type: "string", enum: ["Medicamentos", "Dermocosmética", "Perfumería", "Bebés", "Cuidado personal", "Nutrición", "Otros"] },
-          precio_antes: NUM_O_NULL,
-          precio_ahora: NUM_O_NULL,
-          descuento_pct: NUM_O_NULL,
-          condicion: STR_O_NULL,
-          vigencia_desde: STR_O_NULL,
-          vigencia_hasta: STR_O_NULL,
-          busqueda_imagen: { type: "string", description: "Búsqueda para encontrar la foto del envase en Google Imágenes." },
-        },
-      },
-    },
-  },
-};
-
-const INSTRUCCIONES = (hoy, nota) => `Sos el asistente de las farmacias La Esquina y Belgrano (Argentina). Te paso material con descuentos y ofertas (fotos de carteles o listas, planillas de Excel/CSV convertidas a texto, documentos de Word convertidos a texto o PDF). Armá la lista de ofertas para publicar en la app.
-
-Reglas:
-- Una oferta por producto/presentación. No inventes productos ni precios: si un dato no está, dejalo en null.
-- Precios en pesos argentinos, como número (por ejemplo 12500.5). "$ 12.500,50" es 12500.5.
-- Si hay precio de antes y descuento pero no precio de ahora, calculalo (redondeado a centavos). Si hay los dos precios, calculá descuento_pct entero. Si sólo hay un porcentaje, dejá los precios en null.
-- condicion: promociones o requisitos ("2x1", "segunda unidad al 50%", "con tarjeta X", "hasta agotar stock"). null si no hay.
-- Fechas en formato AAAA-MM-DD. Hoy es ${hoy}. Si dice "hasta el 31/12", es del año en curso (o del próximo si ya pasó).
-- categoria: la que mejor corresponda.
-- busqueda_imagen: marca + producto + presentación + "caja" o "envase" (por ejemplo "Ibupirac 400 mg 20 comprimidos caja"), para encontrar la foto del producto.
-- En advertencias anotá lo que no se lea bien o parezca un error (por ejemplo un precio de ahora mayor al de antes).${nota ? `\n\nIndicaciones del administrador: ${nota}` : ""}`;
+// formato e instrucciones: web/ia-herramientas.js (compartido con la app)
+const { ESQUEMA_OFERTAS: ESQUEMA, INSTRUCCIONES_OFERTAS: INSTRUCCIONES } = require("./horarios").IA;
 
 /** Lee los archivos y devuelve { ofertas, resumen, advertencias }. */
 async function extraer(anthropic, archivos, nota) {

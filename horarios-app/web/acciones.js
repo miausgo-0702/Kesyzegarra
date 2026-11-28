@@ -235,6 +235,28 @@
     return { ops: [{ tipo: "borrarEmpleado", persona }], descripcion: `Dar de baja la cuenta de ${persona} (tendrá que registrarse de nuevo).` };
   };
 
+  H.oferta = (D, a) => {
+    const txt = (v, n) => v == null || v === "" ? null : String(v).trim().slice(0, n);
+    const num = v => { if (v == null || v === "") return null; const x = Number(String(v).replace(/[^0-9.,]/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", ".")); return isFinite(x) && x > 0 ? Math.round(x * 100) / 100 : null; };
+    const producto = txt(a.producto, 120); if (!producto) falla("Falta el nombre del producto.");
+    const CATS = ["Medicamentos", "Dermocosmética", "Perfumería", "Bebés", "Cuidado personal", "Nutrición", "Otros"];
+    let antes = num(a.precio_antes), ahora = num(a.precio_ahora), pct = num(a.descuento_pct);
+    if (pct != null) { pct = Math.round(pct); if (pct < 1 || pct > 95) falla("El descuento tiene que estar entre 1% y 95%."); }
+    if (antes && pct != null && !ahora) ahora = Math.round(antes * (100 - pct) / 100);
+    if (antes && ahora && pct == null && antes > ahora) pct = Math.round((1 - ahora / antes) * 100);
+    if (antes && ahora && ahora >= antes) falla("El precio con descuento tiene que ser menor que el de antes.");
+    if (!ahora && pct == null) falla("Indicá el precio de oferta o el porcentaje de descuento.");
+    const vig = (v, c) => { if (!v) return null; const d = fecha(v, c); return L.ymd(d); };
+    const o = { producto, presentacion: txt(a.presentacion, 80), marca: txt(a.marca, 60), categoria: CATS.includes(a.categoria) ? a.categoria : "Medicamentos",
+      precio_antes: antes, precio_ahora: ahora, descuento_pct: pct, condicion: txt(a.condicion, 120),
+      vigencia_desde: vig(a.vigencia_desde, "desde"), vigencia_hasta: vig(a.vigencia_hasta, "hasta") };
+    const foto = Number(a.foto_adjunta) > 0 ? Math.round(Number(a.foto_adjunta)) : null;
+    const pesos = n => "$" + Math.round(n).toLocaleString("es-AR");
+    const precio = [antes ? `antes ${pesos(antes)}` : "", ahora ? `ahora ${pesos(ahora)}` : "", pct != null ? `${pct}% OFF` : ""].filter(Boolean).join(" · ");
+    const adv = []; if (!foto) adv.push("Sin foto: el flyer sale con las iniciales. Podés adjuntar una foto del producto.");
+    return { ops: [{ tipo: "oferta", oferta: o, foto }], descripcion: `Publicar oferta: ${producto}${o.presentacion ? " " + o.presentacion : ""} — ${precio}${o.condicion ? " (" + o.condicion + ")" : ""}${foto ? " · con la foto adjunta" : ""}.`, advertencias: adv };
+  };
+
   A.TIPOS = Object.keys(H);
   A.aplicar = (datos, accion, ctx) => {
     const f = H[accion && accion.tipo]; if (!f) falla(`Acción desconocida: ${accion && accion.tipo}.`);

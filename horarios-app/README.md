@@ -29,6 +29,10 @@ Dirección web (GitHub Pages, una vez que esta rama esté en `main`):
 Sin configurar, la app guarda todo en el dispositivo (modo local). Para compartir datos entre todos,
 seguí [GUIA_FIREBASE.md](GUIA_FIREBASE.md).
 
+En modo local el asistente de IA y la carga de ofertas funcionan igual: el administrador pega su clave de
+Gemini una vez (en la pestaña IA o en Panel → Inteligencia artificial), queda guardada solo en ese teléfono
+y la app habla directo con Gemini (`web/ia-local.js`). En modo local las fotos de productos se suben a mano.
+
 ## Desarrollo
 - `web/` — la app (HTML/CSS/JS, sin compilación). `data.js` = planillas iniciales, `logic.js` = cálculos,
   `backend.js` = datos (local / Firebase), `app.js` = pantallas.
@@ -37,6 +41,8 @@ seguí [GUIA_FIREBASE.md](GUIA_FIREBASE.md).
 - `firebase/` — reglas de seguridad de Firestore, configuración del emulador y `desplegar.sh`.
 - `firebase/functions/gemini.js` y `asistente-gemini.js` — la IA con Gemini (Google): cambio automático de modelo,
   ciclo de herramientas propio e historial en Firestore. Prueba: `node functions/test/gemini.test.js`.
+- `web/ia-herramientas.js` — instrucciones y herramientas del asistente (incluye `proponer_oferta`), compartidas
+  por la app (modo local) y el servidor (`compartido/` se arma con `node functions/copiar-logica.js`).
 - `firebase/functions/asistente.js` — asistente de IA de los administradores con Claude (Managed Agents):
   herramientas de consulta y de propuestas; `web/acciones.js` valida y aplica las propuestas (servidor y app).
   `web/voz.js` = dictado y lectura en voz alta. Prueba sin gastar: `node functions/test/asistente.test.js`

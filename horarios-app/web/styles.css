@@ -503,3 +503,8 @@ body{overscroll-behavior-y:none}
 .cara-mini i:first-child{left:31%}.cara-mini i:last-child{left:56%}
 @keyframes parpadeo{0%,94%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
 .live-orb{animation:aparece .45s ease both}
+
+/* IA: activar con clave (modo local) y foto en propuestas de ofertas */
+.ia-clave{margin:0 0 10px;text-align:left}
+.ia-clave p{margin:6px 0 10px;font-size:13px}
+.prop-foto{display:block;width:96px;height:96px;object-fit:cover;border-radius:12px;margin:0 0 6px;background:#fff}

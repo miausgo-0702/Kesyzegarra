@@ -2,6 +2,6 @@
 // use exactamente las mismas reglas. Se ejecuta antes de cada despliegue.
 const fs = require("fs"), path = require("path");
 fs.mkdirSync(path.join(__dirname, "compartido"), { recursive: true });
-for (const f of ["logic.js", "data.js", "acciones.js"])
+for (const f of ["logic.js", "data.js", "acciones.js", "ia-herramientas.js"])
   fs.copyFileSync(path.join(__dirname, "../../web", f), path.join(__dirname, "compartido", f));
-console.log("logic.js, data.js y acciones.js copiados");
+console.log("logic.js, data.js, acciones.js e ia-herramientas.js copiados");
