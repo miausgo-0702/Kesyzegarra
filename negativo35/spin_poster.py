@@ -41,15 +41,19 @@ blur = acc / n
 # sharp core around the face, a ghosted sharp echo outside it
 yy, xx = np.mgrid[0:wh, 0:ww].astype(np.float32)
 d = np.sqrt(((xx-cx)/(ww*0.30))**2 + ((yy-cy)/(ww*0.36))**2)
-core = np.clip(1 - (d-0.55)/0.45, 0, 1)**1.6
+# sharp zone widened to hold both drinks (source px: centre 1380,1900; radii 1400x1150)
+ex, ey, rx, ry = (1380 - x0)*k, 1900*k, 1400*k, 1150*k
+dc = np.sqrt(((xx-ex)/rx)**2 + ((yy-ey)/ry)**2)
+core = np.clip(1 - (dc-0.80)/0.35, 0, 1)**1.4
 core = core[..., None]
 mix = lin*core + blur*(1-core)
 mix = mix*0.86 + lin*0.14*(1-core)      # faint double-exposure ghost
 
 # ---- highlight bloom
 Y = mix @ np.array([0.2126,0.7152,0.0722], np.float32)
-mix = mix*1.45
-Y = Y*1.45
+gain = 1.45 - 0.37*core[..., 0]
+mix = mix*gain[..., None]
+Y = Y*gain
 hi = np.clip((Y-0.30)/0.6, 0, 1)
 bl = np.asarray(Image.fromarray((hi*255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(24)), np.float32)/255
 mix = mix + bl[..., None]*np.array([0.75, 0.36, 0.11], np.float32)
@@ -63,11 +67,16 @@ gm = np.stack([np.interp(L, stops, cols[:,c]) for c in range(3)], -1)
 warm = out * np.array([1.08, 0.92, 0.72], np.float32)
 graded = gm*0.66 + warm*0.34
 # keep skin/drinks a bit truer inside the sharp core
-graded = graded*(1-0.25*core) + (out*np.array([1.04,0.97,0.88],np.float32))*0.25*core
+# drinks and skin keep their real colours, with only a warm tilt
+natural = np.clip(out*np.array([1.05,0.98,0.90],np.float32), 0, 1)
+nL = natural @ np.array([0.299,0.587,0.114], np.float32)
+natural = nL[..., None] + (natural - nL[..., None])*1.12
+graded = graded*(1-0.85*core) + natural*0.85*core
 # contrast: crush toward deep brown blacks
 graded = np.clip((graded - 0.03)/0.97, 0, 1) ** 1.18
 # vignette
-v = np.clip(1 - 0.55*np.clip(d-0.6, 0, 1.4)**1.3, 0.25, 1)[..., None]
+v = np.clip(1 - 0.55*np.clip(d-0.6, 0, 1.4)**1.3, 0.25, 1)
+v = (v*(1-core[...,0]) + np.maximum(v, 0.92)*core[...,0])[..., None]
 graded *= v
 # fine grain
 rng = np.random.default_rng(9)
