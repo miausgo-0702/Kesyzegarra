@@ -1,0 +1,38 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Great+Vibes&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:1080px;height:1920px;background:#120a0d;overflow:hidden}
+.f{position:relative;width:1080px;height:1920px;overflow:hidden;background:#140b0e}
+.photo{position:absolute;left:0;bottom:0;width:1080px;height:1440px;background:url(foto.jpg) center/cover;filter:saturate(.85) contrast(1.08) brightness(.92) sepia(.18)}
+.warm{position:absolute;inset:0;background:linear-gradient(180deg,rgba(60,20,20,.0),rgba(120,50,25,.18));mix-blend-mode:multiply}
+.fade{position:absolute;inset:0;background:
+ linear-gradient(180deg,#140b0e 0%,#140b0e 22%,rgba(20,11,14,.75) 34%,rgba(20,11,14,0) 50%,rgba(20,11,14,0) 66%,rgba(40,16,10,.75) 82%,#2a120a 100%),
+ radial-gradient(ellipse at 50% 55%,rgba(0,0,0,0) 45%,rgba(0,0,0,.55) 100%)}
+.grain{position:absolute;inset:0;opacity:.12;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E")}
+.logo{position:absolute;top:60px;width:100%;text-align:center;color:#fff;font:900 64px/1 Montserrat;letter-spacing:4px}
+.logo small{display:block;font:700 15px Montserrat;letter-spacing:5px;margin-top:10px}
+.title{position:absolute;top:220px;width:100%;text-align:center}
+.ladies{font:400 300px/1 Anton;letter-spacing:-2px;background:linear-gradient(180deg,#ffe9d6 0%,#f7b48a 55%,#ee8a5c 100%);-webkit-background-clip:text;color:transparent;filter:drop-shadow(0 6px 18px rgba(0,0,0,.5))}
+.night{position:relative;margin-top:-120px;font:400 150px/1 'Great Vibes';color:#fff;text-shadow:0 4px 18px rgba(0,0,0,.7)}
+.date{position:absolute;left:46px;top:700px;color:#fff;text-shadow:0 3px 14px rgba(0,0,0,.8)}
+.date .d{font:400 92px/1 Anton;color:#f39a6a}
+.date .t{font:400 78px/1.05 Anton}
+.date .o{font:800 28px Montserrat;letter-spacing:4px}
+.day{position:absolute;left:60px;top:1420px;color:#fff;text-shadow:0 4px 18px rgba(0,0,0,.85)}
+.day .w{font:800 58px Montserrat}
+.day .ft{font:italic 600 32px Montserrat;margin-top:-4px}
+.day .n{font:900 158px/1 Montserrat;margin-top:-6px;color:#f6a375;text-shadow:0 6px 20px rgba(0,0,0,.75)}
+.pill{position:absolute;top:1690px;left:50%;transform:translateX(-50%);background:#f6a375;color:#1a0d08;font:800 32px Montserrat;letter-spacing:1px;padding:14px 34px;border-radius:14px;white-space:nowrap}
+.info{position:absolute;top:1782px;width:100%;text-align:center;color:#fff}
+.info .p{font:800 36px Montserrat;letter-spacing:1px}
+.info .a{font:700 24px Montserrat;letter-spacing:.5px;margin-top:10px}
+</style></head><body><div class="f">
+<div class="photo"></div><div class="warm"></div><div class="fade"></div><div class="grain"></div>
+<div class="logo">TU BAR<small>KITCHEN • BAR • NIGHTLIFE</small></div>
+<div class="title"><div class="ladies">LADIES</div><div class="night">Night</div></div>
+<div class="date"><div class="d">14 DIC</div><div class="t">21:30 HS</div><div class="o">EN ADELANTE</div></div>
+<div class="day"><div class="w">MIÉRCOLES</div><div class="ft">FEAT.</div><div class="n">DJ NAME</div></div>
+<div class="pill">TRAGOS DE CORTESÍA PARA ELLAS</div>
+<div class="info"><div class="p">+00 0000-0000 | +00 0000-0000</div><div class="a">TU DIRECCIÓN 123, PISO 5 · CIUDAD</div></div>
+</div></body></html>
