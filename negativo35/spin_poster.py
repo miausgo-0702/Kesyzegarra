@@ -56,6 +56,7 @@ mix = mix*gain[..., None]
 Y = Y*gain
 hi = np.clip((Y-0.30)/0.6, 0, 1)
 bl = np.asarray(Image.fromarray((hi*255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(24)), np.float32)/255
+bl *= (1 - 0.85*core[..., 0])          # no orange haze over the drinks
 mix = mix + bl[..., None]*np.array([0.75, 0.36, 0.11], np.float32)
 
 # ---- warm amber grade (gradient map blended with warmed original colour)
@@ -68,20 +69,29 @@ warm = out * np.array([1.08, 0.92, 0.72], np.float32)
 graded = gm*0.66 + warm*0.34
 # keep skin/drinks a bit truer inside the sharp core
 # drinks and skin keep their real colours, with only a warm tilt
-natural = np.clip(out*np.array([1.05,0.98,0.90],np.float32), 0, 1)
+# vivid, punchy drink colours: S-curve contrast + vibrance on the untouched source
+natural = np.clip(x*1.04, 0, 1)
+natural = natural + 0.18*(natural - 0.5)*(1 - np.abs(2*natural - 1))      # gentle S-curve
 nL = natural @ np.array([0.299,0.587,0.114], np.float32)
-natural = nL[..., None] + (natural - nL[..., None])*1.12
-graded = graded*(1-0.85*core) + natural*0.85*core
-# contrast: crush toward deep brown blacks
+chroma = np.abs(natural - nL[..., None]).max(-1, keepdims=True)
+vib = 1.25 + 0.35*np.clip(chroma/0.35, 0, 1)                              # colourful things get the most push
+natural = np.clip(nL[..., None] + (natural - nL[..., None])*vib, 0, 1)
+natural *= np.array([1.02, 1.0, 0.97], np.float32)                         # tiny warm tie-in
+# contrast: crush toward deep brown blacks (outside only)
 graded = np.clip((graded - 0.03)/0.97, 0, 1) ** 1.18
+graded = graded*(1-0.92*core) + natural*0.92*core
 # vignette
 v = np.clip(1 - 0.55*np.clip(d-0.6, 0, 1.4)**1.3, 0.25, 1)
 v = (v*(1-core[...,0]) + np.maximum(v, 0.92)*core[...,0])[..., None]
 graded *= v
 # fine grain
 rng = np.random.default_rng(9)
-graded += rng.standard_normal(graded.shape[:2]).astype(np.float32)[..., None]*0.012
+graded += rng.standard_normal(graded.shape[:2]).astype(np.float32)[..., None]*(0.012 - 0.008*core)
 photo = Image.fromarray((np.clip(graded,0,1)*255+0.5).astype(np.uint8)).resize((PW, PH), Image.LANCZOS)
+# crisp the sharp zone (drinks, hands, smile)
+sharp = photo.filter(ImageFilter.UnsharpMask(radius=1.6, percent=120, threshold=2))
+cm = Image.fromarray((core[..., 0]*255).astype(np.uint8)).resize((PW, PH), Image.BILINEAR)
+photo = Image.composite(sharp, photo, cm)
 
 # ---- poster: dark frame + caption
 canvas = Image.new("RGB", (OUT_W, OUT_H), BG)
