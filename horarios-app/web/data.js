@@ -30,6 +30,8 @@ window.SECTORES = [
     { n: "Pacheco Julian",       h: "16:30 a 00:30" },
     { n: "Suarez Nahiara",       h: "10 a 13:30 · 20 a 00:30" },
     { n: "Daverio Daniela",      h: "17 a 01" },
+    // No figura en la planilla del 30-11, pero sigue fijo con su horario de siempre.
+    { n: "Peralta Alejandro",    h: "17 a 01", fijo: true },
     { n: "Lugones Maximiliano",  h: "23 a 07", fijo: true },
   ]},
   { nombre: "Auditoría", personas: [
@@ -63,8 +65,6 @@ window.SECTORES = [
     { n: "Peccia Daiana",  h: "Sin horario semanal", fijo: true },
     { n: "Zerda Andrea",   h: "Sin horario semanal", fijo: true },
     { n: "Ferrero Rosa",   h: "Sin horario semanal", fijo: true },
-    // No figura en la planilla semanal del 30-11; sigue en los findes del Grupo A.
-    { n: "Peralta Alejandro", h: "Sin horario semanal", fijo: true },
   ]},
 ];
 

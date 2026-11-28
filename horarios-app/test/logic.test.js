@@ -59,7 +59,7 @@ t("grupos alternados", () => {
 t("planillas originales se reproducen", () => {
   assert.strictEqual(est("Ventas","Juan Renzo","2026-11-14").h, "10 a 14 · 19:30 a 00:30");
   assert.strictEqual(est("Ventas","Suarez Nahiara","2026-11-21").h, "14 a 23");
-  assert.strictEqual(est("Solo fines de semana","Peralta Alejandro","2026-11-22").h, "17 a 01");
+  assert.strictEqual(est("Ventas","Peralta Alejandro","2026-11-22").h, "17 a 01");
 });
 t("findes rotan un puesto cada vez que trabaja el grupo", () => {
   // B sábado ventas (sin Lugones): Zerda, Vallejos, Maguna, Juan Renzo, Daverio, Mitre
@@ -162,10 +162,11 @@ t("Silva Virginia es solo del Grupo A", () => {
   assert(est("Ventas","Silva Virginia","2026-12-05").trabaja);
   assert(est("Ventas","Daverio Daniela","2026-11-29").trabaja);
 });
-t("planilla del 30/11: negritas fijas y Peralta solo findes", () => {
+t("planilla del 30/11: negritas fijas y Peralta fijo 17 a 01", () => {
   const v = W.SECTORES.find(x => x.nombre === "Ventas").personas;
-  assert.strictEqual(JSON.stringify(v.filter(p => p.fijo).map(p => p.n)), JSON.stringify(["Ferreyra Sebastian", "Banegas Fabian", "Lugones Maximiliano"]));
-  assert.strictEqual(est("Solo fines de semana","Peralta Alejandro","2026-12-02").trabaja, false);
-  assert(est("Solo fines de semana","Peralta Alejandro","2026-12-05").trabaja);
+  assert.strictEqual(JSON.stringify(v.filter(p => p.fijo).map(p => p.n)), JSON.stringify(["Ferreyra Sebastian", "Banegas Fabian", "Peralta Alejandro", "Lugones Maximiliano"]));
+  ["2026-12-02", "2026-12-09", "2027-01-13", "2027-03-03"].forEach(f => assert.strictEqual(est("Ventas","Peralta Alejandro",f).h, "17 a 01", f));
+  assert(est("Ventas","Peralta Alejandro","2026-12-05").trabaja);          // sigue en los findes del Grupo A
+  assert.strictEqual(est("Ventas","Pacheco Julian","2026-12-09").h, "10 a 13:30 · 20 a 00:30"); // la rotación no cambia
 });
 console.log("OK:", ok, "pruebas");
